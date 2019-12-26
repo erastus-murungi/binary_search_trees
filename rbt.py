@@ -13,6 +13,7 @@ class RBNull:
     def __repr__(self):
         return "NIL"
 
+
 class RBNode:
     null = RBNull()
 
@@ -25,49 +26,51 @@ class RBNode:
 
     def __repr__(self):
         return "Node(({}, {}, {}), children: {}])".format(str(self.key), str(self.item),
-                                                          str(self.color), repr(self.child))
+                                                          str(self.color), ';'.join([repr(c) for c in self.child]))
+
 
 class RedBlackTree:
     def __init__(self):
         self.null = RBNode.null
         self.root = self.null
 
-    def rotate(self, x: RBNode, direction: float):
+    def rotate(self, y: RBNode, direction: float):
         """x is the node to be taken to the top
         y = x.parent
-
                 y                              x
                / \                            / \
-              x   Ω   ={right_rotate(x)} =>   𝛼  y
+              x   Ω   ={right_rotate(y)} =>   𝛼  y
              / \                               / \
             𝛼   ß                             ß  Ω
-
         the comments use the specific case of a right-rotation which of course is symmetric to left-rotation
         """
 
-        if x == self.root:
-            raise ValueError("can't rotate the rotate, instead rotate the children of the root")
+        if y == self.null:
+            raise ValueError("can't rotate null value")
 
-        # move ß to the right subtree of y, make sure ß.parent is y
-        y = x.parent
-        a = x.child[direction]
-        y.child[not direction] = a
+        # move ß to the left child of y
+        x = y.child[not direction]
+        beta = x.child[direction]
+        y.child[not direction] = beta
 
-        # sometimes x.left might be an external node, we need to be careful about that
-        # since we are not using a universal null pointer
+        # set ß's parent to y
+        # sometimes ß might be an external node, we need to be careful about that
+        if beta is not self.null:
+            beta.parent = y
 
-        if a is not None:
-            a.parent = y
+        # now we deal with replacing y with x in z (y.parent)
+        z = y.parent
+        if z is self.null:
+            # y was the root
+            self.root = x
+        # make the initial parent of y the parent of x, if y is not the root, i.e y.parent == z is not self.null
+        else:
+            z.child[y.key >= z.key] = x
+        x.parent = z
 
         # make y x's subtree, and make sure to make y.parent x
-        z = y.parent
-        x.child[direction] = y.parent
+        x.child[direction] = y
         y.parent = x
-
-        # make the initial parent of y the parent of x, if y is not the root, i.e y.parent == z is not None
-        if z is not self.null:
-            # z must be the root
-            z.child[y.key >= z.key] = x
 
     def find(self, key):
         """Returns the node with the current key if key exists else None
@@ -125,52 +128,63 @@ class RedBlackTree:
 
         self.fix_ranks(z)
 
+    @staticmethod
+    def case_one(a, y):
+        """a is z's parent, y is z's uncle"""
+        a.color = BLACK
+        y.color = BLACK
+        a.parent.color = RED
+
+    def case_three(self, parent, grandparent, direction):
+        """Case three fixup"""
+        parent.color = BLACK
+        grandparent.color = RED
+        self.rotate(grandparent, direction)
+
     def fix_ranks(self, z):
-        p = z.parent
-        while p.color == RED:
-            if p == p.parent.child[LEFT]:  # case 1
-                y = p.parent.child[RIGHT]
-                if y.color == RED:
-                    # color z's parent, z's uncle BLACK and z's grandparent RED
-                    p.color = BLACK
-                    y.color = BLACK
-                    x.p.color = RED
-                    # update x to the grandparent
-                    z = p.parent
+
+        while z.parent.color == RED:
+            # let a = x's parent
+            a = z.parent
+            if a.parent is not self.null:
+                # if z's parent is a left child, the uncle will be z's grandparent right child
+                if a.parent.child[LEFT] == a:
+                    y = a.parent.child[RIGHT]
+                    # if z's uncle is RED (and z's parent is RED), then we are in case 1
+                    if y.color == RED:
+                        self.case_one(a, y)
+                        z = z.parent.parent
+                    # z's uncle is BLACK (z's parent is RED), we check for case 2 first
+                    else:
+                        # if z is a right child (and remember z's parent is a left child), we left-rotate z.p
+                        if a.child[RIGHT] == z:
+                            z = a
+                            self.rotate(a, LEFT)
+                            # z with be back to a child node after the rotation
+                        # now we are in case 3
+                        self.case_three(z.parent, z.parent.parent, RIGHT)
 
                 else:
-                    if z == z.parent.child[RIGHT]:
-                        p = z.parent
-                        # bring z to the subtree root
-                        self.rotate(z, LEFT)
-                        z = p
+                    # z's parent is a right child, z's uncle is the left child of z's grandparent
+                    y = a.parent.child[LEFT]
+                    # check for case 1
+                    if y.color == RED:
+                        self.case_one(a, y)
+                        z = z.parent.parent
 
-                    z.parent.color = BLACK
-                    z.parent.parent.color = RED
-                    self.rotate(z.parent, RIGHT)
-            else:
-                # p == p.parent.child[RIGHT]
-                y = p.parent.child[LEFT]
-                if y.color == RED:
-                    # color z's parent, z's uncle BLACK and z's grandparent RED
-                    p.color = BLACK
-                    y.color = BLACK
-                    x.p.color = RED
-                    # update x to the grandparent
-                    z = p.parent
+                    else:
+                        # z's parent is already a right child, so check if z is a left child and rotate
+                        if a.child[LEFT] == z:
+                            z = a
+                            self.rotate(z, RIGHT)
+                        # now case 3
+                        self.case_three(z.parent, z.parent.parent, LEFT)
 
-                else:
-                    if z == z.parent.child[LEFT]:
-                        p = z.parent
-                        # bring z to the subtree root
-                        self.rotate(z, RIGHT)
-                        z = p
+        # make the root black
+        self.root.color = BLACK
 
-                    z.parent.color = BLACK
-                    z.parent.parent.color = RED
-                    self.rotate(z.parent, BLACK)
-
-
+    def __repr__(self):
+        return repr(self.root)
 
 if __name__ == '__main__':
     rb = RedBlackTree()
