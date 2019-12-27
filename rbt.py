@@ -7,6 +7,7 @@ RIGHT = 1
 
 
 class RBNull:
+    """Universal null in red-black trees"""
     def __init__(self):
         self.color = BLACK
 
@@ -126,7 +127,7 @@ class RedBlackTree:
                 z = RBNode(key, item, x)
                 x.child[key >= x.key] = z
 
-        self.fix_ranks(z)
+        self.__insert_fix(z)
 
     @staticmethod
     def case_one(a, y):
@@ -141,56 +142,243 @@ class RedBlackTree:
         grandparent.color = RED
         self.rotate(grandparent, direction)
 
-    def fix_ranks(self, z):
+    def __insert_fix(self, z):
 
         while z.parent.color == RED:
             # let a = x's parent
             a = z.parent
-            if a.parent is not self.null:
-                # if z's parent is a left child, the uncle will be z's grandparent right child
-                if a.parent.child[LEFT] == a:
-                    y = a.parent.child[RIGHT]
-                    # if z's uncle is RED (and z's parent is RED), then we are in case 1
-                    if y.color == RED:
-                        self.case_one(a, y)
-                        z = z.parent.parent
-                    # z's uncle is BLACK (z's parent is RED), we check for case 2 first
-                    else:
-                        # if z is a right child (and remember z's parent is a left child), we left-rotate z.p
-                        if a.child[RIGHT] == z:
-                            z = a
-                            self.rotate(a, LEFT)
-                            # z with be back to a child node after the rotation
-                        # now we are in case 3
-                        self.case_three(z.parent, z.parent.parent, RIGHT)
+            # if z's parent is a left child, the uncle will be z's grandparent right child
+            if a.parent.child[LEFT] == a:
+                y = a.parent.child[RIGHT]
+                # if z's uncle is RED (and z's parent is RED), then we are in case 1
+                if y.color == RED:
+                    self.case_one(a, y)
+                    z = z.parent.parent
+                # z's uncle is BLACK (z's parent is RED), we check for case 2 first
+                else:
+                    # if z is a right child (and remember z's parent is a left child), we left-rotate z.p
+                    if a.child[RIGHT] == z:
+                        z = a
+                        self.rotate(a, LEFT)
+                        # z with be back to a child node after the rotation
+                    # now we are in case 3
+                    self.case_three(z.parent, z.parent.parent, RIGHT)
+
+            else:
+                # z's parent is a right child, z's uncle is the left child of z's grandparent
+                y = a.parent.child[LEFT]
+                # check for case 1
+                if y.color == RED:
+                    self.case_one(a, y)
+                    z = z.parent.parent
 
                 else:
-                    # z's parent is a right child, z's uncle is the left child of z's grandparent
-                    y = a.parent.child[LEFT]
-                    # check for case 1
-                    if y.color == RED:
-                        self.case_one(a, y)
-                        z = z.parent.parent
-
-                    else:
-                        # z's parent is already a right child, so check if z is a left child and rotate
-                        if a.child[LEFT] == z:
-                            z = a
-                            self.rotate(z, RIGHT)
-                        # now case 3
-                        self.case_three(z.parent, z.parent.parent, LEFT)
+                    # z's parent is already a right child, so check if z is a left child and rotate
+                    if a.child[LEFT] == z:
+                        z = a
+                        self.rotate(z, RIGHT)
+                    # now case 3
+                    self.case_three(z.parent, z.parent.parent, LEFT)
 
         # make the root black
         self.root.color = BLACK
 
+    @property
+    def minimum(self):
+        """Returns a tuple of the (min_key, item) """
+        x = self.find_min(self.root)
+        return x.key, x.item
+
+    @property
+    def maximum(self):
+        """Returns a tuple of the (max_key, item) """
+        x = self.find_max(self.root)
+        return x.key, x.item
+
+    @staticmethod
+    def find_min(x: RBNode):
+        """Return the node with minimum key in x's subtree"""
+
+        if x is None:
+            raise ValueError("x can't be none")
+
+        # traverse to the leftmost node
+        while x.child[LEFT] is not None:
+            x = x.child[LEFT]
+        return x
+
+    @staticmethod
+    def find_max(x):
+        """Return the node maximum key in x's subtree"""
+
+        if x is None:
+            raise ValueError("x can't be none")
+
+        # traverse to the rightmost node
+        while x.child[RIGHT] is not None:
+            x = x.child[RIGHT]
+        return x
+
+    def __rb_transplant(self, u, v):
+        # u is the initial node and v is the node to transplant u
+        if u.parent is self.null:
+            self.root = v
+        u.parent.child[u is not u.parent.child[LEFT]] = v
+        v.parent = u.parent
+
+    def delete(self, target_key):
+
+        # find the key first
+        z: RBNode = self.find(target_key)
+        if z is None:
+            raise ValueError("key not in tree")
+
+        # y identifies the node to be deleted
+        # We maintain node y as the node either removed from the tree or moved within the tree
+        y = z
+        y_original_color = y.color
+        if z.child[LEFT] == self.null:
+            x = z.child[RIGHT]
+            self.__rb_transplant(z, z.child[RIGHT])
+        elif z.child[RIGHT] is self.null:
+            x = z.child[LEFT]
+            self.__rb_transplant(z, z.child[LEFT])
+        else:
+            # partly resembles an extract min procedure
+            y = self.find_min(z.child[RIGHT])  # find z's successor
+            y_original_color = y.color
+            x = y.child[RIGHT]
+            # z might be the minimum's parent
+            if y.parent == z:
+                x.parent = y
+            else:
+                self.__rb_transplant(y, y.child[RIGHT])
+                y.child[RIGHT] = z.child[RIGHT]
+                y.child[RIGHT].parent = y
+            self.__rb_transplant(z, y)
+            y.child[LEFT] = z.child[LEFT]
+            y.child[LEFT].parent = y
+            y.color = z.color
+        if y_original_color == BLACK:
+            self.__delete_fix(x)
+
+    def __delete_fix(self, x):
+        while x != self.root and x.color == BLACK:
+            if x == x.parent.child[LEFT]:
+                s = x.parent.child[RIGHT]
+                if s.color == RED:
+                    s.color = BLACK
+                    x.parent.color = RED
+                    self.rotate(x.parent, LEFT)
+                    s = x.parent.child[RIGHT]
+                if s.child[LEFT].color == BLACK and s.child[RIGHT].color == BLACK:
+                    s.color = RED
+                    x = x.parent
+                else:
+                    if s.child[RIGHT].color == BLACK:
+                        s.child[LEFT].color = BLACK
+                        s.color = RED
+                        self.rotate(s, RIGHT)
+                        s = x.parent.child[RIGHT]
+                    s.color = x.parent.color
+                    x.parent.color = BLACK
+                    s.child[RIGHT].color = BLACK
+                    self.rotate(x.parent, LEFT)
+                    x = self.root
+            else:
+                s = x.parent.child[LEFT]
+                if s.color == RED:
+                    s.color = BLACK
+                    x.parent.color = RED
+                    self.rotate(x.parent, RIGHT)
+                    s = x.parent.child[LEFT]
+                if s.child[RIGHT].color == BLACK and s.child[RIGHT].color == BLACK:
+                    s.color = RED
+                    x = x.parent
+                else:
+                    if s.child[LEFT].color == BLACK:
+                        s.child[RIGHT].color = BLACK
+                        s.color = RED
+                        self.rotate(s, LEFT)
+                        s = x.parent.child[LEFT]
+                    s.color = x.parent.color
+                    x.parent.color = BLACK
+                    s.child[LEFT].color = BLACK
+                    self.rotate(x.parent, RIGHT)
+                    x = self.root
+        x.color = BLACK
+
+    def successor(self, current: RBNode) -> RBNode:
+        """Find the node whose key immediately succeeds current.key"""
+        # boilerplate
+        if current is self.null:
+            raise ValueError("can't find the node with the key")
+
+        # case 1: if node has right subtree, then return the min in the subtree
+        if current.child[RIGHT] is self.null:
+            y = self.find_min(current.child[RIGHT])
+            return y
+
+        # case 2: traverse to the first instance where there is a right edge and return the node incident on the edge
+        while current.parent is not self.null and current is current.parent.child[RIGHT]:
+            current = current.parent
+
+        y = current.parent
+        return y
+
+    def predecessor(self, current: RBNode) -> RBNode:
+        """Find the node whose key immediately precedes current.key
+        It is important to deal with nodes and note their (key, item) pair because
+        the pairs are not unique but the nodes identities are unique.
+        That us why the comparisons use is rather than '=='.
+        """
+
+        # check that the type is correct
+        if current is self.null:
+            raise ValueError("can't find the node with the given key")
+
+        # case 1: if node has a left subtree, then return the max in the subtree
+        if current.child[LEFT] is not self.null:
+            y = self.find_max(current.child[LEFT])
+            return y
+
+        # case 2: traverse to the first instance where there is a left edge and return the node incident on the edge
+        while current.parent is not self.null and current is current.parent.child[LEFT]:
+            current = current.parent
+
+        y = current.parent
+        return y
+
+    def __print_helper(self, node, indent, last):
+        if node != self.null:
+            print(indent, end='')
+            if last:
+                print("R----", end='')
+                indent += "     "
+            else:
+                print("L----", end='')
+                indent += "|    "
+            color_to_string = "BLACK" if node.color == 1 else "RED"
+            print('(', node.key, node.item, color_to_string, ")")
+            self.__print_helper(node.child[LEFT], indent, False)
+            self.__print_helper(node.child[RIGHT], indent, True)
+
+    def __str__(self):
+        self.__print_helper(self.root, "", True)
+        return 'Done'
+
     def __repr__(self):
         return repr(self.root)
+
 
 if __name__ == '__main__':
     rb = RedBlackTree()
     values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88]
+    print(values)
     for val in values:
         rb.insert(val)
-    x = rb.find(52)
-    print(x)
-    rb.rotate(x, LEFT)
+
+    print(rb)
+
+    for val in values:
+        rb.delete(val)
