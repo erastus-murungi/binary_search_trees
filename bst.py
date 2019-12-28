@@ -10,10 +10,7 @@ __author__ = 'Erastus Murungi' \
 @total_ordering
 class Node:
     """A class representing a node in a binary search tree
-
-
         Quick note/reminder on the total_ordering decorator:
-
         "While this decorator makes it easy to create well behaved totally ordered types,
         it does come at the cost of slower execution and more complex stack traces for the derived comparison methods.
         If performance benchmarking indicates this is a bottleneck for a given application,
@@ -101,6 +98,9 @@ class BST:
 
         return helper(self.root)
 
+    def is_empty(self):
+        return self.root is self.null
+
     @staticmethod
     def is_leaf(node):
         """Returns True if node is a leaf"""
@@ -183,7 +183,7 @@ class BST:
 
         # if node with max key has a left child, replace that node with its left child
         if current.child[LEFT]:
-            self.replace_node(current, current.child[LEFT])
+            self.__replace(current, current.child[LEFT])
         else:
             # if the root is the only remaining node, current.parent.child is None existent
             if current is self.root and self.is_leaf(current):
@@ -197,12 +197,12 @@ class BST:
     def extract_min(self, current=None):
         """Returns a tuple of (min_key, item) and deletes it from the BST"""
 
-        # preprocessing starts
+        # pre-processing starts
         if self.root is None:
             raise ValueError("empty tree")
         if current is None:
             current = self.root
-        # preprocessing ends
+        # pre-processing ends
 
         # traverse to the leftmost node and get its key and satellite data
         while current.child[LEFT] is not None:
@@ -211,7 +211,7 @@ class BST:
 
         # if node with min key has a right child, replace the node with its right child
         if current.child[RIGHT]:
-            self.replace_node(current, current.child[RIGHT])
+            self.__replace(current, current.child[RIGHT])
         else:
             # if the root is the only remaining node, current.parent.child is None existent
             if current is self.root and self.is_leaf(current):
@@ -221,40 +221,6 @@ class BST:
             current.parent.child[current.key >= current.parent.key] = None
 
         return ret
-
-    @staticmethod
-    def replace_node(x: Node, y: Node):
-        """Simple method to cody data from one node to the other"""
-        x.key = y.key
-        x.item = y.item
-        x.child = y.child
-
-    def delete(self, target_key):
-        """Deletes a key from the BST"""
-        target_node = self.find(target_key)
-        if target_node is None:
-            return False
-
-        if target_node.child[RIGHT] and target_node.child[LEFT]:
-            # swap key with successor and delete using extract_min
-            key, item = self.extract_min(target_node.child[RIGHT])
-            target_node.key, target_node.item = key, item
-
-        elif target_node.child[LEFT] is None and target_node.child[RIGHT]:
-            # replace node with its right child
-            self.replace_node(target_node, target_node.child[RIGHT])
-
-        elif target_node.child[RIGHT] is None and target_node.child[LEFT]:
-            # replace node with its left child
-            self.replace_node(target_node, target_node.child[LEFT])
-
-        else:
-            # the target node is the root and it is a leaf node, then setting the root to None will suffice
-            if target_node == self.root:
-                self.root = None
-            else:
-                # else the target is a leaf node which has a parent
-                target_node.parent.child[target_key >= target_node.parent.key] = None
 
     def successor(self, current: Node) -> Node:
         """Find the node whose key immediately succeeds current.key"""
@@ -276,8 +242,8 @@ class BST:
 
     def predecessor(self, current: Node) -> Node:
         """Find the node whose key immediately precedes current.key
-        It is important to deal with nodes and note their (key, item) pair because 
-        the pairs are not unique but the nodes identities are unique. 
+        It is important to deal with nodes and note their (key, item) pair because
+        the pairs are not unique but the nodes identities are unique.
         That us why the comparisons use is rather than '=='.
         """
 
@@ -297,6 +263,79 @@ class BST:
         y = current.parent
         return y
 
+    @staticmethod
+    def __replace(x: Node, y: Node):
+        """Simple method to cody data from one node to the other"""
+        x.key = y.key
+        x.item = y.item
+        x.child = y.child
+
+    def delete(self, target_key):
+        """Deletes a key from the BST"""
+        target_node = self.find(target_key)
+        if target_node is None:
+            return False
+
+        if target_node.child[RIGHT] and target_node.child[LEFT]:
+            # swap key with successor and delete using extract_min
+            key, item = self.extract_min(target_node.child[RIGHT])
+            target_node.key, target_node.item = key, item
+
+        elif target_node.child[LEFT] is None and target_node.child[RIGHT]:
+            # replace node with its right child
+            self.__replace(target_node, target_node.child[RIGHT])
+
+        elif target_node.child[RIGHT] is None and target_node.child[LEFT]:
+            # replace node with its left child
+            self.__replace(target_node, target_node.child[LEFT])
+
+        else:
+            # the target node is the root and it is a leaf node, then setting the root to None will suffice
+            if target_node == self.root:
+                self.root = None
+            else:
+                # else the target is a leaf node which has a parent
+                target_node.parent.child[target_key >= target_node.parent.key] = None
+
+    def clear(self):
+        """delete all the elements in the tree,
+        this time without maintaining red-black tree properties """
+
+        self.__clear_helper(self.root.child[LEFT])
+        self.__clear_helper(self.root.child[RIGHT])
+        self.root = None
+
+    def __clear_helper(self, node):
+        if node.child[LEFT] is None and node.child[RIGHT] is None:
+            del node
+        else:
+            if node.child[LEFT] is not None:
+                self.__clear_helper(node.child[LEFT])
+            if node.child[RIGHT] is not None:
+                self.__clear_helper(node.child[RIGHT])
+            del node
+
+    def __print_helper(self, node, indent, last):
+        """Simple recursive tree printer"""
+        if node is not None:
+            print(indent, end='')
+            if last:
+                print("R----", end='')
+                indent += "     "
+            else:
+                print("L----", end='')
+                indent += "|    "
+            print('(' + str(node.key) + ', ' + str(node.item) + ")")
+            self.__print_helper(node.child[LEFT], indent, False)
+            self.__print_helper(node.child[RIGHT], indent, True)
+
+    def __str__(self):
+        if self.root is None:
+            return str(None)
+        else:
+            self.__print_helper(self.root, "", True)
+            return ''
+
     def __repr__(self):
         """Simple repr method"""
         return repr(self.root)
@@ -309,20 +348,8 @@ if __name__ == '__main__':
 
     for val in values:
         bst.insert(val)
-
-    # x, _ = bst.minimum
-    # print(x)
-    # for _ in range(len(values) - 1):
-    #     x, _ = bst.successor(x)
-    #     print(x)
-    # print(sorted(values))
-
-    # y, _ = bst.minimum
-    # print(y)
-    #     # current = bst.find(y)
-    #     # for _ in range(len(values) - 1):
-    #     #     current = bst.predecessor(current)
-    #     #     print(current.key)
-
-    # for i in range(len(values)):
-    #     bst.delete(values[i])
+    print(bst)
+    
+    for val in values:
+        bst.delete(val)
+    print(bst)
