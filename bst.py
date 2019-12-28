@@ -7,8 +7,10 @@ RIGHT = 1  # True
 __author__ = 'Erastus Murungi' \
              'email: murungi@mit.edu' \
 
+
+
 @total_ordering
-class Node:
+class BSTNode:
     """A class representing a node in a binary search tree
         Quick note/reminder on the total_ordering decorator:
         "While this decorator makes it easy to create well behaved totally ordered types,
@@ -24,10 +26,6 @@ class Node:
         self.item = item
         self.child = [None, None]
         self.parent = parent
-
-    def __iter__(self):
-        yield self.key
-        yield self.item
 
     def __eq__(self, other):
         return self.key == other.key and self.item == other.item
@@ -71,21 +69,11 @@ class BST:
     def search(self, key):
         """Returns True if the node with the key is in the BST and False otherwise"""
 
-        # boilerplate code
-        if self.root is None:
-            raise ValueError("empty tree")
-
-        current = self.root
-        while current is not None and current.key != key:
-            current = current.child[key >= current.key]
-
-        if current is None:
-            return False
-        else:
-            return key == current.key
+        return self.find_min(key) is not None
 
     def in_order(self):
         """Creates an In-order traversal generator of the BST"""
+
         def helper(node):
             # visit left node's subtree first if that subtree is not an external node
             if node.child[LEFT]:
@@ -112,7 +100,7 @@ class BST:
 
         # if the tree was empty, just insert the key at the root
         if self.root is None:
-            self.root = Node(key, item)
+            self.root = BSTNode(key, item)
         else:
             # create x and y for readability
             x = self.root
@@ -126,10 +114,10 @@ class BST:
             if x is None:
                 # while loop broke we are at an external node, insert the node in the parent y
                 # if left child is not None, expression evaluates to True => 1 => RIGHT
-                y.child[y.child[LEFT] is not None] = Node(key, item, y)
+                y.child[y.child[LEFT] is not None] = BSTNode(key, item, y)
             else:
                 # while loop broke because x is a leaf, just insert the node in the leaf x
-                x.child[key >= x.key] = Node(key, item, x)
+                x.child[key >= x.key] = BSTNode(key, item, x)
 
     @property
     def minimum(self):
@@ -222,7 +210,7 @@ class BST:
 
         return ret
 
-    def successor(self, current: Node) -> Node:
+    def successor(self, current: BSTNode) -> BSTNode:
         """Find the node whose key immediately succeeds current.key"""
         # boilerplate
         if current is None:
@@ -240,7 +228,7 @@ class BST:
         y = current.parent
         return y
 
-    def predecessor(self, current: Node) -> Node:
+    def predecessor(self, current: BSTNode) -> BSTNode:
         """Find the node whose key immediately precedes current.key
         It is important to deal with nodes and note their (key, item) pair because
         the pairs are not unique but the nodes identities are unique.
@@ -264,7 +252,7 @@ class BST:
         return y
 
     @staticmethod
-    def __replace(x: Node, y: Node):
+    def __replace(x: BSTNode, y: BSTNode):
         """Simple method to cody data from one node to the other"""
         x.key = y.key
         x.item = y.item
@@ -348,8 +336,5 @@ if __name__ == '__main__':
 
     for val in values:
         bst.insert(val)
-    print(bst)
-    
-    for val in values:
-        bst.delete(val)
+
     print(bst)
