@@ -39,22 +39,20 @@ class RBNode:
 
 class RedBlackTree:
     """
-    A Red-Black tree is a height-balanced binary search which supports queries and updates in O(log n) time
-    Red-Black Trees provide faster insertion and removal operations than AVL trees because fewer rotations.
+    A Red-Black tree is a height-balanced binary search tree which supports queries and updates in O(log n) time.
+    Red-Black Trees provide faster insertion and removal operations than AVL trees because they need fewer rotations.
     However, AVL trees provide faster lookups than Red-Black trees because they are more strictly balanced.
 
-    A binary search tree is a red-black tree if:
-        - Every node is either red or black
-        - Every leaf (nil) is black
-        - If a node is red, then both its children are black
-        - Every simple path from a node to a descendant leaf contains the same number of black nodes
+    A binary search tree is a Red-Black tree if:
+        - Every node is either red or black.
+        - Every leaf (nil) is black.
+        - If a node is red, then both its children are black.
+        - Every simple path from a node to a descendant leaf contains the same number of black nodes.
 
-        the black-height of a node x, bh(x),
-        is the number of black nodes on any path from x to a leaf, not counting x
+        The black-height of a node x, bh(x),
+        is the number of black nodes on any path from x to a leaf, not counting x.
 
-        A Red-Black tree with n internal nodes has height at most 2lg(n+1). See CLRS pg. 309 for proof of this lemma.
-        This demonstrates why the red-black tree is a good binary search tree:
-        it can always be searched in O(log n) time
+        A Red-Black tree with n internal nodes has height at most 2lg(n+1). See CLRS pg. 309 for the proof of this lemma.
     """
 
     def __init__(self):
