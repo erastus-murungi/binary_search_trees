@@ -44,6 +44,31 @@ class BST:
     def __init__(self):
         self.root = None
 
+    def insert(self, key, item=0):
+        """Inserts a node with a key and item
+        Assumes key is comparable with the other keys"""
+
+        # if the tree was empty, just insert the key at the root
+        if self.root is None:
+            self.root = BSTNode(key, item)
+        else:
+            # create x and y for readability
+            x = self.root
+            y = x.parent
+
+            # the while loop can only stop if we are at an external node or we are at a leaf node
+            while x is not None and not self.is_leaf(x):
+                y = x
+                x = x.child[key >= x.key]
+
+            if x is None:
+                # while loop broke we are at an external node, insert the node in the parent y
+                # if left child is not None, expression evaluates to True => 1 => RIGHT
+                y.child[y.child[LEFT] is not None] = BSTNode(key, item, y)
+            else:
+                # while loop broke because x is a leaf, just insert the node in the leaf x
+                x.child[key >= x.key] = BSTNode(key, item, x)
+
     def find(self, key):
         """Returns the node with the current key if key exists else None
         We impose the >= condition instead of > because a node with a similar key to the current node in
@@ -55,16 +80,14 @@ class BST:
 
         # traverse to the lowest node possible
         current = self.root
-        while current.key != key and current is not None:
+        while current is not None and current.key != key:
             # the expression 'key >= current.key' evaluates to True => 1 => RIGHT or False => 0 => LEFT
             current = current.child[key >= current.key]
 
-        # the while stopped because we reached the node with the desired key
-        if current.key == key:
-            return current
-        # the while loop stopped because we reached an external node
-        else:
+        if current is None or current.key != key:
             return None
+        else:
+            return current
 
     def search(self, key):
         """Returns True if the node with the key is in the BST and False otherwise"""
@@ -93,31 +116,6 @@ class BST:
     def is_leaf(node):
         """Returns True if node is a leaf"""
         return node.child[LEFT] is None and node.child[RIGHT] is None
-
-    def insert(self, key, item=0):
-        """Inserts a node with a key and item
-        Assumes key is comparable with the other keys"""
-
-        # if the tree was empty, just insert the key at the root
-        if self.root is None:
-            self.root = BSTNode(key, item)
-        else:
-            # create x and y for readability
-            x = self.root
-            y = x.parent
-
-            # the while loop can only stop if we are at an external node or we are at a leaf node
-            while x is not None and not self.is_leaf(x):
-                y = x
-                x = x.child[key >= x.key]
-
-            if x is None:
-                # while loop broke we are at an external node, insert the node in the parent y
-                # if left child is not None, expression evaluates to True => 1 => RIGHT
-                y.child[y.child[LEFT] is not None] = BSTNode(key, item, y)
-            else:
-                # while loop broke because x is a leaf, just insert the node in the leaf x
-                x.child[key >= x.key] = BSTNode(key, item, x)
 
     @property
     def minimum(self):
@@ -250,6 +248,26 @@ class BST:
 
         y = current.parent
         return y
+
+    def check_weak_search_property(self):
+        """Recursively checks's whether x.left.key <= x.key >= x.right.key
+        I have no formal reason to call it 'weak' search other than that this method does not
+        check whether 'all_keys_in_left_subtree' <= x.key >= 'all_keys_in_right_subtree"""
+        return self.__check_weak_search_property_helper(self.root)
+
+    def __check_weak_search_property_helper(self, node):
+        """Helper method"""
+        if node is None:
+            return True
+        else:
+            if node.child[LEFT] is not None:
+                assert node.key >= node.child[LEFT].key, repr(node)
+            if node.child[RIGHT] is not None:
+                assert node.key <= node.child[RIGHT].key, repr(node)
+
+            self.__check_weak_search_property_helper(node.child[LEFT])
+            self.__check_weak_search_property_helper(node.child[RIGHT])
+        return True
 
     @staticmethod
     def __replace(x: BSTNode, y: BSTNode):
