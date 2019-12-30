@@ -42,17 +42,15 @@ class RedBlackTree:
     A Red-Black tree is a height-balanced binary search tree which supports queries and updates in O(log n) time.
     Red-Black Trees provide faster insertion and removal operations than AVL trees because they need fewer rotations.
     However, AVL trees provide faster lookups than Red-Black trees because they are more strictly balanced.
-
     A binary search tree is a Red-Black tree if:
         - Every node is either red or black.
         - Every leaf (nil) is black.
         - If a node is red, then both its children are black.
         - Every simple path from a node to a descendant leaf contains the same number of black nodes.
-
         The black-height of a node x, bh(x),
         is the number of black nodes on any path from x to a leaf, not counting x.
-
-        A Red-Black tree with n internal nodes has height at most 2lg(n+1). See CLRS pg. 309 for the proof of this lemma.
+        A Red-Black tree with n internal nodes has height at most 2lg(n+1). 
+        See CLRS pg. 309 for the proof of this lemma.
     """
 
     def __init__(self):
@@ -93,7 +91,7 @@ class RedBlackTree:
     def delete(self, target_key):
 
         # find the key first
-        z: RBNode = self.find(target_key)
+        z = self.access(target_key)
         if z is None:
             raise ValueError("key not in tree")
 
@@ -110,7 +108,7 @@ class RedBlackTree:
             x = z.child[LEFT]
             self.__replace(z, z.child[LEFT])
         else:
-            y = self.find_min(z.child[RIGHT])  # find z's successor
+            y = self.access_min(z.child[RIGHT])  # find z's successor
             y_original_color = y.color
             x = y.child[RIGHT]  # we will start fixing violations from the successor's right child
             # z might be the minimum's parent
@@ -134,7 +132,7 @@ class RedBlackTree:
     def is_empty(self):
         return self.root is self.null
 
-    def find(self, key):
+    def access(self, key):
         """Returns the node with the current key if key exists else None
         We impose the >= condition instead of > because a node with a similar key to the current node in
         the traversal to be placed in the right subtree"""
@@ -158,7 +156,7 @@ class RedBlackTree:
 
     def search(self, key):
         """Returns true if the key is found in the tree and false otherwise"""
-        return self.find(key) is not None
+        return self.access(key) is not None
 
     @staticmethod
     def is_leaf(node):
@@ -168,16 +166,16 @@ class RedBlackTree:
     @property
     def minimum(self):
         """Returns a tuple of the (min_key, item) """
-        x = self.find_min(self.root)
+        x = self.access_min(self.root)
         return x.key, x.item
 
     @property
     def maximum(self):
         """Returns a tuple of the (max_key, item) """
-        x = self.find_max(self.root)
+        x = self.access_max(self.root)
         return x.key, x.item
 
-    def find_min(self, x: RBNode):
+    def access_min(self, x: RBNode):
         """Return the node with minimum key in x's subtree"""
 
         if x is None:
@@ -188,7 +186,7 @@ class RedBlackTree:
             x = x.child[LEFT]
         return x
 
-    def find_max(self, x):
+    def access_max(self, x):
         """Return the node maximum key in x's subtree"""
 
         if x is None:
@@ -201,14 +199,14 @@ class RedBlackTree:
 
     def extract_max(self):
         """can be used a max priority queue"""
-        node = self.find_max(self.root)
+        node = self.access_max(self.root)
         ret = node.key, node.item
         self.delete(node.key)
         return ret
 
     def extract_min(self):
         """can be used as a min priority queue"""
-        node = self.find_min(self.root)
+        node = self.access_min(self.root)
         ret = node.key, node.item
         self.delete(node.key)
         return ret
@@ -221,7 +219,7 @@ class RedBlackTree:
 
         # case 1: if node has right subtree, then return the min in the subtree
         if current.child[RIGHT] is not self.null:
-            y = self.find_min(current.child[RIGHT])
+            y = self.access_min(current.child[RIGHT])
             return y
 
         # case 2: traverse to the first instance where there is a right edge and return the node incident on the edge
@@ -244,7 +242,7 @@ class RedBlackTree:
 
         # case 1: if node has a left subtree, then return the max in the subtree
         if current.child[LEFT] is not self.null:
-            y = self.find_max(current.child[LEFT])
+            y = self.access_max(current.child[LEFT])
             return y
 
         # case 2: traverse to the first instance where there is a left edge and return the node incident on the edge
@@ -400,7 +398,8 @@ class RedBlackTree:
             self.root = v
         else:
             u.parent.child[u is not u.parent.child[LEFT]] = v
-        v.parent = u.parent
+        if v:
+            v.parent = u.parent
 
     def __delete_fix(self, x):
         while x != self.root and x.color == BLACK:
@@ -535,12 +534,11 @@ class RedBlackTree:
 if __name__ == '__main__':
     rb = RedBlackTree()
     # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88, 88]
-    values = [randint(0, 100) for _ in range(2000)]
+    values = [randint(0, 2000000) for _ in range(1_000)]
     for val in values:
         rb.insert(val)
 
-    print(rb)
-
     for val in values:
         rb.delete(val)
+
     print(rb)
