@@ -92,7 +92,7 @@ class BST:
     def search(self, key):
         """Returns True if the node with the key is in the BST and False otherwise"""
 
-        return self.find_min(key) is not None
+        return self.find(key) is not None
 
     def in_order(self):
         """Creates an In-order traversal generator of the BST"""
@@ -110,7 +110,7 @@ class BST:
         return helper(self.root)
 
     def is_empty(self):
-        return self.root is self.null
+        return self.root is None
 
     @staticmethod
     def is_leaf(node):
