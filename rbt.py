@@ -49,7 +49,7 @@ class RedBlackTree:
         - Every simple path from a node to a descendant leaf contains the same number of black nodes.
         The black-height of a node x, bh(x),
         is the number of black nodes on any path from x to a leaf, not counting x.
-        A Red-Black tree with n internal nodes has height at most 2lg(n+1). 
+        A Red-Black tree with n internal nodes has height at most 2lg(n+1).
         See CLRS pg. 309 for the proof of this lemma.
     """
 
@@ -526,6 +526,10 @@ class RedBlackTree:
         else:
             self.__print_helper(self.root, "", True)
             return ''
+
+    def __getitem__(self, key):
+        assert(type(key)) == int
+        return self.access(key)
 
     def __repr__(self):
         return repr(self.root)
