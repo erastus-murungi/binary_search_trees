@@ -16,6 +16,8 @@ class RBNull:
         self.color = BLACK
         self.parent = None
 
+    # don't define __bool__ method
+
     def __repr__(self):
         return "NIL"
 
@@ -31,6 +33,11 @@ class RBNode:
         self.parent = parent
         self.color = color
         self.child = [self.null, self.null]
+
+    @property
+    def is_leaf(self):
+        """Returns true if an internal node is a leaf node and false otherwise"""
+        return self.child[LEFT] == self.child[RIGHT]  # == self.null
 
     def __repr__(self):
         return "Node(({}, {}, {}), children: {}])".format(str(self.key), str(self.item),
@@ -71,7 +78,7 @@ class RedBlackTree:
 
             # the while loop can only stop if we are at an external node or we are at a leaf node
             # the expression 'key >= current.key' evaluates to True => 1 => RIGHT or False => 0 => LEFT
-            while x is not self.null and not self.is_leaf(x):
+            while x is not self.null and not x.is_leaf:
                 y = x
                 x = x.child[key >= x.key]
 
@@ -157,11 +164,6 @@ class RedBlackTree:
     def search(self, key):
         """Returns true if the key is found in the tree and false otherwise"""
         return self.access(key) is not None
-
-    @staticmethod
-    def is_leaf(node):
-        """Returns true if an internal node is a leaf node and false otherwise"""
-        return node.child[LEFT] == node.child[RIGHT]  # == self.null
 
     @property
     def minimum(self):
@@ -506,7 +508,7 @@ class RedBlackTree:
                 print("L----", end='')
                 indent += "|    "
             color_to_string = "BLACK" if node.color == 1 else "RED"
-            print('<' + str(node.key), node.item, color_to_string + ">")
+            print('(' + str(node.key), node.item, color_to_string + ")")
             self.__print_helper(node.child[LEFT], indent, False)
             self.__print_helper(node.child[RIGHT], indent, True)
 
@@ -520,6 +522,19 @@ class RedBlackTree:
                 self.__clear_helper(node.child[RIGHT])
             del node
 
+    def max_height(self):
+        """ Calculates and returns the max height of the tree
+        Since this tree is not augmented, this runs in linear time """
+
+        return self.__max_height_helper(self.root)
+
+    def __max_height_helper(self, node):
+        if node is self.null:
+            return -1
+        else:
+            return max(self.__max_height_helper(node.child[LEFT]),
+                       self.__max_height_helper(node.child[RIGHT])) + 1
+
     def __str__(self):
         if self.root is self.null:
             return repr(self.root)
@@ -528,8 +543,12 @@ class RedBlackTree:
             return ''
 
     def __getitem__(self, key):
-        assert(type(key)) == int
+        assert(type(key)) in [int, float]
         return self.access(key)
+
+    def __setitem__(self, key, value):
+        assert (type(key)) in [int, float]
+        self.insert(key, value)
 
     def __repr__(self):
         return repr(self.root)
@@ -540,7 +559,8 @@ if __name__ == '__main__':
     # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88, 88]
     values = [randint(0, 2000000) for _ in range(1_000)]
     for val in values:
-        rb.insert(val)
+        rb[val] = 0
+    print(rb)
 
     for val in values:
         rb.delete(val)
