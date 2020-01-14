@@ -56,6 +56,9 @@ class SplayTree:
             self.splay(x)
             return x
 
+    def __contains__(self, item):
+        return self.access(item) is not None
+
     def splay(self, x):
         while x.parent is not None:
             p = x.parent
@@ -253,28 +256,11 @@ if __name__ == '__main__':
     from random import choice
     st = SplayTree()
     values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88]
-    values1 = [1, 1, 2]
-    st1 = SplayTree()
 
     for val in values:
         st.insert(val)
 
-    for val in values1:
-        st1.insert(val)
+    for val in values:
+        assert val in st
 
     print(st)
-    print(st1)
-    st2 = st1.join(st)
-    print(st2)
-
-    values.extend(values1)
-    for val in values:
-        st2.delete(val)
-
-    print(st2)
-
-
-
-    # for val in values:
-    #     st.delete(val)
-    #     print(st)
