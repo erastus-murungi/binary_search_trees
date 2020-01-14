@@ -8,15 +8,6 @@ __author__ = 'Erastus Murungi' \
 
 
 class BSTNode:
-    """A class representing a node in a binary search tree
-        Quick note/reminder on the total_ordering decorator:
-        "While this decorator makes it easy to create well behaved totally ordered types,
-        it does come at the cost of slower execution and more complex stack traces for the derived comparison methods.
-        If performance benchmarking indicates this is a bottleneck for a given application,
-        implementing all six rich comparison methods instead is likely to provide an easy speed boost."
-        Source: https://docs.python.org/3.8/library/functools.html
-        """
-
     def __init__(self, key, item, parent=None):
         """constructor"""
         self.key = key
