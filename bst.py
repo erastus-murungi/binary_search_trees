@@ -1,5 +1,4 @@
 from random import randint
-from functools import total_ordering
 
 LEFT = 0  # False
 RIGHT = 1  # True
@@ -8,8 +7,6 @@ __author__ = 'Erastus Murungi' \
              'email: murungi@mit.edu' \
 
 
-
-@total_ordering
 class BSTNode:
     """A class representing a node in a binary search tree
         Quick note/reminder on the total_ordering decorator:
@@ -26,13 +23,6 @@ class BSTNode:
         self.item = item
         self.child = [None, None]
         self.parent = parent
-
-    def __eq__(self, other):
-        return self.key == other.key and self.item == other.item
-
-    def __lt__(self, other):
-        # the key is given a higher priority in comparisons
-        return self.key < self.key or self.item < other.item
 
     def __repr__(self):
         return "Node(({}, {}), children: {}])".format(str(self.key), str(self.item), repr(self.child))
@@ -76,7 +66,7 @@ class BST:
 
         # boilerplate code
         if self.root is None:
-            raise ValueError("empty tree")
+            return None
 
         # traverse to the lowest node possible
         current = self.root
@@ -89,10 +79,10 @@ class BST:
         else:
             return current
 
-    def search(self, key):
+    def __contains__(self, item):
         """Returns True if the node with the key is in the BST and False otherwise"""
 
-        return self.find(key) is not None
+        return self.find(item) is not None
 
     def in_order(self):
         """Creates an In-order traversal generator of the BST"""
@@ -352,7 +342,8 @@ if __name__ == '__main__':
     values = [randint(1, 100) for _ in range(20)]
     # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88]
 
-    for val in values:
+    for i, val in enumerate(values):
         bst.insert(val)
+        print(values[i] in bst)
 
     print(bst)
