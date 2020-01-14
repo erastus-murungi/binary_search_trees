@@ -161,7 +161,7 @@ class RedBlackTree:
         else:
             return current
 
-    def search(self, key):
+    def __contains__(self, key):
         """Returns true if the key is found in the tree and false otherwise"""
         return self.access(key) is not None
 
@@ -557,9 +557,10 @@ class RedBlackTree:
 if __name__ == '__main__':
     rb = RedBlackTree()
     # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88, 88]
-    values = [randint(0, 2000000) for _ in range(1_000)]
+    values = [randint(0, 200000) for _ in range(1_000)]
     for val in values:
         rb[val] = 0
+        assert (val in rb)
     print(rb)
 
     for val in values:
