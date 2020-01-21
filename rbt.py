@@ -262,12 +262,12 @@ class RedBlackTree:
 
         def helper(node):
             # visit left node's subtree first if that subtree is not an external node
-            if node.child[LEFT] != rb.null:
+            if node.child[LEFT] != self.null:
                 yield from helper(node.child[LEFT])
             # then visit node
             yield node
             # lastly visit the right subtree
-            if node.child[RIGHT] != rb.null:
+            if node.child[RIGHT] != self.null:
                 yield from helper(node.child[RIGHT])
 
         return helper(self.root)
@@ -275,12 +275,12 @@ class RedBlackTree:
     def iteritems(self):
         def helper(node):
             # visit left node's subtree first if that subtree is not an external node
-            if node.child[LEFT] != rb.null:
+            if node.child[LEFT] != self.null:
                 yield from helper(node.child[LEFT])
             # then visit node
             yield node.key, node.item
             # lastly visit the right subtree
-            if node.child[RIGHT] != rb.null:
+            if node.child[RIGHT] != self.null:
                 yield from helper(node.child[RIGHT])
 
         return helper(self.root)
