@@ -63,6 +63,7 @@ class RedBlackTree:
     def __init__(self):
         self.null = RBNode.null
         self.root = self.null
+        self.size = 0
 
     def insert(self, key, item=0):
         # perform insertion just like in a normal BST
@@ -94,6 +95,7 @@ class RedBlackTree:
                 x.child[key >= x.key] = z
 
         self.__insert_fix(z)
+        self.size += 1
 
     def delete(self, target_key):
 
@@ -135,6 +137,7 @@ class RedBlackTree:
         if y_original_color == BLACK:
             # the x might be a null pointer
             self.__delete_fix(x)
+        self.size -= 1
 
     def is_empty(self):
         return self.root is self.null
@@ -548,6 +551,9 @@ class RedBlackTree:
             return max(self.__max_height_helper(node.child[LEFT]),
                        self.__max_height_helper(node.child[RIGHT])) + 1
 
+    def __len__(self):
+        return self.size
+
     def __str__(self):
         if self.root is self.null:
             return repr(self.root)
@@ -577,6 +583,7 @@ if __name__ == '__main__':
     print(rb)
 
     print(len(list(rb.iteritems())))
+    print(len(rb))
 
     for val in values:
         rb.delete(val)
