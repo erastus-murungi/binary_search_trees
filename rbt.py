@@ -183,7 +183,7 @@ class RedBlackTree:
     def access_min(self, x: RBNode):
         """Return the node with minimum key in x's subtree"""
 
-        if x is None:
+        if x is self.null:
             raise ValueError("x can't be none")
 
         # traverse to the leftmost node
@@ -194,7 +194,7 @@ class RedBlackTree:
     def access_max(self, x):
         """Return the node maximum key in x's subtree"""
 
-        if x is None:
+        if x is self.null:
             raise ValueError("x can't be none")
 
         # traverse to the rightmost node
@@ -270,7 +270,10 @@ class RedBlackTree:
             if node.child[RIGHT] != self.null:
                 yield from helper(node.child[RIGHT])
 
-        return helper(self.root)
+        if self.root is not self.null:
+            yield from helper(self.root)
+        else:
+            yield None
 
     def iteritems(self):
         def helper(node):
@@ -283,7 +286,10 @@ class RedBlackTree:
             if node.child[RIGHT] != self.null:
                 yield from helper(node.child[RIGHT])
 
-        return helper(self.root)
+        if self.root is not self.null:
+            yield from helper(self.root)
+        else:
+            yield None
 
     def clear(self):
         """delete all the elements in the tree,
