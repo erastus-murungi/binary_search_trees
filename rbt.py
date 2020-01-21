@@ -259,12 +259,25 @@ class RedBlackTree:
 
         def helper(node):
             # visit left node's subtree first if that subtree is not an external node
-            if node.child[LEFT]:
+            if node.child[LEFT] != rb.null:
                 yield from helper(node.child[LEFT])
             # then visit node
             yield node
             # lastly visit the right subtree
-            if node.child[RIGHT]:
+            if node.child[RIGHT] != rb.null:
+                yield from helper(node.child[RIGHT])
+
+        return helper(self.root)
+
+    def iteritems(self):
+        def helper(node):
+            # visit left node's subtree first if that subtree is not an external node
+            if node.child[LEFT] != rb.null:
+                yield from helper(node.child[LEFT])
+            # then visit node
+            yield node.key, node.item
+            # lastly visit the right subtree
+            if node.child[RIGHT] != rb.null:
                 yield from helper(node.child[RIGHT])
 
         return helper(self.root)
@@ -557,11 +570,13 @@ class RedBlackTree:
 if __name__ == '__main__':
     rb = RedBlackTree()
     # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88, 88]
-    values = [randint(0, 200000) for _ in range(1_000)]
+    values = [randint(0, 200000) for _ in range(100)]
     for val in values:
         rb[val] = 0
         assert (val in rb)
     print(rb)
+
+    print(len(list(rb.iteritems())))
 
     for val in values:
         rb.delete(val)
