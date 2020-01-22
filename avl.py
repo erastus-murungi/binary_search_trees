@@ -7,6 +7,7 @@ class AVLNode(BSTNode):
     """ As a reminder, the empty tree has height -1,
         the height of a nonempty tree whose root’s left child has height h₁ and
         root’s right child has height h₂ is 1 + max(h₁, h₂)"""
+
     def __init__(self, key, item=0, parent=None):
         super().__init__(key, item, parent)
         self.height = 0
@@ -27,48 +28,42 @@ class AVLTree(BST):
         AVL trees, developed in 1962, were the first class of balanced binary search
         trees to be invented. They’re named after their inventors Адельсо́н-Ве́льский
         and Ла́ндис (Adelson-Velsky and Landis).
-
         A binary tree is an AVL tree if either:
             (1) the tree is empty or
             (2) the left and right children of the root are AVL trees and the heights of the left and right
                 subtrees differ by at most one.
-
         AVL Trees are balanced because of the AVL condition that:
             For every node in the tree, the heights of its left subtree and right subtree
              differ by at most 1.
         Is this condition strong enough to guarantee O( log n) per operation?
-
         let N(h) denote the minimum number of nodes in an AVL Tree of height h, where h is the length of
         longest root to leaf path.
         Clearly, N(0) = 1.
             N(h) = N(h-1) + N(h-2) + 1
         To make the recurrence well-defined, we add the case N(1) = 2
-
         This recurrence looks very similar to the Fibonacci recurrence.
         (by a little approximation and a little constructive induction). It can be proved that:
-
                 N(h) ≈ (φ)^5, where φ is the golden ratio ≈ 1.618
                 Solving for h results in h = O(log n)
-        
+
         The class supports standard BST Queries and Updates:
         UPDATES:
             Insert(x, k)  : insert value x with key
             Delete(k)     : delete value with key k
-        
+
         Queries:
             Search(k)     : return true if item with key k is in the dictionary
             Min()         : return the item with the minimum key
             Max()         : return the item with the maxium key
             Successor(n)  : return the node which is the successor of node n
             Predecessor(n): return the node which is the successor of node n
-        
+
         The Class can also be used as a priority queue:
             Extract-min  : return a (key, value) pair where key is the min among all other keys in the Tree
             Extraxt-max  : return a (key, value) pair where key is the max among all other keys in the Tree
-        
+
         Other methods:
             In-order-traversal: returns the element in sorted order
-
          """
 
     def __init__(self):
@@ -220,6 +215,10 @@ class AVLTree(BST):
                     else:
                         break
 
+    @property
+    def height(self):
+        return self.__height_node(self.root)
+
     def __replace(self, u, v):
         # u is the initial node and v is the node to transplant u
         if u.parent is None:
@@ -231,7 +230,8 @@ class AVLTree(BST):
             self.root = v
         else:
             u.parent.child[u is not u.parent.child[LEFT]] = v
-        v.parent = u.parent
+        if v is not None:
+            v.parent = u.parent
 
     @staticmethod
     def __update_heights(node):
@@ -321,19 +321,21 @@ class AVLTree(BST):
 
 if __name__ == '__main__':
     from random import randint
+    from pympler import asizeof
+    from datetime import datetime
 
-    avl = AVLTree()
     # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88]
-    values = [randint(0, 200000) for _ in range(100000)]
-    for val in values:
-        avl.insert(val)
+    num_nodes = 1000_000
+    values = [(randint(0, 100000000), randint(0, 10000)) for _ in range(num_nodes)]
+    t1 = datetime.now()
+    avl = AVLTree()
+    for key, val in values:
+        avl.insert(key, val)
     avl.check_avl_property()
-    print(avl)
-    print(avl.root.height)
+    print(f"AVL tree used {asizeof.asizeof(avl) / (1 << 20):.2f} MB of memory and ran in"
+          f" {(datetime.now() - t1).total_seconds()} seconds for {num_nodes} insertions.")
+    print(avl.height)
+    # print(avl)
+    # print(avl.root.height)
 
     avl.check_weak_search_property()
-
-    for val in values:
-        avl.delete(val)
-
-    print(avl)
