@@ -14,7 +14,7 @@ class RBNull:
     """Universal null in red-black trees"""
     def __init__(self):
         self.color = BLACK
-        self.parent = None
+        self.parent = self
 
     # don't define __bool__ method
 
@@ -625,60 +625,97 @@ class RedBlackTree:
         self.null.bh = 0
         helper(self.root)
 
-    def join(self, other: "RedBlackTree"):
-        """This method joins two red-black trees assuming that:
-            that for each x ∈ other and y ∈ self we have x ≤ y.
+    def join(self, other, direction=None):
+        """Assumes that other is the smaller tree."""
+        def join_rb(t1, t2, direction) -> RedBlackTree:
+            # when we are traversing the left spine of a tree
+            # assume that all the keys in t2 are less than those in t1
+            # assume that the black_height(t2) <= black_height(t1)
+            # assumes that the trees have been augmented with black heights
+            if t1.root is t1.null:
+                return t2
+            if t2.root is t2.null:
+                return t1
 
-        The result of this procedure is a consolidated set S which is represented by the catenated red-black
-        tree T1. The running time of the join procedure is clearly dominated by Step (1) and is
-        therefore O(log n2 − log n1) = O(log n2/n1), where n1 = |S1| and n2 = |S2|. Note however that if the
-        node ρ is known in advance, the rest of the steps can be carried out in constant amortized time."""
-        if self.root == self.null:
-            return other
-        if other.root == other.null:
-            return self
+            if direction is None:
+                direction = t1.minimum[0] < t2.maximum[0]
+            expected_size = len(t1) + len(t2)
+            if direction == LEFT:
+                key, item = t2.maximum
+            else:
+                key, item = t2.minimum
+            t2.delete(key)
 
-        if other.maximum[0] <= self.minimum[0]:
-            t1, t2 = other, self
+            node = t1.root
+            while node.color != BLACK or node.bh != t2.black_height:
+                node = node.child[direction]
+
+            phi = node.parent
+            v = RBNode(key, item, phi, RED)
+            t1.check_weak_search_property()
+            if phi is t1.null:
+                t1.root = v
+            v.child = [t2.root, node]
+            node.parent = t2.root.parent = v
+            assert t1.check_weak_search_property()
+            if phi is not t1.null:
+                phi.child[direction] = v
+            t1.__insert_fix(v)
+            t1.size = expected_size
+            del t2
+            return t1
+
+        if not hasattr(self.root, 'bh') or not hasattr(other.root, 'bh'):
+            self.augment_with_black_height()
+            other.augment_with_black_height()
+
+        if self.black_height >= other.black_height:
+            return join_rb(self, other, direction)
         else:
-            t1, t2 = self, other
+            return join_rb(other, self, direction)
 
-        t1.augment_with_black_height()
-        t2.augment_with_black_height()
-        total_len = len(other) + len(self)
+    def split(self, x):
+        smaller, larger = RedBlackTree(), RedBlackTree()
+        self.augment_with_black_height()
 
-        k, item = t1.minimum
-        t1.delete(k)
+        node: RBNode = self.root
 
-        # we want t1 to be the shorter tree
-        # if t1.black_height > t2.black_height:
-        #     print("Nope")
+        while node is not self.null and not node.is_leaf:
+            if node.key < x:
+                left = RedBlackTree()
+                left.root = node.child[LEFT]
+                left.root.parent = left.null
+                print("LEFT", left)
+                left.__insert_fix(left.root)  # make sure the root is black
 
-        phi = t2.root
-        while phi.color == RED or t1.black_height != phi.bh:
-            phi = phi.child[LEFT]
+                smaller = smaller.join(left)
+                smaller.insert(node.key, node.item)
+                print("smaller", smaller)
+                node = node.child[RIGHT]
+                smaller.size = smaller.recalc_size()
+            else:  # node.key >= x
+                right = RedBlackTree()
+                right.root = node.child[RIGHT]
+                right.root.parent = right.null
+                print("RIGHT", right)
+                right.__insert_fix(right.root)  # make sure the root is black
 
-        pi = phi.parent
-        v = RBNode(k, item, color=RED, parent=self.null)
-        v.child[LEFT] = t1.root
-        v.child[RIGHT] = phi
+                larger = larger.join(right)
+                larger.insert(node.key, node.item)
+                print("larger", larger)
+                node = node.child[LEFT]
+                larger.size = larger.recalc_size()
 
-        if pi is not self.null:
-            pi.parent = v
+        if node is not self.null:
+            if node.key < x:
+                smaller.insert(node.key, node.item)
+            else:
+                larger.insert(node.key, node.item)
 
-        if t1.root.parent is not self.null:
-            t1.root.parent = v
+        smaller.size = smaller.recalc_size()
+        larger.size = larger.recalc_size()
 
-        if pi is self.null:
-            t1.root = v
-        else:
-            v.parent = pi
-            t1.root = t2.root
-
-        t1.__insert_fix(v)
-        t1.size = total_len
-        t2.root = self.null
-        return t1
+        return smaller, larger
 
 
 if __name__ == '__main__':
@@ -693,7 +730,7 @@ if __name__ == '__main__':
         rb.insert(key, val)
     print(f"Red-Black Tree tree used {asizeof.asizeof(rb) / (1 << 20):.2f} MB of memory and ran in"
           f" {(datetime.now() - t1).total_seconds()} seconds for {num_nodes} insertions.")
-    print(rb.height())
+    # print(rb.height())
 
     values1 = [(randint(100, 200), None) for _ in range(10)]
     rb1 = RedBlackTree()
@@ -701,9 +738,15 @@ if __name__ == '__main__':
         rb1[key] = val
 
     rb2 = rb1.join(rb)
+    # rb2.check_weak_search_property()
+    # print(rb2.recalc_size())
+    # print(len(rb2))
+    # print(rb2)
     print(rb2.recalc_size())
-    print(len(rb2))
-    print(rb2)
+    rb0, rb1 = rb2.split(100)
+    print(rb0)
+    if rb0.__len__() < 3 or (rb1.__len__()):
+        print(values1, values)
 
     # print(len(list(rb.iteritems())))
     # print(len(rb))
