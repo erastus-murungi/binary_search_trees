@@ -12,6 +12,7 @@ __author__ = 'Erastus Murungi'
 
 class RBNull:
     """Universal null in red-black trees"""
+
     def __init__(self):
         self.color = BLACK
         self.parent = self
@@ -33,6 +34,9 @@ class RBNode:
         self.parent = parent
         self.color = color
         self.child = [self.null, self.null]
+
+    def __iter__(self):
+        yield from [self.child[LEFT], self.key, self.item, self.color, self.child[RIGHT]]
 
     @property
     def is_leaf(self):
@@ -93,6 +97,9 @@ class RedBlackTree:
                 # while loop broke because x is a leaf, just insert the node in the leaf x
                 z = RBNode(key, item, x)
                 x.child[key >= x.key] = z
+
+        if z is self.null:
+            raise ValueError
 
         self.__insert_fix(z)
         self.size += 1
@@ -297,7 +304,7 @@ class RedBlackTree:
 
         self.__clear_helper(self.root.child[LEFT])
         self.__clear_helper(self.root.child[RIGHT])
-        self.null.parent = None
+        self.null.parent = self.null
         self.root = self.null
 
     def check_black_height(self):
@@ -378,6 +385,8 @@ class RedBlackTree:
             # let a = x's parent
             a = z.parent
             # if z's parent is a left child, the uncle will be z's grandparent right child
+            if a.parent is self.null:
+                break
             if a.parent.child[LEFT] == a:
                 y = a.parent.child[RIGHT]
                 # if z's uncle is RED (and z's parent is RED), then we are in case 1
@@ -424,8 +433,7 @@ class RedBlackTree:
             self.root = v
         else:
             u.parent.child[u is not u.parent.child[LEFT]] = v
-        if v:
-            v.parent = u.parent
+        v.parent = u.parent
 
     def __delete_fix(self, x):
         while x != self.root and x.color == BLACK:
@@ -570,7 +578,7 @@ class RedBlackTree:
             return ''
 
     def __getitem__(self, key):
-        assert(type(key)) in [int, float]
+        assert (type(key)) in [int, float]
         return self.access(key)
 
     def __setitem__(self, key, value):
@@ -582,11 +590,13 @@ class RedBlackTree:
 
     def height(self):
         """Get the height of the tree"""
+
         def helper(node):
             if node is self.null:
                 return -1
             else:
                 return max(helper(node.child[LEFT]), helper(node.child[RIGHT])) + 1
+
         return helper(self.root)
 
     def s_value(self):
@@ -595,6 +605,7 @@ class RedBlackTree:
                 return - 1
             else:
                 return min(helper(node.child[LEFT]), helper(node.child[RIGHT])) + 1
+
         return helper(self.root)
 
     def recalc_size(self):
@@ -603,6 +614,7 @@ class RedBlackTree:
                 return 0
             else:
                 return helper(node.child[LEFT]) + helper(node.child[RIGHT]) + 1
+
         return helper(self.root)
 
     @property
@@ -627,84 +639,93 @@ class RedBlackTree:
 
     def join(self, other, direction=None):
         """Assumes that other is the smaller tree."""
+
         def join_rb(t1, t2, direction) -> RedBlackTree:
             # when we are traversing the left spine of a tree
             # assume that all the keys in t2 are less than those in t1
             # assume that the black_height(t2) <= black_height(t1)
             # assumes that the trees have been augmented with black heights
+            assert t1.black_height >= t2.black_height
             if t1.root is t1.null:
                 return t2
             if t2.root is t2.null:
                 return t1
+            expected_len = len(t1) + len(t2)
 
             if direction is None:
-                direction = t1.minimum[0] < t2.maximum[0]
-            expected_size = len(t1) + len(t2)
+                direction = not(t1.minimum[0] > t2.maximum[0])
+
             if direction == LEFT:
                 key, item = t2.maximum
             else:
                 key, item = t2.minimum
+
             t2.delete(key)
+            t2.augment_with_black_height()
 
             node = t1.root
-            while node.color != BLACK or node.bh != t2.black_height:
+            phi = node.parent
+            while node is not self.null and not (node.bh == t2.black_height and node.color == BLACK):
+                phi = node
                 node = node.child[direction]
 
-            phi = node.parent
+            if node.bh != t2.black_height:
+                print(t1, node, node.bh, t2.black_height)
+                raise ValueError
+
             v = RBNode(key, item, phi, RED)
-            t1.check_weak_search_property()
             if phi is t1.null:
                 t1.root = v
             v.child = [t2.root, node]
             node.parent = t2.root.parent = v
-            assert t1.check_weak_search_property()
-            if phi is not t1.null:
+            if phi not in [None, t1.null]:
                 phi.child[direction] = v
-            t1.__insert_fix(v)
-            t1.size = expected_size
-            del t2
+                t1.__insert_fix(v)
+            t1.root.parent = t1.null
+            t1.size = expected_len
             return t1
 
-        if not hasattr(self.root, 'bh') or not hasattr(other.root, 'bh'):
-            self.augment_with_black_height()
-            other.augment_with_black_height()
+        self.augment_with_black_height()
+        other.augment_with_black_height()
 
         if self.black_height >= other.black_height:
             return join_rb(self, other, direction)
         else:
             return join_rb(other, self, direction)
 
+    @property
+    def num_nodes(self):
+        return self.recalc_size()
+
     def split(self, x):
+        """This is a very expensive method as can be seen by the required calls to the methods:
+                augment_with_black_height()
+                recalc_size()
+        This method is buggy
+        """
         smaller, larger = RedBlackTree(), RedBlackTree()
-        self.augment_with_black_height()
 
         node: RBNode = self.root
 
         while node is not self.null and not node.is_leaf:
             if node.key < x:
+                self.null.parent = None  # assert
                 left = RedBlackTree()
                 left.root = node.child[LEFT]
-                left.root.parent = left.null
-                print("LEFT", left)
-                left.__insert_fix(left.root)  # make sure the root is black
-
+                left.root.parent, left.size = left.null, left.recalc_size()
                 smaller = smaller.join(left)
+                self.null.parent = None  # assert
                 smaller.insert(node.key, node.item)
-                print("smaller", smaller)
                 node = node.child[RIGHT]
-                smaller.size = smaller.recalc_size()
             else:  # node.key >= x
+                self.null.parent = None  # assert
                 right = RedBlackTree()
                 right.root = node.child[RIGHT]
-                right.root.parent = right.null
-                print("RIGHT", right)
-                right.__insert_fix(right.root)  # make sure the root is black
-
+                right.root.parent, right.size = right.null, right.recalc_size()
                 larger = larger.join(right)
+                self.null.parent = None  # assert
                 larger.insert(node.key, node.item)
-                print("larger", larger)
                 node = node.child[LEFT]
-                larger.size = larger.recalc_size()
 
         if node is not self.null:
             if node.key < x:
@@ -712,46 +733,68 @@ class RedBlackTree:
             else:
                 larger.insert(node.key, node.item)
 
-        smaller.size = smaller.recalc_size()
-        larger.size = larger.recalc_size()
-
         return smaller, larger
 
 
 if __name__ == '__main__':
     from datetime import datetime
     from pympler import asizeof
-    # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88, 88]
-    num_nodes = 10
-    values = [(randint(0, 100), None) for _ in range(num_nodes)]
-    t1 = datetime.now()
-    rb = RedBlackTree()
-    for key, val in values:
-        rb.insert(key, val)
-    print(f"Red-Black Tree tree used {asizeof.asizeof(rb) / (1 << 20):.2f} MB of memory and ran in"
-          f" {(datetime.now() - t1).total_seconds()} seconds for {num_nodes} insertions.")
-    # print(rb.height())
+    # #
+    # # # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88, 88]
+    # #
+    num_nodes = 3
+    while True:
+        values = [(randint(0, 100), None) for _ in range(num_nodes)]
+        t1 = datetime.now()
+        rb = RedBlackTree()
+        for key, val in values:
+            rb.insert(key, val)
+        # print(f"Red-Black Tree tree used {asizeof.asizeof(rb) / (1 << 20):.2f} MB of memory and ran in"
+        #       f" {(datetime.now() - t1).total_seconds()} seconds for {num_nodes} insertions.")
+        # print(rb.height())
 
-    values1 = [(randint(100, 200), None) for _ in range(10)]
-    rb1 = RedBlackTree()
-    for key, val in values1:
-        rb1[key] = val
+        values1 = [(randint(101, 200), None) for _ in range(2)]
+        rb1 = RedBlackTree()
+        for key, val in values1:
+            rb1[key] = val
 
-    rb2 = rb1.join(rb)
-    # rb2.check_weak_search_property()
-    # print(rb2.recalc_size())
-    # print(len(rb2))
-    # print(rb2)
-    print(rb2.recalc_size())
-    rb0, rb1 = rb2.split(100)
-    print(rb0)
-    if rb0.__len__() < 3 or (rb1.__len__()):
-        print(values1, values)
+        t2 = datetime.now()
+        rb2 = rb1.join(rb)
+        print("Joined two trees in ", (datetime.now() - t2).total_seconds(), "seconds.")
+        # rb2.check_weak_search_property()
+        # print(rb2.recalc_size())
+        # print(len(rb2))
+        rb2.check_black_height()
+        rb2.check_weak_search_property()
+        rb0, rb1 = rb2.split(100)
+        rb0.check_black_height()
+        rb0.check_weak_search_property()
+        rb1.check_black_height()
+        rb1.check_weak_search_property()
 
     # print(len(list(rb.iteritems())))
     # print(len(rb))
-    #
+
     # for val in values:
     #     rb.delete(val)
-    #
+
     # print(rb)
+    # values1 = [(randint(0, 100), None) for _ in range(num_nodes)]
+    # values2 = [(randint(0, 100), None) for _ in range(num_nodes)]
+    # print(values1, values2)
+    # rb1, rb2 = RedBlackTree(), RedBlackTree()
+    #
+    # for key, val in values1:
+    #     rb1.insert(key, val)
+    # for key, val in values2:
+    #     rb2.insert(key, val)
+    # rb1.check_black_height()
+    # rb2.check_black_height()
+    #
+    # rb3 = rb1.join(rb2)
+    # rb3.check_black_height()
+    # rb3.check_weak_search_property()
+    #
+    # rb1_, rb2_ = rb3.split(100)
+    # rb1_.check_weak_search_property()
+    # rb2_.check_weak_search_property()
