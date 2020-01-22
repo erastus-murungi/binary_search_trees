@@ -578,20 +578,42 @@ class RedBlackTree:
     def __repr__(self):
         return repr(self.root)
 
+    def height(self):
+        """Get the height of the tree"""
+        def helper(node):
+            if node is self.null:
+                return -1
+            else:
+                return max(helper(node.child[LEFT]), helper(node.child[RIGHT])) + 1
+        return helper(self.root)
+
+    def s_value(self):
+        def helper(node):
+            if node is self.null:
+                return - 1
+            else:
+                return min(helper(node.child[LEFT]), helper(node.child[RIGHT])) + 1
+        return helper(self.root)
+
 
 if __name__ == '__main__':
-    rb = RedBlackTree()
+    from datetime import datetime
+    from pympler import asizeof
     # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88, 88]
-    values = [randint(0, 200000) for _ in range(100)]
-    for val in values:
-        rb[val] = 0
-        assert (val in rb)
-    print(rb)
+    num_nodes = 1000_000
+    values = [(randint(0, 100000000), randint(0, 10000)) for _ in range(num_nodes)]
+    t1 = datetime.now()
+    rb = RedBlackTree()
+    for key, val in values:
+        rb.insert(key, val)
+    print(f"Red-Black Tree tree used {asizeof.asizeof(rb) / (1 << 20):.2f} MB of memory and ran in"
+          f" {(datetime.now() - t1).total_seconds()} seconds for {num_nodes} insertions.")
+    print(rb.height())
 
-    print(len(list(rb.iteritems())))
-    print(len(rb))
-
-    for val in values:
-        rb.delete(val)
-
-    print(rb)
+    # print(len(list(rb.iteritems())))
+    # print(len(rb))
+    #
+    # for val in values:
+    #     rb.delete(val)
+    #
+    # print(rb)
