@@ -24,6 +24,7 @@ class BST:
 
     def __init__(self):
         self.root = None
+        self.size = 0
 
     def insert(self, key, item=0):
         """Inserts a node with a key and item
@@ -49,6 +50,7 @@ class BST:
             else:
                 # while loop broke because x is a leaf, just insert the node in the leaf x
                 x.child[key >= x.key] = BSTNode(key, item, x)
+        self.size += 1
 
     def find(self, key):
         """Returns the node with the current key if key exists else None
@@ -175,6 +177,7 @@ class BST:
             # node must be a left node, so just remove it
             current.parent.child[current.key >= current.parent.key] = None
 
+        self.size -= 1
         return ret
 
     def extract_min(self, current=None):
@@ -203,6 +206,7 @@ class BST:
             # node must be a left node, so just remove it
             current.parent.child[current.key >= current.parent.key] = None
 
+        self.size -= 1
         return ret
 
     def successor(self, current: BSTNode) -> BSTNode:
@@ -222,6 +226,23 @@ class BST:
 
         y = current.parent
         return y
+
+    def height(self):
+        """Get the height of the tree"""
+        def helper(node):
+            if node is None:
+                return -1
+            else:
+                return max(helper(node.child[LEFT]), helper(node.child[RIGHT])) + 1
+        return helper(self.root)
+
+    def s_value(self):
+        def helper(node):
+            if node is None:
+                return - 1
+            else:
+                return min(helper(node.child[LEFT]), helper(node.child[RIGHT])) + 1
+        return helper(self.root)
 
     def predecessor(self, current: BSTNode) -> BSTNode:
         """Find the node whose key immediately precedes current.key
@@ -300,6 +321,8 @@ class BST:
                 # else the target is a leaf node which has a parent
                 target_node.parent.child[target_key >= target_node.parent.key] = None
 
+        self.size -= 1
+
     def clear(self):
         """delete all the elements in the tree,
         this time without maintaining red-black tree properties """
@@ -307,6 +330,7 @@ class BST:
         self.__clear_helper(self.root.child[LEFT])
         self.__clear_helper(self.root.child[RIGHT])
         self.root = None
+        self.size = 0
 
     def __clear_helper(self, node):
         if node.child[LEFT] is None and node.child[RIGHT] is None:
@@ -331,6 +355,9 @@ class BST:
             print('(' + str(node.key) + ', ' + str(node.item) + ")")
             self.__print_helper(node.child[LEFT], indent, False)
             self.__print_helper(node.child[RIGHT], indent, True)
+
+    def __len__(self):
+        return self.size
 
     def __str__(self):
         if self.root is None:
