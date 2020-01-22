@@ -300,12 +300,14 @@ class RedBlackTree:
         self.null.parent = None
         self.root = self.null
 
-    def check_black_height_property(self):
+    def check_black_height(self):
         if self.root is not self.null:
             bh = self.__check_black_height_helper(self.root)
             print("Tree black-height =", bh)
+            return bh
         else:
             print("Empty tree")
+            return 0
 
     def check_weak_search_property(self):
         """Recursively checks's whether x.left.key <= x.key >= x.right.key
@@ -595,13 +597,96 @@ class RedBlackTree:
                 return min(helper(node.child[LEFT]), helper(node.child[RIGHT])) + 1
         return helper(self.root)
 
+    def recalc_size(self):
+        def helper(node):
+            if node is self.null:
+                return 0
+            else:
+                return helper(node.child[LEFT]) + helper(node.child[RIGHT]) + 1
+        return helper(self.root)
+
+    @property
+    def black_height(self):
+        if not (hasattr(self.root, 'bh')):
+            raise ValueError('Augment with black_height first')
+        return self.root.bh
+
+    def augment_with_black_height(self):
+        def helper(node):
+            if node is not self.null:
+                helper(node.child[RIGHT])
+                helper(node.child[LEFT])
+
+                if node.color == BLACK:
+                    node.bh = 1 + node.child[RIGHT].bh
+                else:
+                    node.bh = node.child[LEFT].bh
+
+        self.null.bh = 0
+        helper(self.root)
+
+    def join(self, other: "RedBlackTree"):
+        """This method joins two red-black trees assuming that:
+            that for each x ∈ other and y ∈ self we have x ≤ y.
+
+        The result of this procedure is a consolidated set S which is represented by the catenated red-black
+        tree T1. The running time of the join procedure is clearly dominated by Step (1) and is
+        therefore O(log n2 − log n1) = O(log n2/n1), where n1 = |S1| and n2 = |S2|. Note however that if the
+        node ρ is known in advance, the rest of the steps can be carried out in constant amortized time."""
+        if self.root == self.null:
+            return other
+        if other.root == other.null:
+            return self
+
+        if other.maximum[0] <= self.minimum[0]:
+            t1, t2 = other, self
+        else:
+            t1, t2 = self, other
+
+        t1.augment_with_black_height()
+        t2.augment_with_black_height()
+        total_len = len(other) + len(self)
+
+        k, item = t1.minimum
+        t1.delete(k)
+
+        # we want t1 to be the shorter tree
+        # if t1.black_height > t2.black_height:
+        #     print("Nope")
+
+        phi = t2.root
+        while phi.color == RED or t1.black_height != phi.bh:
+            phi = phi.child[LEFT]
+
+        pi = phi.parent
+        v = RBNode(k, item, color=RED, parent=self.null)
+        v.child[LEFT] = t1.root
+        v.child[RIGHT] = phi
+
+        if pi is not self.null:
+            pi.parent = v
+
+        if t1.root.parent is not self.null:
+            t1.root.parent = v
+
+        if pi is self.null:
+            t1.root = v
+        else:
+            v.parent = pi
+            t1.root = t2.root
+
+        t1.__insert_fix(v)
+        t1.size = total_len
+        t2.root = self.null
+        return t1
+
 
 if __name__ == '__main__':
     from datetime import datetime
     from pympler import asizeof
     # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88, 88]
-    num_nodes = 1000_000
-    values = [(randint(0, 100000000), randint(0, 10000)) for _ in range(num_nodes)]
+    num_nodes = 10
+    values = [(randint(0, 100), None) for _ in range(num_nodes)]
     t1 = datetime.now()
     rb = RedBlackTree()
     for key, val in values:
@@ -609,6 +694,16 @@ if __name__ == '__main__':
     print(f"Red-Black Tree tree used {asizeof.asizeof(rb) / (1 << 20):.2f} MB of memory and ran in"
           f" {(datetime.now() - t1).total_seconds()} seconds for {num_nodes} insertions.")
     print(rb.height())
+
+    values1 = [(randint(100, 200), None) for _ in range(10)]
+    rb1 = RedBlackTree()
+    for key, val in values1:
+        rb1[key] = val
+
+    rb2 = rb1.join(rb)
+    print(rb2.recalc_size())
+    print(len(rb2))
+    print(rb2)
 
     # print(len(list(rb.iteritems())))
     # print(len(rb))
