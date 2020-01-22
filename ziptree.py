@@ -27,7 +27,6 @@ class ZipTree(BST):
         # key = left_rotate(key, ROTATE_ROUNDS)
         # key ^= secret_key
         # seed(key)
-        
         rank = 0
         y = np.random.random()
         while y < 0.5:
@@ -43,13 +42,13 @@ class ZipTree(BST):
 
         while curr is not None and (rank < curr.rank or (rank == curr.rank and key > curr.key)):
             prev = curr
-            curr = curr.child[key < curr.key]
+            curr = curr.child[key >= curr.key]
 
         z = ZipNode(key, item, rank)
         if curr == self.root:
             self.root = z
         else:
-            prev.child[key < prev.key] = z
+            prev.child[key >= prev.key] = z
 
         if curr is None:
             return
