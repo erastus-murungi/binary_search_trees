@@ -3,8 +3,8 @@ from random import randint
 LEFT = 0  # False
 RIGHT = 1  # True
 
-__author__ = 'Erastus Murungi' \
-             'email: murungi@mit.edu' \
+__author__ = 'Erastus Murungi'
+__email__ = 'murungi@mit.edu'
 
 
 class BSTNode:
@@ -88,7 +88,23 @@ class BST:
             if node.child[RIGHT]:
                 yield from helper(node.child[RIGHT])
 
-        return helper(self.root)
+        if self.root is not None:
+            yield from helper(self.root)
+        else:
+            yield ''
+
+    def iteritems(self):
+        def helper(node):
+            if node.child[LEFT]:
+                yield from helper(node.child[LEFT])
+            yield node.key, node.item
+            if node.child[RIGHT]:
+                yield from helper(node.child[RIGHT])
+
+        if self.root is not None:
+            yield from helper(self.root)
+        else:
+            yield ''
 
     def is_empty(self):
         return self.root is None
@@ -115,7 +131,7 @@ class BST:
         """Return the node with minimum key in x's subtree"""
 
         if x is None:
-            raise ValueError("x can't be none")
+            return None
 
         # traverse to the leftmost node
         while x.child[LEFT] is not None:
@@ -127,7 +143,7 @@ class BST:
         """Return the node maximum key in x's subtree"""
 
         if x is None:
-            raise ValueError("x can't be none")
+            return None
 
         # traverse to the rightmost node
         while x.child[RIGHT] is not None:
