@@ -111,6 +111,12 @@ class Node:
                 return self.data[j + 1]
         return x
 
+    def find_in_children(self, data):
+        for i, child in enumerate(self.children):
+            if data in child.data:
+                return i
+        return None
+
 
 class Tree:
     def __init__(self):
@@ -194,34 +200,7 @@ class Tree:
         p.children.sort()
         for child in new_nodes:
             child.parent = p
-
-        # if the parent has three nodes. Check if the parent has three children
-        while p is not None and p.isfull:
-            mid = p.data.pop(MIDDLE)
-            if p.parent is None:
-                g = Node(*mid)
-                self.root = g
-            else:
-                g = p.parent
-                insort(g.data, mid)
-                g.children.remove(p)
-
-            left, right = (Node(k, v, g) for k, v in p.data)
-            p.data.pop(MIDDLE)
-            g.children.extend([right, left])
-            g.children.sort()
-
-            if len(p.children) == 4:
-                x1, x2 = p.children[:2]
-                y1, y2 = p.children[2:]
-
-                x1.parent = x2.parent = left
-                y1.parent = y2.parent = right
-
-                left.children = [x1, x2]
-                right.children = [y1, y2]
-
-            p = g
+        self.absorb(p)
 
     def successor(self, key):
         node = self.access(key)
@@ -251,20 +230,111 @@ class Tree:
         return self.root.maximum()
 
     def remove(self, key):
-        # TODO: Implement remove
         if self.isempty:
             return False
         target = self.access(key)
         if target is None:
             raise KeyError(f"{target} not found.")
 
-        p = target.parent
-        if target.isleaf:
-            if len(target.data) == 2:
-                target.data.remove(key)
+        # case 1: value is in an internal node
+        if not target.isleaf:
+            # replace by in-order successor
+            pass
+
+        self.__delete_fixup(target)
+
+    def __delete_fixup(self, target):
+        # case 1: terminal case absorb the middle node
+        if len(target.data) == 2:
+            x = target.data.children.pop(MIDDLE)
+            self.merge(target, x)
+        else:
+            assert len(target.data) == 1
+            p = target.parent
+            if p is None:
+                # base case
+                self.merge(self.root, target)
             else:
-                # get the inorder successor
-                pass
+                if len(p.children) == 2:
+                    target_pos = p.data.find_in_children(target)
+                    sibling = p.children[not target_pos]
+
+                    # case 1: The hole has a 2-node as a parent and a 2-node as a sibling.
+                    if len(sibling.children) == 2:
+                        self.merge(p, target.children)
+                        self.merge(p, sibling)
+                    # case 2: The hole has a 2-node as a parent and a 3-node as a sibling.
+                    elif len(sibling.children) == 3:
+                        self.__rotate(p, target_pos)
+                        # terminal case
+                else:
+                    assert len(p.children) == 3
+                    # case 3 hole has a 3-node as a parent and a 2-node as a sibling. There are two subcases:
+                    # TODO: Implement
+                    pass
+
+    @staticmethod
+    def __rotate(y: Node, direction: int):
+        if y is None:
+            raise ValueError("can't rotate null value")
+
+        # split sibling
+        target = y.children[direction]
+        sibling = y.children[not direction]
+        yy = sibling.data.pop(direction)
+        new_node = Node(*yy, y.parent)
+
+        beta = sibling.children[LEFT] if direction == LEFT else sibling.children[-1]
+        y.children = target.children
+        y.children.extend(beta)
+        y.children.sort()
+        for child in y.children:
+            child.parent = y
+        new_node.children = [y, sibling]
+        new_node.children.sort()
+        for child in new_node.children:
+            child.parent = new_node
+
+    def absorb(self, p):
+        # if the parent has three nodes. Check if the parent has three children
+        while p is not None and p.isfull:
+            mid = p.data.pop(MIDDLE)
+            if p.parent is None:
+                g = Node(*mid)
+                self.root = g
+            else:
+                g = p.parent
+                insort(g.data, mid)
+                g.children.remove(p)
+
+            left, right = (Node(k, v, g) for k, v in p.data)
+            p.data.pop(MIDDLE)
+            g.children.extend([right, left])
+            g.children.sort()
+
+            if len(p.children) == 4:
+                x1, x2 = p.children[:2]
+                y1, y2 = p.children[2:]
+
+                x1.parent = x2.parent = left
+                y1.parent = y2.parent = right
+
+                left.children = [x1, x2]
+                right.children = [y1, y2]
+
+            p = g
+
+    def merge(self, node, child):
+        """Merge two nodes assuming that one is a parent and the other a child."""
+        if child in node.children:
+            node.children.remove(child)
+        node.data.extend(child.data)
+        node.children.extend(child.children)
+        for c in child.children:
+            c.parent = node
+        node.data.sort()
+        node.children.sort()
+        self.absorb(node)
 
     def __repr__(self):
         return repr(self.root)
@@ -310,4 +380,4 @@ if __name__ == "__main__":
     print(len(values))
     st = Tree()
     st.insert(values)
-    print(st.successor(4))
+    print(st.successor(12))
