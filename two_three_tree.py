@@ -1,5 +1,7 @@
 from bisect import insort
+
 LEFT, MIDDLE, RIGHT = 0, 1, 2
+KEY, ITEM = 0, 1
 
 
 class Node:
@@ -12,8 +14,20 @@ class Node:
     def isfull(self):
         return len(self.data) >= 3
 
-    def overflowing(self):
-        return len(self.children) >= 3
+    def __le__(self, other):
+        return self.data[KEY] <= other.data[KEY]
+
+    def __eq__(self, other):
+        return self.data[KEY] == other.data[KEY]
+
+    def __ge__(self, other):
+        return self.data[KEY] >= other.data[KEY]
+
+    def __lt__(self, other):
+        return self.data[KEY] < other.data[KEY]
+
+    def __gt__(self, other):
+        return self.data[KEY] > other.data[KEY]
 
     @property
     def isleaf(self):
@@ -22,21 +36,80 @@ class Node:
     def __repr__(self):
         return f"{self.__class__.__qualname__}({repr(self.data)})"
 
+    @property
     def height(self):
         if self is None:
             return -1
         if self.isleaf:
             return 0
         else:
-            return max(node.height() for node in self.children) + 1
+            return max(node.height for node in self.children) + 1
 
+    @property
     def size(self):
         if self is None:
             return 0
         if self.isleaf:
             return len(self.data)
         else:
-            return sum(node.size() for node in self.children) + len(self.data)
+            return sum(node.size for node in self.children) + len(self.data)
+
+    def is_balanced(self):
+        if self.isleaf:
+            return True
+        else:
+            if len(self.data) == 1:
+                assert self.children[LEFT] <= self.data[0][0] <= self.children[MIDDLE]
+            if len(self.data) == 2:
+                assert self.data[0][0] >= self.children[LEFT] and \
+                       self.data[0][0] >= self.children[MIDDLE] <= self.data[0][1] <= self.children[RIGHT]
+
+    def height_is_equal(self):
+        if self.isleaf:
+            return 0
+        h = self.children[0].height
+        if len(self.children) == 1:
+            return h + 1
+        heights = [self.children[i].height for i in range(1, len(self.children))]
+        assert all(h == hn for hn in heights)
+        return h + 1
+
+    def minimum(self):
+        if self.isleaf:
+            return self.data[LEFT]
+        return self.children[LEFT].minimum()
+
+    def maximum(self):
+        if self.isleaf:
+            return self.data[-1]
+        else:
+            return self.children[-1].maximum()
+
+    def successor(self, key):
+        x, j = None, None
+        if len(self.children) == 0 or key > self.data[-1][0]:
+            x = None
+        else:
+            for i, (k, _) in enumerate(self.data):
+                if key <= k:
+                    j = i + 1
+                    break
+
+        if j is not None:
+            x = self.children[j].minimum()
+
+        if x is None:
+            # regular traversal
+            current = self
+            while current.parent is not None and current is current.parent.children[-1]:
+                current = current.parent
+            if current.parent is not None:
+                x = current.parent.data[-1]
+
+            # successor might be in the same node
+            if j is not None and j + 1 < len(self.data):
+                return self.data[j + 1]
+        return x
 
 
 class Tree:
@@ -56,7 +129,7 @@ class Tree:
         while True:
             for k, v in curr.data:
                 if k == key:
-                    return k, v
+                    return curr
 
             if curr.isleaf:
                 return None
@@ -73,7 +146,7 @@ class Tree:
             # last item
         else:
             for i, (k, _) in enumerate(curr.data):
-                if key < k:
+                if key <= k:
                     curr = curr.children[i]
                     break
         return curr
@@ -103,58 +176,95 @@ class Tree:
 
         if curr.isfull:
             self.split(curr)
+        self.size += 1
 
     def split(self, node: Node):
-
         # when dealing with a leaf node
         p = node.parent
         # promote the middle node
         mid = node.data.pop(MIDDLE)
         if p is None:
-            # just create a new node
-            self.root = Node(*mid)
-            self.root.children = list(Node(k, v, self.root) for k, v in node.data)
-            for child in self.root.children:
-                child.parent = self.root
+            self.root = p = Node(*mid)
         else:
+            p.children.remove(node)
             insort(p.data, mid)
 
+        new_nodes = [Node(k, v, p) for k, v in node.data]
+        p.children.extend(new_nodes)
+        p.children.sort()
+        for child in new_nodes:
+            child.parent = p
+
         # if the parent has three nodes. Check if the parent has three children
-        if p is not None and p.isfull:
+        while p is not None and p.isfull:
             mid = p.data.pop(MIDDLE)
             if p.parent is None:
-                x = Node(*mid)
-                self.root = x
+                g = Node(*mid)
+                self.root = g
             else:
-                x = p.parent
-                insort(x.data, mid)
+                g = p.parent
+                insort(g.data, mid)
+                g.children.remove(p)
 
-            l, r = (Node(k, v, x) for k, v in p.data)
-            l.children, r.children = [p.data.children[0]], [p.data.children[1]]
-            l.children[0].parent = l
-            r.children[0].parent = r
-            x.children.extend([l, r])
-            x.children.sort()
+            left, right = (Node(k, v, g) for k, v in p.data)
+            p.data.pop(MIDDLE)
+            g.children.extend([right, left])
+            g.children.sort()
 
-            left, right = (Node(k, v, x) for k, v in p.data)
+            if len(p.children) == 4:
+                x1, x2 = p.children[:2]
+                y1, y2 = p.children[2:]
 
-            x.children = [right, left]
+                x1.parent = x2.parent = left
+                y1.parent = y2.parent = right
 
-            assert len(p.children) == 4
-            x1, x2 = p.children[:2]
-            y1, y2 = p.children[2:]
+                left.children = [x1, x2]
+                right.children = [y1, y2]
 
-            x1.parent = x2.parent = left
-            y1.parent = y2.parent = right
+            p = g
 
-            left.children = [x1, x2]
-            right.children = [y1, y2]
+    def successor(self, key):
+        node = self.access(key)
+        if node is None:
+            return None
+        else:
+            return node.successor(key)
 
-            node = p
-            p = x
+    @property
+    def num_nodes(self):
+        return self.root.size
+
+    @property
+    def height(self):
+        return self.root.height
+
+    @property
+    def minimum(self):
+        if self.root is None:
+            return None
+        return self.root.minimum()
+
+    @property
+    def maximum(self):
+        if self.root is None:
+            return None
+        return self.root.maximum()
 
     def remove(self, key):
-        pass
+        # TODO: Implement remove
+        if self.isempty:
+            return False
+        target = self.access(key)
+        if target is None:
+            raise KeyError(f"{target} not found.")
+
+        p = target.parent
+        if target.isleaf:
+            if len(target.data) == 2:
+                target.data.remove(key)
+            else:
+                # get the inorder successor
+                pass
 
     def __repr__(self):
         return repr(self.root)
@@ -177,7 +287,7 @@ class Tree:
                 print(f"{pos}----", end='')
                 indent += "|    "
             print(*node.data)
-            if node.children:
+            if len(node.children) > 0:
                 self.__print_helper(node.children[LEFT], indent, False, "L")
                 if len(node.children) == 2:
                     self.__print_helper(node.children[MIDDLE], indent, True)
@@ -193,8 +303,11 @@ if __name__ == "__main__":
     from random import randint
 
     LIM = 20
-    NUM = 20
-    values = [randint(0, LIM) for _ in range(NUM)]
+    NUM = 10
+    # values = [randint(0, LIM) for _ in range(NUM)]
+    values = [7, 17, 18, 0, 10, 14, 17, 10, 12, 12, 7, 14, 8, 19, 9, 8, 4]
+    print(values)
+    print(len(values))
     st = Tree()
     st.insert(values)
-    print(st)
+    print(st.successor(4))
