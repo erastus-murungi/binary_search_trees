@@ -25,14 +25,14 @@ class BNode:
 
     def linear_rank(self, k):
         """return the number of elements less than or equal to k in O(n) time"""
-        n = len(self.children)
+        n = len(self.key)
         i = 0
-        while i < n and k > self.children[i]:
+        while i < n and k > self.key[i]:
             i += 1
         return i
 
     def search(self, k):
-        i, n = self.pos(k), len(self.children)
+        i, n = self.pos(k), len(self.key)
         if i < n and k == self.key[i]:
             return self, i
         if self.isleaf:
@@ -40,6 +40,7 @@ class BNode:
         else:
             return self.children[i].search(k)
 
+    @property
     def isfull(self):
         return len(self.key) == (self.t << 1) - 1
 
@@ -47,7 +48,8 @@ class BNode:
         if self.isleaf:
             insort(self.key, k)
         else:
-            poschild = bisect(self.key, k)
+            # rank is the number of keys larger than or equal to k
+            poschild = self.rank(k)
             child = self.children[poschild]
             if child.isfull:
                 self.split(poschild)
@@ -57,19 +59,38 @@ class BNode:
 
     def split(self, i):
         """splits a child node. Assuming the child node has 2t - 1 keys"""
+        # num_nodes = 2t - 1
 
-        t = self.t
-        z = BNode()
-        y = self.children[i]
-
-        z.key.extend(y.key[t:])
-        if not y.isleaf:
-            z.children.extend(y.children[t:])
-            y.children = y.children[:t]
-        y.key = y.key[:t]
+        t, z, y = self.t, BNode(), self.children[i]
 
         self.children.insert(i + 1, z)
         self.key.insert(i, y.key[t - 1])
+
+        z.key.extend(y.key[t:])  # split the keys
+        y.key = y.key[:t - 1]
+
+        if not y.isleaf:
+            z.children.extend(y.children[t:])
+            y.children = y.children[:t]
+
+    def delete(self):
+        # TODO
+        pass
+
+    def successor(self):
+        pass
+
+    def minimum(self):
+        if self.isleaf:
+            return self.key[0]
+        else:
+            return self.children[0].minimum()
+
+    def maximum(self):
+        if self.isleaf:
+            return self.key[-1]
+        else:
+            return self.children[-1].maximum()
 
     def __repr__(self):
         return repr(self.key)
@@ -77,12 +98,17 @@ class BNode:
     def __str__(self):
         return self.__repr__()
 
-    @property
     def num_items(self):
         if self.isleaf:
             return len(self.key)
         else:
             return sum(child.num_items for child in self.children) + len(self.key)
+
+    def height(self):
+        if self.isleaf:
+            return 0
+        else:
+            return max(child.height() for child in self.children) + 1
 
 
 class BTree:
@@ -92,11 +118,11 @@ class BTree:
         BNode.t = t
 
     def __len__(self):
-        return self.root.num_items
+        return self.root.num_items()
 
     def insert(self, k):
         r = self.root
-        if r.isfull():
+        if r.isfull:
             s = BNode()
             self.root = s
             s.children.append(r)
@@ -108,11 +134,34 @@ class BTree:
     def __repr__(self):
         return repr(self.root)
 
+    def __contains__(self, item):
+        return self.root.search(item) is not None
+
+    @property
+    def minimum(self):
+        if len(self.root.key) == 0:
+            return None
+        else:
+            return self.root.minimum()
+
+    @property
+    def maximum(self):
+        if len(self.root.key) == 0:
+            return None
+        else:
+            return self.root.maximum()
+
+    @property
+    def height(self):
+        return self.root.height()
+
 
 if __name__ == '__main__':
-    from random import randint
-    values = [randint(0, 100) for _ in range(10)]
+    from numpy import random
+
+    values = random.randint(0, 2000000, 100_000)
     btree = BTree(2)
     for val in values:
         btree.insert(val)
-    print(repr(btree))
+    print(btree.minimum, min(values))
+    print(btree.height)
