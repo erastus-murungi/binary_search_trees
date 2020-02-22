@@ -10,11 +10,14 @@ class BNode:
         else:
             self.key = [val]
         self.children = []
-        self.size = len(self.key)
 
     @property
     def isleaf(self):
         return len(self.children) == 0
+
+    @property
+    def isempty(self):
+        return len(self.key) == 0
 
     def pos(self, k) -> int:
         """Get the rank of an element quickly in O(lg n)"""
@@ -22,6 +25,15 @@ class BNode:
 
     def rank(self, k):
         return bisect(self.key, k)
+
+    def inorder(self):
+        if self.isleaf:
+            yield from self.key
+        else:
+            for i, key in enumerate(self.key):
+                yield from self.children[i].inorder()
+                yield self.key[i]
+            yield from self.children[-1].inorder()
 
     def linear_rank(self, k):
         """return the number of elements less than or equal to k in O(n) time"""
@@ -73,12 +85,66 @@ class BNode:
             z.children.extend(y.children[t:])
             y.children = y.children[:t]
 
-    def delete(self):
-        # TODO
-        pass
+    def delete(self, key):
+        pair = self.search(key)
+        if pair is None:
+            print("Key not found!")
+            return False
+        else:
+            node, pos = pair
+            if node.isleaf:
+                node.key.pop(pos)
+            else:
+                node.delete_from_internal(pos)
 
-    def successor(self):
-        pass
+    def delete_from_internal(self, i):
+        """Assumes that self is an internal node from which we are deleting the key at index i."""
+        assert not self.isleaf, "This function deletes from internal nodes."
+
+        k = self.key[i]
+        if len(self.children[i].key) >= self.t:
+            pred = self.predecessor(i)
+            self.key[i] = pred
+            self.children[i].delete(pred)
+
+        elif len(self.children[i + 1].key) >= self.t:
+            succ = self.successor(i)
+            self.key[i] = succ
+            self.children[i + 1].delete(succ)
+
+        else:
+            # Both the left and right kids have less than < t children. So merge both the predecessor and successor.
+            self.merge(i)
+            self.children[i].delete(k)
+        return True
+
+    def merge(self, i):
+        """Merges self.children[i] and self.children[i + 1]."""
+
+        child = self.children[i]
+        sibling = self.children[i + 1]
+
+        # pulling the key we wanted to delete from the current node and inserting
+        child.key.append(self.key[i])
+        child.key.extend(sibling.key)
+        child.children.extend(sibling.children)
+
+        # delete child pointer and key from parent
+        self.children.pop(i + 1)
+        self.key.pop(i)
+
+    def successor(self, i):
+        # the index of the item in the current node
+        current = self.children[i + 1]
+        while not current.isleaf:
+            current = current.children[0]
+        return current.key[0]
+
+    def predecessor(self, i):
+        current = self.children[i]
+        while not current.isleaf:
+            current = current.children[-1]
+        return current.key[-1]
 
     def minimum(self):
         if self.isleaf:
@@ -102,7 +168,7 @@ class BNode:
         if self.isleaf:
             return len(self.key)
         else:
-            return sum(child.num_items for child in self.children) + len(self.key)
+            return sum(child.num_items() for child in self.children) + len(self.key)
 
     def height(self):
         if self.isleaf:
@@ -131,11 +197,22 @@ class BTree:
         else:
             r.insert_nonfull(k)
 
+    def delete(self, key):
+        self.root.delete(key)
+
+        if self.root.isempty:
+            if not self.root.isleaf:
+                self.root = self.root.children[0]
+
     def __repr__(self):
         return repr(self.root)
 
     def __contains__(self, item):
         return self.root.search(item) is not None
+
+    @property
+    def inorder(self):
+        return self.root.inorder()
 
     @property
     def minimum(self):
@@ -157,11 +234,19 @@ class BTree:
 
 
 if __name__ == '__main__':
-    from numpy import random
+    # from numpy import random
 
-    values = random.randint(0, 2000000, 100_000)
+    # values = random.randint(0, 100, 15)
+    values = (2, 32, 32, 41, 46, 50, 52, 69, 71, 71, 73, 74, 89, 93, 98)
     btree = BTree(2)
     for val in values:
         btree.insert(val)
+
+    x = tuple(btree.inorder)
+    print(x)
     print(btree.minimum, min(values))
-    print(btree.height)
+    print(btree.maximum, max(values))
+    print(len(btree), len(x))
+    btree.delete(69)
+    print(tuple(btree.inorder))
+
