@@ -85,6 +85,12 @@ class BNode:
             z.children.extend(y.children[t:])
             y.children = y.children[:t]
 
+    def nsmallest(self, i):
+        raise NotImplemented
+
+    def nlargest(self, i):
+        raise NotImplemented
+
     def delete(self, key):
         pair = self.search(key)
         if pair is None:
@@ -102,6 +108,7 @@ class BNode:
         assert not self.isleaf, "This function deletes from internal nodes."
 
         k = self.key[i]
+
         if len(self.children[i].key) >= self.t:
             pred = self.predecessor(i)
             self.key[i] = pred
@@ -113,9 +120,9 @@ class BNode:
             self.children[i + 1].delete(succ)
 
         else:
-            # Both the left and right kids have less than < t children. So merge both the predecessor and successor.
             self.merge(i)
             self.children[i].delete(k)
+
         return True
 
     def merge(self, i):
@@ -181,7 +188,7 @@ class BTree:
     def __init__(self, t):
         assert t >= 2, "t >= 2"
         self.root = BNode()
-        BNode.t = t
+        self.t = BNode.t = t
 
     def __len__(self):
         return self.root.num_items()
@@ -203,6 +210,24 @@ class BTree:
         if self.root.isempty:
             if not self.root.isleaf:
                 self.root = self.root.children[0]
+
+    @staticmethod
+    def combine(t1: "BTree", t2: "BTree", key: float) -> "BTree":
+        """Pass"""
+        assert t1.t == t2.t, "the degree t of the two trees must be the same"
+        raise NotImplemented
+
+    def os_rank(self, key):
+        r, s = 0, 0
+        node = self.root
+        while not node.isleaf:
+            r = node.rank(key)
+            s + sum(c.numitems() for c in node.children[:r])
+            node = node.children[r]
+        r = node.rank(key)
+        if r > 0:
+            s + sum(c.numitems() for c in node.children[:r])
+        return s
 
     def __repr__(self):
         return repr(self.root)
@@ -235,9 +260,10 @@ class BTree:
 
 if __name__ == '__main__':
     # from numpy import random
+    from random import shuffle
 
     # values = random.randint(0, 100, 15)
-    values = (2, 32, 32, 41, 46, 50, 52, 69, 71, 71, 73, 74, 89, 93, 98)
+    values = [2, 32, 32, 41, 46, 50, 52, 69, 71, 71, 73, 74, 89, 93, 98]
     btree = BTree(2)
     for val in values:
         btree.insert(val)
@@ -247,6 +273,9 @@ if __name__ == '__main__':
     print(btree.minimum, min(values))
     print(btree.maximum, max(values))
     print(len(btree), len(x))
-    btree.delete(69)
-    print(tuple(btree.inorder))
 
+    shuffle(values)
+
+    for val in values:
+        btree.delete(val)
+        print(tuple(btree.inorder))
