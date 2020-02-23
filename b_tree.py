@@ -7,7 +7,6 @@ __email__ = "erastusmurungi@gmail.com"
 class BNode:
     # t is the minimum degree of the tree, which is >= 2.
     t = 2
-
     def __init__(self, val=None):
         if val is None:
             self.key = []
@@ -414,8 +413,8 @@ if __name__ == '__main__':
     num_iter = 1
 
     for _ in range(num_iter):
-        # values = np.random.randint(0, 10000, 2000)
-        values = [2, 32, 32, 41, 46, 50, 52, 69, 71, 71, 73, 74, 89, 93, 98]
+        values = np.random.randint(0, 10000, 2000)
+        # values = [2, 32, 32, 41, 46, 50, 52, 69, 71, 71, 73, 74, 89, 93, 98]
         btree = BTree(t=2)
         for v in values:
             btree.insert(v)
@@ -427,7 +426,6 @@ if __name__ == '__main__':
         assert (len(btree) == len(x))
 
         btree.check_btree_properties()
-        print(btree.root.successor(93))
 
         shuffle(values)
         for v in values:
