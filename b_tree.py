@@ -16,12 +16,12 @@ class BNode:
         self.children = []
 
     @property
-    def isleaf(self):
+    def isleaf(self) -> bool:
         """Returns True if this BTree Node is a leaf and false if it is an internal node."""
         return len(self.children) == 0
 
     @property
-    def isempty(self):
+    def isempty(self) -> bool:
         """Returns True if this BTree node has no keys and false otherwise."""
         return len(self.key) == 0
 
@@ -218,6 +218,7 @@ class BNode:
     def _successor(self, i):
         """Returns the successor of an element once the index is known.
             Doesn't handle edge cases because its a private method."""
+
         current = self.children[i + 1]
         while not current.isleaf:
             current = current.children[0]
@@ -225,16 +226,42 @@ class BNode:
 
     def _predecessor(self, i):
         """Returns the predecessor of the key and index i in the current node."""
+
         current = self.children[i]
         while not current.isleaf:
             current = current.children[-1]
         return current.key[-1]
 
     def successor(self, k):
-        """Return the next-larger key."""
-        raise NotImplemented
+        """Return the next-larger key. This method does not handle duplicates. """
+        if self.isempty:
+            return None
+        node, parent_key = self, None
+        i = node.pos(k)
+        while not node.isleaf or (i < node.n and node.key[i] != k):
+            parent_key = node.key[i - 1] if i == node.n else node.key[i]
+            if node.children[i].maximum() < k:
+                break
+            else:
+                node = node.children[i]
+            i = node.pos(k)
 
-    def predecessor(self, i):
+        if node.isleaf:
+            if i == 0:
+                if node.key[i] > k:
+                    return node.key[i]
+                else:
+                    return parent_key
+            elif i < node.n - 1:
+                return node.key[i + 1]
+            else:
+                return None
+        else:
+            # the key was found and the node must be an internal node
+            return node._successor(i)
+
+    def predecessor(self, k):
+        """Return the next-smaller key."""
         raise NotImplemented
 
     def minimum(self):
@@ -309,16 +336,13 @@ class BTree:
         """Returns the number of elements less than or equal to the current key."""
 
         r, s, node = 0, 0, self.root
-
         while not node.isleaf:
             r = node.rank(key)
             s = s + sum(c.numkeys() for c in node.children[:r]) + r
             node = node.children[r]
-
         r = node.rank(key)
         if r > 0:
             s = s + sum(c.numkeys() for c in node.children[:r]) + r
-
         return s
 
     def __repr__(self):
@@ -403,7 +427,7 @@ if __name__ == '__main__':
         assert (len(btree) == len(x))
 
         btree.check_btree_properties()
-        print(btree.root.successor(2))
+        print(btree.root.successor(93))
 
         shuffle(values)
         for v in values:
