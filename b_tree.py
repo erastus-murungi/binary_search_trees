@@ -1,7 +1,11 @@
-from bisect import bisect, bisect_left, insort
+from bisect import bisect_right, bisect_left, insort
+
+__author__ = "Erastus Murungi"
+__email__ = "erastusmurungi@gmail.com"
 
 
 class BNode:
+    # t is the minimum degree of the tree, which is >= 2.
     t = 2
 
     def __init__(self, val=None):
@@ -13,24 +17,29 @@ class BNode:
 
     @property
     def isleaf(self):
+        """Returns True if this BTree Node is a leaf and false if it is an internal node."""
         return len(self.children) == 0
 
     @property
     def isempty(self):
+        """Returns True if this BTree node has no keys and false otherwise."""
         return len(self.key) == 0
 
     def pos(self, k) -> int:
-        """Get the rank of an element quickly in O(lg n)"""
+        """Get the the number of elements strictly less than k quickly in O(log n) time."""
         return bisect_left(self.key, k)
 
     @property
     def n(self):
+        """Returns the number of keys in this B-Tree node."""
         return len(self.key)
 
     def rank(self, k):
-        return bisect(self.key, k)
+        """Get the number of elements less than or equal to k in O(log n) time."""
+        return bisect_right(self.key, k)
 
     def inorder(self):
+        """Return the inorder traversal of the keys in the tree."""
         if self.isleaf:
             yield from self.key
         else:
@@ -40,20 +49,36 @@ class BNode:
             yield from self.children[-1].inorder()
 
     def linear_rank(self, k):
-        """return the number of elements less than or equal to k in O(n) time"""
+        """Return the number of strictly less than k in O(n) time"""
         i = 0
         while i < self.n and k > self.key[i]:
             i += 1
         return i
 
-    def search(self, k):
+    def recursive_search(self, k):
+        """ Recursively searches for the given keys in the subtree rooted at self.
+            If the key is found, the function returns the node containing the key
+            and the index of k in the array of keys stored at the node. Otherwise returns None.
+        """
         i = self.pos(k)
         if i < self.n and k == self.key[i]:
             return self, i
         if self.isleaf:
             return None
         else:
-            return self.children[i].search(k)
+            return self.children[i].recursive_search(k)
+
+    def iterative_search(self, k):
+        """Iterative version of the search method."""
+        node = self
+        while True:
+            i = node.pos(k)
+            if i < node.n and k == node.key[i]:
+                return node, i
+            if node.isleaf:
+                return None
+            else:
+                node = node.children[i]
 
     @property
     def isfull(self):
@@ -88,14 +113,26 @@ class BNode:
             z.children.extend(y.children[t:])
             y.children = y.children[:t]
 
-    def nsmallest(self, i):
-        raise NotImplemented
-
-    def nlargest(self, i):
-        raise NotImplemented
+    def nsmallest(self, n):
+        if n < 0:
+            return None
+        if self.isleaf:
+            if n >= self.n:
+                return None
+            else:
+                return self.key[n]
+        j, s = 0, 0
+        while j < self.n and s <= n:
+            j, s = j + 1, s + self.children[j].numkeys() + 1  # plus 1 for plus the element itself
+        if s - 1 == n:
+            return self.key[j - 1]
+        elif s > n and j > 0:
+            return self.children[j - 1].nsmallest(n - (s - self.children[j - 1].numkeys() - 1))
+        else:  # s >= n
+            return self.children[j].nsmallest(n - s)
 
     def delete(self, key):
-
+        """Deletes a key from the btree. Returns true was present and has been deleted. else returns False."""
         node = self
         while True:
             i = node.pos(key)
@@ -105,66 +142,65 @@ class BNode:
                     node.key.pop(i)
                     return True
                 else:
-                    return node.delete_from_internal(i)
+                    return node._delete_from_internal(i)
             else:
                 if node.isleaf:
-                    raise ValueError("Key not found!")
-                    # return False
+                    print("Key not found!")
+                    return False
                 flag = i == node.n
                 if node.children[i].n < self.t:  # not full
-                    node.fill(i)
+                    node._fill(i)
                 node = node.children[i - 1] if flag and i > node.n else node.children[i]
 
-    def borrow_prev(self, i):
+    def _borrow_prev(self, i):
         child, _prev = self.children[i], self.children[i - 1]
-        # shift the keys and children to the right to create space for one key and extra child pointer
+        # Shift the keys and children to the right to create space for one key and extra child pointer.
         child.key.insert(0, self.key[i - 1])
         if not _prev.isleaf:
             child.children.insert(0, _prev.children.pop())
-        # move the last key of the prev child to the parent
+        # Move the last key of the prev child to the parent.
         self.key[i - 1] = _prev.key.pop()
 
-    def borrow_next(self, i):
+    def _borrow_next(self, i):
         child, _next = self.children[i], self.children[i + 1]
-
         child.key.append(self.key[i])
         if not _next.isleaf:
             child.children.append(_next.children.pop(0))
         self.key[i] = _next.key.pop(0)
 
-    def fill(self, i):
-        """fill the child at index which has less that t - 1 keys"""
+    def _fill(self, i):
+        """Fill the child at index which has less that t - 1 keys."""
         if i > 0 and self.children[i - 1].n >= self.t:
-            self.borrow_prev(i)
+            self._borrow_prev(i)
         elif i < self.n and self.children[i + 1].n >= self.t:
-            self.borrow_next(i)
+            self._borrow_next(i)
         else:
             if i < self.n:
-                self.merge(i)
+                self._merge(i)
             else:
-                self.merge(i - 1)
+                self._merge(i - 1)
 
-    def delete_from_internal(self, i):
+    def _delete_from_internal(self, i):
         """Assumes that self is an internal node from which we are deleting the key at index i."""
-        assert not self.isleaf, "This function deletes from internal nodes."
+        assert not self.isleaf, "This function deletes from internal nodes only."
 
         k = self.key[i]
 
         if self.children[i].n >= self.t:
-            pred = self.predecessor(i)
+            pred = self._predecessor(i)
             self.key[i] = pred
             self.children[i].delete(pred)
 
         elif self.children[i + 1].n >= self.t:
-            succ = self.successor(i)
+            succ = self._successor(i)
             self.key[i] = succ
             self.children[i + 1].delete(succ)
 
         else:
-            self.merge(i)
+            self._merge(i)
             self.children[i].delete(k)
 
-    def merge(self, i):
+    def _merge(self, i):
         """Merges self.children[i] and self.children[i + 1]."""
 
         child = self.children[i]
@@ -179,18 +215,27 @@ class BNode:
         self.children.pop(i + 1)
         self.key.pop(i)
 
-    def successor(self, i):
-        # the index of the item in the current node
+    def _successor(self, i):
+        """Returns the successor of an element once the index is known.
+            Doesn't handle edge cases because its a private method."""
         current = self.children[i + 1]
         while not current.isleaf:
             current = current.children[0]
         return current.key[0]
 
-    def predecessor(self, i):
+    def _predecessor(self, i):
+        """Returns the predecessor of the key and index i in the current node."""
         current = self.children[i]
         while not current.isleaf:
             current = current.children[-1]
         return current.key[-1]
+
+    def successor(self, k):
+        """Return the next-larger key."""
+        raise NotImplemented
+
+    def predecessor(self, i):
+        raise NotImplemented
 
     def minimum(self):
         if self.isleaf:
@@ -210,11 +255,11 @@ class BNode:
     def __str__(self):
         return self.__repr__()
 
-    def num_items(self):
+    def numkeys(self):
         if self.isleaf:
             return len(self.key)
         else:
-            return sum(child.num_items() for child in self.children) + len(self.key)
+            return sum(child.numkeys() for child in self.children) + len(self.key)
 
     def height(self):
         if self.isleaf:
@@ -225,12 +270,12 @@ class BNode:
 
 class BTree:
     def __init__(self, t):
-        assert t >= 2, "t >= 2"
+        assert t >= 2, "The minimum degree t must be >= 2."
         self.root = BNode()
         self.t = BNode.t = t
 
     def __len__(self):
-        return self.root.num_items()
+        return self.root.numkeys()
 
     @property
     def isempty(self):
@@ -261,26 +306,31 @@ class BTree:
         raise NotImplemented
 
     def os_rank(self, key):
+        """Returns the number of elements less than or equal to the current key."""
 
-        r, s = 0, 0
-        node = self.root
+        r, s, node = 0, 0, self.root
 
         while not node.isleaf:
             r = node.rank(key)
-            s += sum(c.numitems() for c in node.children[:r])
+            s = s + sum(c.numkeys() for c in node.children[:r]) + r
             node = node.children[r]
 
         r = node.rank(key)
         if r > 0:
-            s += sum(c.numitems() for c in node.children[:r])
+            s = s + sum(c.numkeys() for c in node.children[:r]) + r
 
         return s
 
     def __repr__(self):
         return repr(self.root)
 
+    def nsmallest(self, n):
+        if n < 0:
+            return self.root.nsmallest(self.root.numkeys() + n)
+        return self.root.nsmallest(n)
+
     def __contains__(self, item):
-        return self.root.search(item) is not None
+        return self.root.iterative_search(item) is not None
 
     @property
     def inorder(self):
@@ -300,32 +350,65 @@ class BTree:
         else:
             return self.root.maximum()
 
+    def nlargest(self, i):
+        return self.root.nsmallest(self.root.numkeys() - i - 1)
+
     @property
     def height(self):
         return self.root.height()
 
+    def _check(self, node):
+        """Helper method for check btree properties."""
+        if node.isleaf:
+            assert self.t - 1 <= node.n <= ((self.t << 1) - 1), repr(node)
+            return 0
+        else:
+            assert self.t - 1 <= node.n <= ((self.t << 1) - 1), repr(node)
+            assert self.t <= len(node.children) <= (self.t << 1), repr(node)
+
+            h = self._check(node.children[0])
+            assert all(self._check(node.children[j]) == h for j in range(1, len(node.children)))
+            return h + 1
+
     def check_btree_properties(self):
-        pass
+        """ Checks that for every node other than the root:
+            1.  a) t - 1 <= x.n <= 2t - 1
+                b) t <= x.num_children <= 2t
+            2.  The height of every subtree rooted at self is the same.
+        """
+
+        h = self._check(self.root.children[0])
+        for j in range(1, len(self.root.children)):
+            assert h == self._check(self.root.children[j]), repr(self.root.children[j])
+        return True
 
 
 if __name__ == '__main__':
     import numpy as np
     from random import shuffle, randint
-    for _ in range(3):
-        values = np.random.randint(0, 1000000, 10000)
-        # values = [2, 32, 32, 41, 46, 50, 52, 69, 71, 71, 73, 74, 89, 93, 98]
+
+    num_iter = 1
+
+    for _ in range(num_iter):
+        # values = np.random.randint(0, 10000, 2000)
+        values = [2, 32, 32, 41, 46, 50, 52, 69, 71, 71, 73, 74, 89, 93, 98]
         btree = BTree(t=2)
-        for val in values:
-            btree.insert(val)
+        for v in values:
+            btree.insert(v)
 
         x = tuple(btree.inorder)
-        print(btree.minimum, btree.maximum)
-        print(np.min(values), np.max(values))
-        assert(btree.minimum == min(values))
-        assert(btree.maximum == max(values))
+        # print(x)
+        assert (btree.minimum == min(values))
+        assert (btree.maximum == max(values))
         assert (len(btree) == len(x))
 
+        btree.check_btree_properties()
+        print(btree.root.successor(2))
+
         shuffle(values)
-        for val in values:
-            btree.delete(val)
+        for v in values:
+            assert v in btree
+        for v in values:
+            btree.delete(v)
+
         assert btree.isempty

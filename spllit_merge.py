@@ -16,8 +16,8 @@
        elif r == None:
            return l
        elif l.priority > r.priority:
-           l.r = self.merge(l.r,r)
+           l.r = self._merge(l.r, r)
            return l
        else:
-           r.l = self.merge(l,r.l)
+           r.l = self._merge(l, r.l)
            return r
