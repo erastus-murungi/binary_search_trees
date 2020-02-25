@@ -7,6 +7,7 @@ __email__ = "erastusmurungi@gmail.com"
 class BNode:
     # t is the minimum degree of the tree, which is >= 2.
     t = 2
+
     def __init__(self, val=None):
         if val is None:
             self.key = []
@@ -42,10 +43,23 @@ class BNode:
         if self.isleaf:
             yield from self.key
         else:
-            for i, key in enumerate(self.key):
+            for i in range(self.n):
                 yield from self.children[i].inorder()
                 yield self.key[i]
             yield from self.children[-1].inorder()
+
+    def postorder(self):
+        """Return the postorder traversal of the keys in the tree. Equivalent to sorting in nonincreasing order."""
+        if self.isleaf:
+            yield from reversed(self.key)
+        else:
+            r = reversed(self.key)
+            for i in reversed(range(self.n + 1)):
+                yield from self.children[i].postorder()
+                try:
+                    yield next(r)
+                except StopIteration:
+                    continue
 
     def linear_rank(self, k):
         """Return the number of strictly less than k in O(n) time"""
@@ -238,11 +252,10 @@ class BNode:
         node, parent_key = self, None
         i = node.pos(k)
         while not node.isleaf or (i < node.n and node.key[i] != k):
-            parent_key = node.key[i - 1] if i == node.n else node.key[i]
             if node.children[i].maximum() < k:
                 break
-            else:
-                node = node.children[i]
+            parent_key = node.key[i - 1] if i == node.n else node.key[i]
+            node = node.children[i]
             i = node.pos(k)
 
         if node.isleaf:
@@ -260,8 +273,23 @@ class BNode:
             return node._successor(i)
 
     def predecessor(self, k):
-        """Return the next-smaller key."""
-        raise NotImplemented
+        """Return the next-smaller key. Always returns the next smaller key regardless of whether or not the
+         key is in the tree."""
+
+        if self.isempty:
+            return None
+        node, parent_key = self, None
+        i = node.pos(k)
+        while not node.isleaf or (i < node.n and node.key[i] != k):
+            if node.children[i].minimum() > k:
+                return parent_key
+            parent_key = node.key[i - 1] if i > 0 else parent_key
+            node = node.children[i]
+            i = node.pos(k)
+        if node.isleaf:
+            return node.key[i - 1] if i else parent_key
+        else:
+            return node._predecessor(i)
 
     def minimum(self):
         if self.isleaf:
@@ -360,6 +388,10 @@ class BTree:
         return self.root.inorder()
 
     @property
+    def postorder(self):
+        return self.root.postorder()
+
+    @property
     def minimum(self):
         if self.root.n == 0:
             return None
@@ -379,6 +411,12 @@ class BTree:
     @property
     def height(self):
         return self.root.height()
+
+    def successor(self, key):
+        return self.root.successor(key)
+
+    def predecessor(self, key):
+        return self.root.predecessor(key)
 
     def _check(self, node):
         """Helper method for check btree properties."""
@@ -413,19 +451,29 @@ if __name__ == '__main__':
     num_iter = 1
 
     for _ in range(num_iter):
-        values = np.random.randint(0, 10000, 2000)
-        # values = [2, 32, 32, 41, 46, 50, 52, 69, 71, 71, 73, 74, 89, 93, 98]
+        # values = np.random.randint(0, 10000, 200)
+        values = [2, 32, 32, 41, 46, 50, 52, 69, 71, 71, 73, 74, 89, 93, 98]
         btree = BTree(t=2)
         for v in values:
             btree.insert(v)
 
-        x = tuple(btree.inorder)
+        # x = tuple(btree.inorder)
+        # y = tuple(map(btree.nsmallest, range(btree.root.numkeys())))
+        # v = tuple(btree.postorder)
+        # w = tuple(map(btree.nlargest, range(btree.root.numkeys())))
+        # assert v == w
+        # assert x == y
+        # print(x[:20], y[:20])
+        # print(v[:20], w[:20])
         # print(x)
-        assert (btree.minimum == min(values))
-        assert (btree.maximum == max(values))
-        assert (len(btree) == len(x))
+        # assert (btree.minimum == min(values))
+        # assert (btree.maximum == max(values))
+        # assert (len(btree) == len(x))
+        print(btree.predecessor(71))
+        print(btree.successor(69))
 
-        btree.check_btree_properties()
+
+        # btree.check_btree_properties()
 
         shuffle(values)
         for v in values:
