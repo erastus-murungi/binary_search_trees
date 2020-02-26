@@ -246,12 +246,12 @@ class BNode:
         return current.key[-1]
 
     def successor(self, k):
-        """Return the next-larger key. This method does not handle duplicates. """
+        """Return the next-larger key. This method does not handle duplicates. If the key is not in the   """
         if self.isempty:
             return None
         node, parent_key = self, None
         i = node.pos(k)
-        while not node.isleaf or (i < node.n and node.key[i] != k):
+        while not node.isleaf and (i < node.n and node.key[i] != k):
             if node.children[i].maximum() < k:
                 break
             parent_key = node.key[i - 1] if i == node.n else node.key[i]
@@ -260,10 +260,7 @@ class BNode:
 
         if node.isleaf:
             if i == 0:
-                if node.key[i] > k:
-                    return node.key[i]
-                else:
-                    return parent_key
+                return node.key[i] if node.key[i] > k else parent_key
             elif i < node.n - 1:
                 return node.key[i + 1]
             else:
@@ -280,7 +277,7 @@ class BNode:
             return None
         node, parent_key = self, None
         i = node.pos(k)
-        while not node.isleaf or (i < node.n and node.key[i] != k):
+        while not node.isleaf and (i < node.n and node.key[i] != k):
             if node.children[i].minimum() > k:
                 return parent_key
             parent_key = node.key[i - 1] if i > 0 else parent_key
@@ -316,10 +313,13 @@ class BNode:
             return sum(child.numkeys() for child in self.children) + len(self.key)
 
     def height(self):
-        if self.isleaf:
-            return 0
-        else:
-            return max(child.height() for child in self.children) + 1
+        """Assuming that the BTree was constructed correctly, then we can consider the height of any path.
+        In this case I've decided to walk down the path followed while finding the minimum."""
+
+        node, h = self, 0
+        while not node.isleaf:
+            node, h = node.children[0], h + 1
+        return h
 
 
 class BTree:
@@ -447,37 +447,49 @@ class BTree:
 if __name__ == '__main__':
     import numpy as np
     from random import shuffle, randint
+    from pympler import asizeof
+    from time import perf_counter
 
     num_iter = 1
+    t = 50
+    n = 10000
 
     for _ in range(num_iter):
-        # values = np.random.randint(0, 10000, 200)
-        values = [2, 32, 32, 41, 46, 50, 52, 69, 71, 71, 73, 74, 89, 93, 98]
-        btree = BTree(t=2)
+        values = np.random.randint(0, 10000, n)
+        # values = [2, 32, 32, 41, 46, 50, 52, 69, 71, 71, 73, 74, 89, 93, 98]
+        btree = BTree(t=t)
+        start = perf_counter()
         for v in values:
             btree.insert(v)
 
-        # x = tuple(btree.inorder)
-        # y = tuple(map(btree.nsmallest, range(btree.root.numkeys())))
-        # v = tuple(btree.postorder)
-        # w = tuple(map(btree.nlargest, range(btree.root.numkeys())))
-        # assert v == w
-        # assert x == y
-        # print(x[:20], y[:20])
-        # print(v[:20], w[:20])
-        # print(x)
-        # assert (btree.minimum == min(values))
-        # assert (btree.maximum == max(values))
-        # assert (len(btree) == len(x))
+        # tests:
+
+        # print("Height:", btree.height)
+
+        x = tuple(btree.inorder)
+        y = tuple(map(btree.nsmallest, range(btree.root.numkeys())))
+        v = tuple(btree.postorder)
+        w = tuple(map(btree.nlargest, range(btree.root.numkeys())))
+        assert v == w
+        assert x == y
+        print(x[:10], y[:10])
+        print(v[:10], w[:10])
+        assert (btree.minimum == min(values))
+        assert (btree.maximum == max(values))
+        assert (len(btree) == len(x))
         print(btree.predecessor(71))
         print(btree.successor(69))
-
-
-        # btree.check_btree_properties()
+        btree.check_btree_properties()
+        stop = perf_counter()
+        print(f"The btree used {asizeof.asizeof(btree) / 1000000:.2f} MB, and ran in{stop - start: .3f}"
+              f" seconds for {n} insertions into a BTree of degree {t}. ")
 
         shuffle(values)
+        start = perf_counter()
         for v in values:
             assert v in btree
+        stop = perf_counter()
+        print(f"{n} searches ran in{stop - start : 3f} seconds.")
         for v in values:
             btree.delete(v)
 
