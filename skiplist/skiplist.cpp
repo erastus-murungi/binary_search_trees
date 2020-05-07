@@ -60,8 +60,8 @@ public:
 
 template<typename T>
 skipnode<T> *skiplist<T>::access(T value) {
-        skipnode<T> *s = this->header;
-        size_t level;
+        skipnode<T> *s = &header;
+        int level;
         for (level = this->height - 1; level >= 0; level--) {
                 while (s->next[0] && s->next[0].value <= value) {
                         s = s->next[level];
