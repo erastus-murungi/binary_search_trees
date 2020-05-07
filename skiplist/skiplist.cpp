@@ -155,7 +155,7 @@ bool skiplist<T>::remove(T value) {
 
 template<typename T>
 skipnode<T> *skiplist<T>::access_predecessor(T value) {
-        skipnode<T> *s = header;
+        skipnode<T> *s = &header;
         int level;
         for (level = height - 1; level >= 0; level--)
                 while (s->next[level] and s->next[level] < value)
