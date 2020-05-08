@@ -4,6 +4,9 @@
 #include <random>
 #include <map>
 #include <chrono>
+#include <numeric>
+#include <functional>
+#include <cmath>
 
 
 void test_height_gen();
@@ -46,6 +49,10 @@ public:
 
     void destroy();
 
+    T next_larger(T value);
+
+    T next_smaller(T value);
+
     bool remove(T value);
 
     skipnode<T> *access_predecessor(T value);
@@ -54,7 +61,7 @@ public:
 
     std::vector<T> *to_vector();
 
-    ~skiplist() {destroy();};
+    ~skiplist() { destroy(); };
 
 };
 
@@ -91,11 +98,11 @@ size_t skiplist<T>::length() {
         return this->count;
 }
 
-template <typename T>
+template<typename T>
 void skiplist<T>::destroy() {
         skipnode<T> *s, *next;
         s = header.next[0];
-        while(s) {
+        while (s) {
                 next = s->next[0];
                 delete s;
                 s = next;
@@ -128,7 +135,7 @@ void skiplist<T>::insert(T value) {
 }
 
 
-template <typename T>
+template<typename T>
 bool skiplist<T>::remove(T value) {
         int level;
         skipnode<T> *s, *target;
@@ -158,16 +165,28 @@ skipnode<T> *skiplist<T>::access_predecessor(T value) {
         skipnode<T> *s = &header;
         int level;
         for (level = height - 1; level >= 0; level--)
-                while (s->next[level] and s->next[level] < value)
+                while (s->next[level] and s->next[level]->value < value)
                         s = s->next[level];
         return s;
+}
+
+template <typename T>
+T skiplist<T>::next_smaller(T value) {
+        skipnode<T> *ret = access_predecessor(value);
+        return ret == &header ? -header.value : ret->value;
+}
+
+template <typename T>
+T skiplist<T>::next_larger(T value) {
+        return access_successor(value)->value;
 }
 
 template<typename T>
 skipnode<T> *skiplist<T>::access_successor(T value) {
         skipnode<T> *s = access_predecessor(value);
-        while (s->next and s->next->value <= value)
+        while (s->next[0] and s->next[0]->value <= value)
                 s = s->next[0];
+        s = s->next[0];
         return s;
 }
 
@@ -212,29 +231,44 @@ void print_map(std::map<K, V> const &m) {
 
 template<typename T>
 void print_vector(std::vector<T> const &m) {
-        std::cout << "{ ";
+        std::cout << "[ ";
         for (auto it = m.cbegin(); it != m.cend(); ++it) {
                 std::cout << *it << ", ";
         }
-        std::cout << "}\n";
+        std::cout << "]\n";
 }
-
 
 
 int main() {
         using namespace std;
         skipnode<int> s1(10);
         skiplist<int> st(10);
+        int num_iter = 10;
 
-        auto start = chrono::steady_clock::now();
-        vector<int> *nums = random_integers(0, 100, 10);
-        auto end = chrono::steady_clock::now();
-        cout << chrono::duration_cast<chrono::microseconds>(end - start).count() << endl;
+        std::chrono::steady_clock::time_point start;
+        vector<int> *nums = random_integers(0, 100, num_iter);
+        // cout << chrono::duration_cast<chrono::nanoseconds>(end - start).count() << endl;
+
+        vector<int> times;
+        times.resize(num_iter);
 
         print_vector(*nums);
-        for (int num: *nums){
+        for (int num: *nums) {
+                start = chrono::steady_clock::now();
                 st.insert(num);
+                double d = chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - start).count();
+                times.emplace_back(d);
         }
+        double sum = std::accumulate(times.begin(), times.end(), 0.0);
+        double mean = sum / num_iter;
+        double prod = std::transform_reduce(times.begin(), times.end(),
+                0.0, std::plus<>(), [mean] (double x) { return (x - mean) * (x - mean);});
+
+        double stddev = sqrt(prod / num_iter);
+        cout << mean << " \u00B1 " << stddev << " \u00B5s" << endl;
+
+        cout << st.next_larger(0) << endl;
+
         std::vector<int> *sorted = st.to_vector();
         print_vector(*sorted);
 }
@@ -254,7 +288,7 @@ void test_height_gen() {
         print_map<int, int>(counter);
 }
 
-static inline std::vector<int>* random_integers(int low, int high, uint size) {
+static inline std::vector<int> *random_integers(int low, int high, uint size) {
         std::random_device rd;
         std::mt19937 engine(rd());
         std::uniform_int_distribution<int> dist(low, high);
