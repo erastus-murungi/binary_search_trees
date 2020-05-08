@@ -9,7 +9,7 @@
 #include <cmath>
 
 
-void test_height_gen();
+void test_height_gen(uint16_t num_iter);
 
 static inline std::vector<int> *random_integers(int low, int high, uint size);
 
@@ -21,9 +21,6 @@ struct skipnode {
     explicit skipnode(T value) : value(value) {}
 
     skipnode(T value, uint8_t height) : value(value), next(height, nullptr) {}
-
-    ~skipnode() {};
-
 };
 
 template<typename T>
@@ -41,7 +38,7 @@ public:
 
     void insert(T value);
 
-    bool find(T value);
+    bool contains(T value);
 
     size_t length();
 
@@ -61,7 +58,7 @@ public:
 
     std::vector<T> *to_vector();
 
-    ~skiplist() { destroy(); };
+    ~skiplist() {destroy();};
 
 };
 
@@ -69,17 +66,19 @@ template<typename T>
 skipnode<T> *skiplist<T>::access(T value) {
         skipnode<T> *s = &header;
         int level;
+
         for (level = this->height - 1; level >= 0; level--) {
-                while (s->next[0] && s->next[0].value <= value) {
+                while (s->next[level] && s->next[level]->value <= value) {
                         s = s->next[level];
                 }
+                if (s->value == value) return s;
         }
         return s;
 }
 
 template<typename T>
-bool skiplist<T>::find(T value) {
-        return access(value) != this->header;
+bool skiplist<T>::contains(T value) {
+        return access(value)->value != header.value;
 }
 
 template<typename T>
@@ -121,19 +120,20 @@ void skiplist<T>::insert(T value) {
         skipnode<T> *s = &header;
 
         for (level = height - 1; level >= h; level--) {
-                while (s->next[level] && s->next[level]->value < value)
+                while (s->next[level] && s->next[level]->value < value) {
                         s = s->next[level];
+                }
         }
-        for (; level >= 0; level--) {
-                while (s->next[level] && s->next[level]->value < value)
-                        s = s->next[level];
 
+        for (; level >= 0; level--) {
+                while (s->next[level] && s->next[level]->value < value) {
+                        s = s->next[level];
+                }
                 elt->next[level] = s->next[level];
                 s->next[level] = elt;
         }
         count += 1;
 }
-
 
 template<typename T>
 bool skiplist<T>::remove(T value) {
@@ -201,13 +201,11 @@ std::vector<T> *skiplist<T>::to_vector() {
         return nums;
 }
 
-
 template<typename T>
 std::ostream &operator<<(std::ostream &stream, skipnode<T> &node) {
         stream << node.value;
         return stream;
 }
-
 
 template<typename T>
 std::ostream &operator<<(std::ostream &stream, skiplist<T> &st) {
@@ -218,7 +216,6 @@ std::ostream &operator<<(std::ostream &stream, skiplist<T> &st) {
         stream << "] \n";
         return stream;
 }
-
 
 template<typename K, typename V>
 void print_map(std::map<K, V> const &m) {
@@ -238,52 +235,59 @@ void print_vector(std::vector<T> const &m) {
         std::cout << "]\n";
 }
 
-
 int main() {
         using namespace std;
-        skipnode<int> s1(10);
+        skipnode<int> s1(32);
         skiplist<int> st(10);
-        int num_iter = 10;
+        int N = 100;
 
         std::chrono::steady_clock::time_point start;
-        vector<int> *nums = random_integers(0, 100, num_iter);
+        vector<int> *nums = random_integers(0, 1000, N);
         // cout << chrono::duration_cast<chrono::nanoseconds>(end - start).count() << endl;
 
         vector<int> times;
-        times.resize(num_iter);
 
-        print_vector(*nums);
         for (int num: *nums) {
                 start = chrono::steady_clock::now();
                 st.insert(num);
                 double d = chrono::duration_cast<chrono::microseconds>(chrono::steady_clock::now() - start).count();
                 times.emplace_back(d);
         }
+
         double sum = std::accumulate(times.begin(), times.end(), 0.0);
-        double mean = sum / num_iter;
+        double mean = sum / N;
+
         double prod = std::transform_reduce(times.begin(), times.end(),
                 0.0, std::plus<>(), [mean] (double x) { return (x - mean) * (x - mean);});
+        double stddev = sqrt(prod / N);
 
-        double stddev = sqrt(prod / num_iter);
-        cout << mean << " \u00B1 " << stddev << " \u00B5s" << endl;
+        cout << "insert average time: " << mean/1e3 << " \u00B1 " << stddev/1e3 << " \u00B5s" << endl;
 
-        cout << st.next_larger(0) << endl;
+        vector<int> times1;
+        for (int num: *nums) {
+                start = chrono::steady_clock::now();
+                st.contains(num);
+                double d = chrono::duration_cast<chrono::nanoseconds>(chrono::steady_clock::now() - start).count();
+                times1.emplace_back(d);
+        }
 
-        std::vector<int> *sorted = st.to_vector();
-        print_vector(*sorted);
+        sum = std::accumulate(times1.begin(), times1.end(), 0.0);
+        mean = sum / N;
+        prod = std::transform_reduce(times1.begin(), times1.end(),
+                                            0.0, std::plus<>(), [mean] (double x) { return (x - mean) * (x - mean);});
+        stddev = sqrt(prod / N);
+        cout << "search time: " << mean << " \u00B1 " << stddev << " ns" << endl;
+        return EXIT_SUCCESS;
 }
 
-void test_height_gen() {
+void test_height_gen(uint16_t num_iter) {
         skiplist<int> st(32);
         std::map<int, int> counter = std::map<int, int>();
         int h, i;
-        for (i = 0; i < 10000; i++) {
+        for (i = 0; i < num_iter; i++) {
                 h = st.genheight();
-                if (counter.find(h) != counter.end())
-                        counter[h]++;
-                else {
-                        counter[h] = 1;
-                }
+                if (counter.find(h) != counter.end()) counter[h]++;
+                else counter[h] = 1;
         }
         print_map<int, int>(counter);
 }
