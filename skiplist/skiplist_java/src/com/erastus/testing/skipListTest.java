@@ -1,18 +1,15 @@
 package com.erastus.testing;
 
-import com.erastus.code.skipList;
+import com.erastus.code.SkipList;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 
-class skipListTest {
+class SkipListTest {
     @org.junit.jupiter.api.Test
 
     public void createSkipListTest() throws Exception {
-        skipList<Integer> stInteger = new skipList<Integer>(Integer.MAX_VALUE);
-        skipList<String> stString = new skipList<String>(Character.toString(0xFFFF));
-        skipList<Double> stDouble = new skipList<Double>(Double.POSITIVE_INFINITY);
-        skipList<Float> stFloat = new skipList<Float>(Float.POSITIVE_INFINITY);
+        SkipList<String> stString = new SkipList<String>(Character.toString(0xFFFF));
 
         stString.insert("Erastus");
         stString.insert("Murungi");
@@ -23,7 +20,7 @@ class skipListTest {
 
     @org.junit.jupiter.api.Test
     public void containsTest() throws Exception {
-        skipList<Integer> stInt = new skipList<Integer>(Integer.MAX_VALUE);
+        SkipList<Integer> stInt = new SkipList<Integer>(Integer.MAX_VALUE);
         Integer[] expected1 = {9, 10, 20, 30, 42, 48, 61, 64, 74, 83, 98};
 
         Integer[] array = new Integer[11];
@@ -31,7 +28,7 @@ class skipListTest {
         List<Integer> shuffledIndices = Arrays.asList(array);
         Collections.shuffle(shuffledIndices);
 
-        skipList<String> stString = new skipList<String>(null);
+        SkipList<String> stString = new SkipList<String>(null);
         for (Integer n : expected1)
             stInt.insert(n);
 
@@ -66,7 +63,7 @@ class skipListTest {
         int N = 100;
         Random rand = new Random();
         Set<Integer> values = new HashSet<>();
-        skipList<Integer> stInt = new skipList<Integer>(Integer.MAX_VALUE);
+        SkipList<Integer> stInt = new SkipList<Integer>(Integer.MAX_VALUE);
         for (int i = 0; i < N; i++) {
             values.add(rand.nextInt(10000));
         }
@@ -82,7 +79,7 @@ class skipListTest {
 
     @org.junit.jupiter.api.Test
     void nextLargerTest() {
-        skipList<Integer> stInt = new skipList<>(Integer.MAX_VALUE);
+        SkipList<Integer> stInt = new SkipList<>(Integer.MAX_VALUE);
         Integer[] expected1 = {9, 10, 20, 30, 42, 48, 61, 64, 74, 83, 98};
 
         for (Integer n : expected1)
@@ -97,7 +94,7 @@ class skipListTest {
 
     @org.junit.jupiter.api.Test
     void nextSmallerTest() {
-        skipList<Integer> stInt = new skipList<>(Integer.MAX_VALUE);
+        SkipList<Integer> stInt = new SkipList<>(Integer.MAX_VALUE);
         Integer[] expected1 = {9, 10, 20, 30, 42, 48, 61, 64, 74, 83, 98};
 
         for (Integer n : expected1)
@@ -117,7 +114,7 @@ class skipListTest {
     void removeTest() throws Exception {
         /* similar values */
         Double[] expected = {1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0};
-        skipList<Double> stDouble = new skipList<Double>(Double.MAX_VALUE);
+        SkipList<Double> stDouble = new SkipList<Double>(Double.MAX_VALUE);
         for (Double d : expected) {
             stDouble.insert(d);
         }
@@ -154,7 +151,7 @@ class skipListTest {
     @org.junit.jupiter.api.Test
     void getMaxTest() {
         Double[] values = {9.7, 10.8, 0.0, 30.6, 42.1, 48.5, 61.66};
-        skipList<Double> stDouble = new skipList<>(Double.POSITIVE_INFINITY);
+        SkipList<Double> stDouble = new SkipList<>(Double.POSITIVE_INFINITY);
         assertNull(stDouble.getMax());
         stDouble.insert(Math.random());
         assertEquals(stDouble.getMax(), stDouble.getMin());
@@ -176,7 +173,7 @@ class skipListTest {
     @org.junit.jupiter.api.Test
     void getMinTest() {
         Double[] values = {9.7, 10.8, 5.0, 30.6, 42.1, 48.5, 61.66};
-        skipList<Double> stDouble = new skipList<>(Double.POSITIVE_INFINITY);
+        SkipList<Double> stDouble = new SkipList<>(Double.POSITIVE_INFINITY);
         assertNull(stDouble.getMin());
         stDouble.insert(Math.random());
         assertEquals(stDouble.getMax(), stDouble.getMin());
@@ -191,7 +188,7 @@ class skipListTest {
     @org.junit.jupiter.api.Test
     void toVectorTest() throws Exception {
         Random rand = new Random();
-        skipList<Integer> stInt = new skipList<>(Integer.MAX_VALUE);
+        SkipList<Integer> stInt = new SkipList<>(Integer.MAX_VALUE);
 
         int streamSize = 1000;
         Integer[] randIntegers = new Integer[streamSize];
@@ -210,7 +207,7 @@ class skipListTest {
 
         // test with doubles
 
-        skipList<Double> stDouble = new skipList<>(Double.POSITIVE_INFINITY);
+        SkipList<Double> stDouble = new SkipList<>(Double.POSITIVE_INFINITY);
         int N = 1000;
         Double[] randDoubles = new Double[N];
         for (int i = 0; i < streamSize; i++) {
@@ -229,13 +226,13 @@ class skipListTest {
     @org.junit.jupiter.api.Test
     void splitTest() throws Exception {
         Double[] values = {9.7, 10.8, 0.0, 30.6, 42.1, 48.5, 61.66};
-        skipList<Double> stDouble = new skipList<>(Double.POSITIVE_INFINITY);
+        SkipList<Double> stDouble = new SkipList<>(Double.POSITIVE_INFINITY);
 
         for (Double val: values){
             stDouble.insert(val);
         }
 
-        skipList<Double> stLarge = stDouble.split(40.0);
+        SkipList<Double> stLarge = stDouble.split(40.0);
         Double[] smaller = {9.7, 10.8, 0.0, 30.6};
         Double[] larger = {42.1, 48.5, 61.66};
 
@@ -276,8 +273,8 @@ class skipListTest {
         Double[] X = {0.88, 0.83, 0.92, 0.71, 0.44, 0.87, 0.15, 0.34, 0.46, 0.99, 0.01, 0.33};
         Double[] Y = {0.81, 0.99, 0.99, 0.99, 0.22, 0.7 , 0.02, 0.24, 0.87, 0.48, 0.54, 0.19, 0.45, 0.92};
 
-        skipList<Double> st1 = new skipList<>(Double.POSITIVE_INFINITY);
-        skipList<Double> st2 = new skipList<>(Double.POSITIVE_INFINITY);
+        SkipList<Double> st1 = new SkipList<>(Double.POSITIVE_INFINITY);
+        SkipList<Double> st2 = new SkipList<>(Double.POSITIVE_INFINITY);
 
         for (Double s: X)
             st1.insert(s);
@@ -285,7 +282,7 @@ class skipListTest {
         for (Double s: Y)
             st2.insert(s);
 
-        skipList<Double> st = st1.merge(st2, false);
+        SkipList<Double> st = st1.merge(st2, false);
         for (Double s: Y)
             assertTrue(st.contains(s));
 
@@ -293,8 +290,8 @@ class skipListTest {
         double[] X1 = rand.doubles(1000).toArray();
         double[] Y1 = rand.doubles(1000).toArray();
 
-        skipList<Double> st3 = new skipList<>(Double.POSITIVE_INFINITY);
-        skipList<Double> st4 = new skipList<>(Double.POSITIVE_INFINITY);
+        SkipList<Double> st3 = new SkipList<>(Double.POSITIVE_INFINITY);
+        SkipList<Double> st4 = new SkipList<>(Double.POSITIVE_INFINITY);
 
         for (Double s: X1)
             st3.insert(s);
@@ -302,7 +299,7 @@ class skipListTest {
         for (Double s: Y1)
             st4.insert(s);
 
-        skipList<Double> st5 = st3.merge(st4, false);
+        SkipList<Double> st5 = st3.merge(st4, false);
 
         for (Double s: Y1)
             assertTrue(st5.contains(s));
@@ -311,8 +308,8 @@ class skipListTest {
         int[] X2 = rand.ints(100000).toArray();
         int[] Y2 = rand.ints(100000).toArray();
 
-        skipList<Integer> st6 = new skipList<>(Integer.MAX_VALUE);
-        skipList<Integer> st7 = new skipList<>(Integer.MAX_VALUE);
+        SkipList<Integer> st6 = new SkipList<>(Integer.MAX_VALUE);
+        SkipList<Integer> st7 = new SkipList<>(Integer.MAX_VALUE);
 
         for (Integer s: X2)
             st6.insert(s);
@@ -320,10 +317,39 @@ class skipListTest {
         for (Integer s: Y2)
             st7.insert(s);
 
-        skipList<Integer> st8 = st6.merge(st7, false);
+        SkipList<Integer> st8 = st6.merge(st7, false);
 
         for (Integer s: Y2)
             assertTrue(st8.contains(s));
 
+    }
+
+    @org.junit.jupiter.api.Test
+    void ceilingTest() {
+        Double[] X = {0.88, 0.83, 0.92, 0.71, 0.44, 0.87, 0.15, 0.34, 0.46, 0.99, 0.01, 0.33};
+        SkipList<Double> st = new SkipList<>(Double.POSITIVE_INFINITY);
+
+        for (Double s: X)
+            st.insert(s);
+        assertEquals(0.99, st.ceiling(0.98));
+        assertEquals(0.99, st.ceiling(0.99));
+        assertEquals(0.01, st.ceiling(0.0));
+        assertEquals(0.01, st.ceiling(-0.1));
+    }
+
+    @org.junit.jupiter.api.Test
+    void floorTest() {
+        Double[] X = {0.88, 0.83, 0.92, 0.71, 0.44, 0.87, 0.15, 0.34, 0.46, 0.99, 0.01, 0.33};
+        SkipList<Double> st = new SkipList<>(Double.POSITIVE_INFINITY);
+
+        for (Double s: X)
+            st.insert(s);
+        assertEquals(0.92, st.floor(0.98));
+        assertEquals(0.99, st.floor(0.99));
+        assertNull(st.floor(0.0));
+        assertEquals(0.46, st.floor(0.47));
+        assertEquals(0.99, st.floor(st.getMax()));
+        assertEquals(0.01, st.floor(st.getMin()));
+        assertEquals(0.99, st.floor(st.getBound()));
     }
 }
