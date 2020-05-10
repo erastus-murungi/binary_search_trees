@@ -4,6 +4,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.Random;
 
 /**
@@ -13,11 +14,11 @@ import java.util.Random;
  */
 
 
-public class skipList<T extends Comparable<T>> {
+public class SkipList<T extends Comparable<T>> implements Iterable<T> {
     int count;   // the number of elements which have been added to the skip list so far
     int height;  // the height of the highest node
     static int MAXHEIGHT = 32;
-    skipNode<T> header; // a pointer to the entry point. The value of header = Infinity
+    Node<T> header; // a pointer to the entry point. The value of header = Infinity
     T max = null;
 
     /**
@@ -30,9 +31,9 @@ public class skipList<T extends Comparable<T>> {
      *                 = String => (char) 0xFFFF
      */
 
-    public skipList(T bound) {
+    public SkipList(T bound) {
         count = 0;
-        header = new skipNode<T>(bound, MAXHEIGHT);
+        header = new Node<T>(bound, MAXHEIGHT);
         height = 1;
     }
 
@@ -42,17 +43,13 @@ public class skipList<T extends Comparable<T>> {
      * @param value search for value in the skiplist.
      * @return the node containing value if it it found else return the header
      */
-    public skipNode<T> findNode(T value) {
+    public Node<T> findNode(T value) {
 
-        skipNode<T> s = header;
+        Node<T> s = header;
 
         for (int level = height - 1; level >= 0; level--) {
             while (s.next[level] != null && s.next[level].getValue().compareTo(value) <= 0) {
                 s = s.next[level];
-
-                // if s.nxt > value, then s <= value. If s == value, no need to continue search
-                if (s.value.equals(value))
-                    return s;
             }
         }
         return s;
@@ -75,8 +72,8 @@ public class skipList<T extends Comparable<T>> {
 
     public boolean remove(T value) {
 
-        skipNode<T> s = header;
-        skipNode<T> target = s;
+        Node<T> s = header;
+        Node<T> target = s;
 
         // find the leftmost instance of the value
         for (int level = height - 1; level >= 0; level--) {
@@ -114,22 +111,75 @@ public class skipList<T extends Comparable<T>> {
     }
 
     public boolean contains(T value) {
-        skipNode<T> found = findNode(value);
-        return found.value.equals(value);
+        Node<T> s = header;
+
+        for (int level = height - 1; level >= 0; level--) {
+            while (s.next[level] != null && s.next[level].getValue().compareTo(value) <= 0) {
+                s = s.next[level];
+
+                // if s.nxt > value, then s <= value. If s == value, no need to continue search
+                if (s.value.equals(value))
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param value
+     * @return largest value <= value
+     */
+
+    public T floor(T value) {
+        Node<T> s = header;
+        for (int level = height - 1; level >= 0; level--) {
+            while (s.next[level] != null && s.next[level].value.compareTo(value) < 0) {
+                s = s.next[level];
+            }
+        }
+        if (s.next[0] == null || s.next[0].value.compareTo(value) > 0) {
+            if (s.value.equals(header.value)) {
+                return null;
+            }
+            return s.value;
+        }
+        else {
+            return s.next[0].value;
+        }
+    }
+
+    /**
+     * @param value operand
+     * @return the smallest value in the skiplist >= value
+     */
+
+    public T ceiling(T value) {
+        Node<T> s = header;
+        for (int level = height - 1; level >= 0; level--) {
+            while (s.next[level] != null && s.next[level].value.compareTo(value) <= 0) {
+                s = s.next[level];
+            }
+        }
+        if (s == header || s.value.compareTo(value) < 0) {
+            if (s.next[0] == null) {
+                return null;
+            } else return s.next[0].value;
+        }
+        else return s.value;
     }
 
     public T nextLarger(T value) {
-        skipNode<T> p = findNextNode(value);
+        Node<T> p = findNextNode(value);
         return p == null ? header.value : p.value;
     }
 
     public T nextSmaller(T value) {
-        skipNode<T> p = findPredNode(value);
+        Node<T> p = findPredNode(value);
         return p == header ? null : p.value;
     }
 
-    public skipNode<T> findPredNode(T value) {
-        skipNode<T> s = header;
+    public Node<T> findPredNode(T value) {
+        Node<T> s = header;
         int level = height - 1;
         for (; level >= 0; level--) {
             while (s.next[level] != null && s.next[level].getValue().compareTo(value) < 0)
@@ -142,8 +192,8 @@ public class skipList<T extends Comparable<T>> {
         return header.value;
     }
 
-    public skipNode<T> findNextNode(T value) {
-        skipNode<T> s = findPredNode(value);
+    public Node<T> findNextNode(T value) {
+        Node<T> s = findPredNode(value);
         while (s.next[0] != null && s.next[0].getValue().compareTo(value) <= 0) {
             s = s.next[0];
         }
@@ -160,11 +210,11 @@ public class skipList<T extends Comparable<T>> {
     }
 
     public void insert(T value) {
-        skipNode<T> s = header;
+        Node<T> s = header;
         int level;
         int h = pickHeight();
         height = Math.max(h, height);
-        skipNode<T> elt = new skipNode<T>(value, h);
+        Node<T> elt = new Node<T>(value, h);
 
         // first traverse the upper levels to get to the elements designated height
         for (level = height - 1; level >= h; level--) {
@@ -194,7 +244,7 @@ public class skipList<T extends Comparable<T>> {
 
     private void updateCount() {
         count = 0;
-        skipNode<T> s = header.next[0];
+        Node<T> s = header.next[0];
         while (s != null) {
             count++;
             s = s.next[0];
@@ -204,7 +254,7 @@ public class skipList<T extends Comparable<T>> {
 
     public ArrayList<T> toVector() {
         ArrayList<T> v = new ArrayList<T>();
-        skipNode<T> s = header.next[0];
+        Node<T> s = header.next[0];
         while (s != null) {
             v.add(s.value);
             s = s.next[0];
@@ -232,7 +282,7 @@ public class skipList<T extends Comparable<T>> {
      * remove all the elements from the skip list
      */
     public void clear() {
-        skipNode<T>[] s = header.next;
+        Node<T>[] s = header.next;
         for (int level = 0; level < height; level++) {
             s[level] = null;
         }
@@ -249,10 +299,10 @@ public class skipList<T extends Comparable<T>> {
      * @return a new skiplist
      */
 
-    public skipList<T> split(T splitKey) {
-        skipList<T> newList = new skipList<>(header.value);
+    public SkipList<T> split(T splitKey) {
+        SkipList<T> newList = new SkipList<>(header.value);
         newList.height = height;
-        skipNode<T> s = header;
+        Node<T> s = header;
 
         // walk down the list
         for (int level = height - 1; level >= 0; level--) {
@@ -286,7 +336,7 @@ public class skipList<T extends Comparable<T>> {
      * @param other skip list
      *              assumes the max heights of the two lists are thr same
      */
-    public void concatenate(skipList<T> other) {
+    public void concatenate(SkipList<T> other) {
         if (getMax().compareTo(other.getMin()) > 0) {
             return;
         }
@@ -294,7 +344,7 @@ public class skipList<T extends Comparable<T>> {
         height = Math.max(height, other.height);
 
         int level;
-        skipNode<T> s = header;
+        Node<T> s = header;
         for (level = height - 1; level >= 0; level--) {
             while (s.next[level] != null) {
                 s = s.next[level];
@@ -315,14 +365,14 @@ public class skipList<T extends Comparable<T>> {
      */
 
     @SuppressWarnings("unchecked")
-    public skipList<T> merge(@NotNull skipList<T> other, boolean allowDuplicates) {
-        skipNode<T>[] frontier = (skipNode<T>[]) Array.newInstance(skipNode.class, MAXHEIGHT);
+    public SkipList<T> merge(@NotNull SkipList<T> other, boolean allowDuplicates) {
+        Node<T>[] frontier = (Node<T>[]) Array.newInstance(Node.class, MAXHEIGHT);
         boolean unFlipped = true;
         int level, i;
         T key1, key2;
-        skipList<T> self = this;
+        SkipList<T> self = this;
 
-        skipList<T> list = new skipList<>(header.value);
+        SkipList<T> list = new SkipList<>(header.value);
         list.height = Math.max(self.height, other.height);
 
         for (level = 0; level < list.height; level++) {
@@ -337,7 +387,7 @@ public class skipList<T extends Comparable<T>> {
             if (key1.compareTo(key2) > 0) {
                 unFlipped = !unFlipped;
                 key2 = key1;
-                skipList<T> listT = self;
+                SkipList<T> listT = self;
                 self = other;
                 other = listT;
             }
@@ -349,7 +399,7 @@ public class skipList<T extends Comparable<T>> {
                 level++;
             } while (level <= list.height && self.header.next[level] != null && self.header.next[level].value.compareTo(key2) <= 0);
 
-            skipNode<T> s = self.header;
+            Node<T> s = self.header;
             for (i = level - 1; i >= 0; i--) {
                 while (s.next[i] != null && s.next[i].value.compareTo(key2) <= 0) {
                     s = s.next[i];
@@ -363,7 +413,7 @@ public class skipList<T extends Comparable<T>> {
                     if (unFlipped) {
                         s.value = other.header.next[0].value;
                     }
-                    skipNode<T> y = other.header.next[0];
+                    Node<T> y = other.header.next[0];
                     for (i = 0; i < y.next.length; i++) {
                         other.header.next[i] = y.next[i];
                     }
@@ -371,10 +421,10 @@ public class skipList<T extends Comparable<T>> {
             }
         }
 
-        skipList<T> leftOver = (other.header.next[0] == null) ? self : other;
+        SkipList<T> leftOver = (other.header.next[0] == null) ? self : other;
 
         int n = 0;
-        skipNode<T> s = leftOver.header;
+        Node<T> s = leftOver.header;
 
         while (s.next[n] != null) {
             ++n;
@@ -392,6 +442,34 @@ public class skipList<T extends Comparable<T>> {
         list.updateMax();
         list.updateCount();
         return list;
+    }
+
+    @Override
+    public @NotNull Iterator<T> iterator() {
+        return new Iterator<>() {
+
+            private int currentIndex = 0;
+            private final int currentSize = length();
+            Node<T> current = header;
+
+
+            @Override
+            public boolean hasNext() {
+                return currentIndex < currentSize;
+            }
+
+            @Override
+            public T next() {
+                current = current.next[0];
+                currentIndex++;
+                return current.value;
+            }
+
+            @Override
+            public void remove() {
+                throw new UnsupportedOperationException();
+            }
+        };
     }
 
     @Override
