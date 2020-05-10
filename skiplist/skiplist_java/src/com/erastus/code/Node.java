@@ -9,23 +9,23 @@ import java.util.Arrays;
  * definition of a node in a skip list
  * @param <T> a comparable type such as an Integer, Double, String, Float
  */
-public class skipNode<T extends Comparable<T>> {
+public class Node<T extends Comparable<T>> {
     T value;
-    skipNode<T>[] next;
+    Node<T>[] next;
 
-    skipNode(T x) { value = x; }
+    Node(T x) { value = x; }
 
     @SuppressWarnings("unchecked")
-    skipNode(T x, int height) {
+    Node(T x, int height) {
         value = x;
-        next = (skipNode<T>[]) Array.newInstance(skipNode.class, height);
+        next = (Node<T>[]) Array.newInstance(Node.class, height);
     }
 
     public T getValue() {
         return value;
     }
 
-    int compareTo(@NotNull skipNode<T> other){
+    int compareTo(@NotNull Node<T> other){
         return this.value.compareTo(other.value);
     }
 
