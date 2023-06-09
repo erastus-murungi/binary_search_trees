@@ -1,28 +1,53 @@
-from bst import BSTNode, BST
+from dataclasses import dataclass
+from typing import cast
 
-LEFT, RIGHT = 0, 1
+from bst import Node, BST, InternalNode, Comparable, Value
 
 
-class AVLNode(BSTNode):
-    """ As a reminder, the empty tree has height -1,
-        the height of a nonempty tree whose root’s left child has height h₁ and
-        root’s right child has height h₂ is 1 + max(h₁, h₂)"""
+@dataclass(slots=True)
+class InternalAVLNode(InternalNode[Comparable, Value]):
+    """As a reminder, the empty tree has height -1,
+    the height of a nonempty tree whose root’s left child has height h₁ and
+    root’s right child has height h₂ is 1 + max(h₁, h₂)"""
 
-    def __init__(self, key, item=0, parent=None):
-        super().__init__(key, item, parent)
-        self.height = 0
+    left: "InternalAVLNode[Comparable, Value]" = None
+    right: "InternalAVLNode[Comparable, Value]" = None
+    h: int = 0
 
     def update_height(self):
-        hl = -1 if self.child[LEFT] is None else self.child[LEFT].height
-        hr = -1 if self.child[RIGHT] is None else self.child[RIGHT].height
-        self.height = max(hr, hl) + 1
+        self.h = self.height()
 
-    def __repr__(self):
-        return "Node(({}, {}, {}), children: {}])".format(str(self.key), str(self.item),
-                                                          str(self.height), ';'.join([repr(c) for c in self.child]))
+    def choose_dir(self, right) -> "InternalAVLNode[Comparable, Value]":
+        if right:
+            return cast(InternalAVLNode, self.right)
+        else:
+            return cast(InternalAVLNode, self.left)
+
+    def choose_set_dir(self, right, node):
+        if right:
+            self.right = node
+        else:
+            self.left = node
+
+    def skew_direction(self) -> bool:
+        hl = self.left.h if self.left else -1
+        hr = self.right.h if self.right else -1
+        return hl <= hr
+
+    def is_skewed(self) -> bool:
+        hl = self.left.h if self.left else -1
+        hr = self.right.h if self.right else -1
+        return abs(hr - hl) > 1
+
+    def __update_heights(self):
+        if self.left:
+            self.left.update_height()
+        if self.right:
+            self.right.update_height()
+        self.update_height()
 
 
-class AVLTree(BST):
+class AVLTree(BST[Comparable, Value, InternalAVLNode]):
     """
     Little History:
         AVL trees, developed in 1962, were the first class of balanced binary search
@@ -37,7 +62,7 @@ class AVLTree(BST):
              differ by at most 1.
         Is this condition strong enough to guarantee O( log n) per operation?
         let N(h) denote the minimum number of nodes in an AVL Tree of height h, where h is the length of
-        longest root to leaf path.
+        the longest root to leaf path.
         Clearly, N(0) = 1.
             N(h) = N(h-1) + N(h-2) + 1
         To make the recurrence well-defined, we add the case N(1) = 2
@@ -64,63 +89,43 @@ class AVLTree(BST):
 
         Other methods:
             In-order-traversal: returns the element in sorted order
-         """
+    """
 
-    def __init__(self):
-        super(AVLTree, self).__init__()
+    @property
+    def node_class(self) -> type[InternalAVLNode]:
+        return InternalAVLNode
 
-    def insert(self, key, item=0):
-        """Inserts a node with a key and item
-        Assumes key is comparable with the other keys"""
-
+    def insert(self, key: Comparable, value: Value) -> Node:
         # if the tree was empty, just insert the key at the root
-        if self.root is None:
-            self.root = AVLNode(key, item)
-        else:
-            # create x and y for readability
-            x = self.root
-            y = x.parent
 
-            # the while loop can only stop if we are at an external node or we are at a leaf node
-            while x is not None and not self.is_leaf(x):
-                y = x
-                x = x.child[key >= x.key]
+        z = super().insert(key, value)
+        parent = self.parent(z)
 
-            if x is None:
-                # while loop broke we are at an external node, insert the node in the parent y
-                # if left child is not None, expression evaluates to True => 1 => RIGHT
-                z = AVLNode(key, item, y)
-                y.child[y.child[LEFT] is not None] = z
-            else:
-                # while loop broke because x is a leaf, just insert the node in the leaf x
-                z = AVLNode(key, item, x)
-                x.child[key >= x.key] = z
-
-            # re-balancing should start from the grandparent of z
-
-            if z.parent is not None:
-                z.parent.update_height()
-                if z.parent.parent is not None:
-                    z.parent.parent.update_height()
-                    self.__balance_insert(z.parent.parent)
+        if parent is not None:
+            parent.update_height()
+            grandparent = self.parent(parent)
+            if grandparent is not None:
+                grandparent.update_height()
+                self.balance_after_insert(grandparent)
+        return z
 
     def delete(self, target_key):
         z = self.find(target_key)
         if z is None:
-            raise KeyError(str(target_key) + ' not found in the Tree.')
+            raise KeyError(str(target_key) + " not found in the Tree.")
         # if z has both subtrees
-        if z.child[RIGHT] and z.child[LEFT]:
-            x = self.find_min(z.child[RIGHT])
+        if z.right and z.left:
+            x = self.find_min(z.right)
             # if the successor x has a right child, then replace the successor with the right child
             # note that since x is a min, it cannot have a left child
-            if x.child[RIGHT]:
-                # here the action point, i.e where the first imbalance might occur is at the parent of x
-                self.__replace(x, x.child[RIGHT])
-                y = x.parent  # the action point is the parent of the deleted node
+            if x.right:
+                # here the action point, i.e. where the first imbalance might occur is at the parent of x
+                x.swap(x.right)
+                y = self.parent(x)  # the action point is the parent of the deleted node
             else:
                 # the successor is just a leaf node, replace it with None
-                x.parent.child[x is not x.parent.child[LEFT]] = None
-                y = x.parent
+                x.parent.child[x is not x.parent.left] = None
+                y = self.parent(x)
 
             # copy values of x to z and start balancing at the action point y
             z.key = x.key
@@ -129,17 +134,17 @@ class AVLTree(BST):
 
         # the node is a left child and right child exists:
         else:
-            if z.child[RIGHT]:
-                self.__replace(z, z.child[RIGHT])
+            if z.right:
+                z.swap(z.right)
                 self.__balance_delete(z.parent)
-            elif z.child[LEFT]:
-                self.__replace(z, z.child[LEFT])
+            elif z.left:
+                z.swap(z.left)
                 self.__balance_delete(z.parent)
             else:
                 if z is self.root:
                     self.root = None
                 else:
-                    z.parent.child[z is not z.parent.child[LEFT]] = None
+                    z.parent.child[z is not z.parent.left] = None
                     self.__balance_delete(z.parent)
 
     def check_avl_property(self):
@@ -150,23 +155,17 @@ class AVLTree(BST):
         if node is None:
             return -1
         else:
-            return node.height
+            return node.h
 
-    @staticmethod
-    def __skew_direction(node):
-        hl = node.child[LEFT].height if node.child[LEFT] else -1
-        hr = node.child[RIGHT].height if node.child[RIGHT] else -1
-        return hl <= hr
-
-    def __balance_insert(self, node):
+    def balance_after_insert(self, node: InternalAVLNode):
         """Re-balances AVL Tree starting assuming that the subtrees rooted at z have AVL property
         Non-recursive version"""
 
         while True:
-            if self.__is_skewed(node):
-                dir_parent = self.__skew_direction(node)
-                w = node.child[dir_parent]
-                dir_child = self.__skew_direction(w)
+            if node.is_skewed():
+                dir_parent = node.skew_direction()
+                w = node.choose_dir(dir_parent)
+                dir_child = w.skew_direction()
                 if dir_parent != dir_child:
                     self.__rotate(w, dir_parent)
                     self.__rotate(node, dir_child)
@@ -179,7 +178,7 @@ class AVLTree(BST):
                 else:
                     break
             else:
-                node = node.parent
+                node = self.parent(node)
                 if node is not None:
                     node.update_height()
                 else:
@@ -197,7 +196,9 @@ class AVLTree(BST):
                     y_initial_parent = y.parent
                     dir_sib = self.__skew_direction(y)
                     w = y.child[dir_sib]
-                    if self.__height_node(w.child[not dir_sib]) > self.__height_node(w.child[dir_sib]):
+                    if self.__height_node(w.child[not dir_sib]) > self.__height_node(
+                        w.child[dir_sib]
+                    ):
                         self.__rotate(w, dir_sib)
                         self.__rotate(y, not dir_sib)
                     else:
@@ -215,39 +216,7 @@ class AVLTree(BST):
                     else:
                         break
 
-    @property
-    def height(self):
-        return self.__height_node(self.root)
-
-    def __replace(self, u, v):
-        # u is the initial node and v is the node to transplant u
-        if u.parent is None:
-            #                g        g
-            #                |        |
-            #                u   =>   v
-            #               / \      / \
-            #             u.a  u.ß  v.a v.ß
-            self.root = v
-        else:
-            u.parent.child[u is not u.parent.child[LEFT]] = v
-        if v is not None:
-            v.parent = u.parent
-
-    @staticmethod
-    def __update_heights(node):
-        if node.child[LEFT]:
-            node.child[LEFT].update_height()
-        if node.child[RIGHT]:
-            node.child[RIGHT].update_height()
-        node.update_height()
-
-    @staticmethod
-    def __is_skewed(node):
-        hl = node.child[LEFT].height if node.child[LEFT] else -1
-        hr = node.child[RIGHT].height if node.child[RIGHT] else -1
-        return abs(hr - hl) > 1
-
-    def __rotate(self, y: AVLNode, direction: float):
+    def __rotate(self, y: InternalAVLNode, direction: int):
         """x is the node to be taken to the top
         y = x.parent
                 y                              x
@@ -261,81 +230,79 @@ class AVLTree(BST):
         if y is None:
             raise ValueError("can't rotate null value")
 
-        # move ß to the left child of y
-        x = y.child[not direction]
-        beta = x.child[direction]
-        y.child[not direction] = beta
+        attrs = ["left", "right"]
 
-        # set ß's parent to y
-        # sometimes ß might be an external node, we need to be careful about that
-        if beta is not None:
-            beta.parent = y
+        # move ß to the left child of y
+        x = y.__getattribute__(attrs[not direction])
+        beta = x.__getattribute__(attrs[direction])
+        y.__setattr__(attrs[not direction], beta)
 
         # now we deal with replacing y with x in z (y.parent)
-        z = y.parent
+        z = self.parent(y)
         if z is None:
             # y was the root
             self.root = x
         # make the initial parent of y the parent of x, if y is not the root, i.e y.parent == z is not self.null
         else:
-            z.child[y is not z.child[LEFT]] = x
-        x.parent = z
+            z.__setattr__(attrs[y is not z.left], x)
 
         # make y x's subtree, and make sure to make y.parent x
-        x.child[direction] = y
-        y.parent = x
+        x.__setattr__(attrs[direction], y)
 
         # update height of children and heights, the order must be maintained
-        self.__update_heights(x)
+        x.update_heights()
 
     def __print_helper(self, node, indent, last):
         """Simple recursive tree printer"""
         if node is not None:
-            print(indent, end='')
+            print(indent, end="")
             if last:
-                print("R----", end='')
+                print("R----", end="")
                 indent += "     "
             else:
-                print("L----", end='')
+                print("L----", end="")
                 indent += "|    "
-            print('(' + str(node.key) + ', ' + str(node.item) + ', ' + str(node.height) + ")")
-            self.__print_helper(node.child[LEFT], indent, False)
-            self.__print_helper(node.child[RIGHT], indent, True)
+            print(
+                "(" + str(node.key) + ", " + str(node.item) + ", " + str(node.h) + ")"
+            )
+            self.__print_helper(node.left, indent, False)
+            self.__print_helper(node.right, indent, True)
 
     def __str__(self):
         if self.root is None:
-            return 'Empty'
+            return "Empty"
         else:
             self.__print_helper(self.root, "", True)
-            return ''
+            return ""
 
     def __check_avl_property_helper(self, node):
         if node is None:
             return -1
         else:
-            hl = self.__check_avl_property_helper(node.child[LEFT])
-            hr = self.__check_avl_property_helper(node.child[RIGHT])
+            hl = self.__check_avl_property_helper(node.left)
+            hr = self.__check_avl_property_helper(node.right)
             assert abs(hr - hl) <= 1, repr(node)
             return max(hr, hl) + 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from random import randint
-    from pympler import asizeof
     from datetime import datetime
 
     # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88]
-    num_nodes = 1000_000
-    values = [(randint(0, 100000000), randint(0, 10000)) for _ in range(num_nodes)]
+    num_nodes = 1000
+    values = [(randint(0, 100000), randint(0, 10000)) for _ in range(num_nodes)]
     t1 = datetime.now()
     avl = AVLTree()
-    for key, val in values:
-        avl.insert(key, val)
-    avl.check_avl_property()
-    print(f"AVL tree used {asizeof.asizeof(avl) / (1 << 20):.2f} MB of memory and ran in"
-          f" {(datetime.now() - t1).total_seconds()} seconds for {num_nodes} insertions.")
-    print(avl.height)
+    for k, val in values:
+        avl.insert(k, val)
+    # avl.check_avl_property()
+    print(
+        f"AVL tree ran in"
+        f" {(datetime.now() - t1).total_seconds()} seconds for {num_nodes} insertions."
+    )
+    print(avl.root.h)
     # print(avl)
     # print(avl.root.height)
 
-    avl.check_weak_search_property()
+    avl.root.check_bst_property(0, 10110000101010)

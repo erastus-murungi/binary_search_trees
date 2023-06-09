@@ -7,7 +7,7 @@ RED = 0
 LEFT = 0
 RIGHT = 1
 
-__author__ = 'Erastus Murungi'
+__author__ = "Erastus Murungi"
 
 
 class RBNull:
@@ -26,6 +26,7 @@ class RBNull:
 class RBNode:
     """A template for a node in a red-black tree
     Every node has a 'bit' for color and other field's found in regular BSTs"""
+
     null = RBNull()
 
     def __init__(self, key, item, parent, color=RED):
@@ -36,7 +37,13 @@ class RBNode:
         self.child = [self.null, self.null]
 
     def __iter__(self):
-        yield from [self.child[LEFT], self.key, self.item, self.color, self.child[RIGHT]]
+        yield from [
+            self.child[LEFT],
+            self.key,
+            self.item,
+            self.color,
+            self.child[RIGHT],
+        ]
 
     @property
     def is_leaf(self):
@@ -44,8 +51,12 @@ class RBNode:
         return self.child[LEFT] == self.child[RIGHT]  # == self.null
 
     def __repr__(self):
-        return "Node(({}, {}, {}), children: {}])".format(str(self.key), str(self.item),
-                                                          str(self.color), ';'.join([repr(c) for c in self.child]))
+        return "Node(({}, {}, {}), children: {}])".format(
+            str(self.key),
+            str(self.item),
+            str(self.color),
+            ";".join([repr(c) for c in self.child]),
+        )
 
 
 class RedBlackTree:
@@ -126,7 +137,9 @@ class RedBlackTree:
         else:
             y = self.access_min(z.child[RIGHT])  # find z's successor
             y_original_color = y.color
-            x = y.child[RIGHT]  # we will start fixing violations from the successor's right child
+            x = y.child[
+                RIGHT
+            ]  # we will start fixing violations from the successor's right child
             # z might be the minimum's parent
             if y.parent == z:
                 # x might be null node, in which case we need to give it a parent pointer
@@ -177,13 +190,13 @@ class RedBlackTree:
 
     @property
     def minimum(self):
-        """Returns a tuple of the (min_key, item) """
+        """Returns a tuple of the (min_key, item)"""
         x = self.access_min(self.root)
         return x.key, x.item
 
     @property
     def maximum(self):
-        """Returns a tuple of the (max_key, item) """
+        """Returns a tuple of the (max_key, item)"""
         x = self.access_max(self.root)
         return x.key, x.item
 
@@ -235,7 +248,9 @@ class RedBlackTree:
             return y
 
         # case 2: traverse to the first instance where there is a right edge and return the node incident on the edge
-        while current.parent is not self.null and current is current.parent.child[RIGHT]:
+        while (
+            current.parent is not self.null and current is current.parent.child[RIGHT]
+        ):
             current = current.parent
 
         y = current.parent
@@ -300,7 +315,7 @@ class RedBlackTree:
 
     def clear(self):
         """delete all the elements in the tree,
-        this time without maintaining red-black tree properties """
+        this time without maintaining red-black tree properties"""
 
         self.__clear_helper(self.root.child[LEFT])
         self.__clear_helper(self.root.child[RIGHT])
@@ -532,15 +547,15 @@ class RedBlackTree:
     def __print_helper(self, node, indent, last):
         """Simple recursive tree printer"""
         if node is not self.null:
-            print(indent, end='')
+            print(indent, end="")
             if last:
-                print("R----", end='')
+                print("R----", end="")
                 indent += "     "
             else:
-                print("L----", end='')
+                print("L----", end="")
                 indent += "|    "
             color_to_string = "BLACK" if node.color == 1 else "RED"
-            print('(' + str(node.key), node.item, color_to_string + ")")
+            print("(" + str(node.key), node.item, color_to_string + ")")
             self.__print_helper(node.child[LEFT], indent, False)
             self.__print_helper(node.child[RIGHT], indent, True)
 
@@ -555,8 +570,8 @@ class RedBlackTree:
             del node
 
     def max_height(self):
-        """ Calculates and returns the max height of the tree
-        Since this tree is not augmented, this runs in linear time """
+        """Calculates and returns the max height of the tree
+        Since this tree is not augmented, this runs in linear time"""
 
         return self.__max_height_helper(self.root)
 
@@ -564,8 +579,13 @@ class RedBlackTree:
         if node is self.null:
             return -1
         else:
-            return max(self.__max_height_helper(node.child[LEFT]),
-                       self.__max_height_helper(node.child[RIGHT])) + 1
+            return (
+                max(
+                    self.__max_height_helper(node.child[LEFT]),
+                    self.__max_height_helper(node.child[RIGHT]),
+                )
+                + 1
+            )
 
     def __len__(self):
         return self.size
@@ -575,7 +595,7 @@ class RedBlackTree:
             return repr(self.root)
         else:
             self.__print_helper(self.root, "", True)
-            return ''
+            return ""
 
     def __getitem__(self, key):
         assert (type(key)) in [int, float]
@@ -602,7 +622,7 @@ class RedBlackTree:
     def s_value(self):
         def helper(node):
             if node is self.null:
-                return - 1
+                return -1
             else:
                 return min(helper(node.child[LEFT]), helper(node.child[RIGHT])) + 1
 
@@ -619,8 +639,8 @@ class RedBlackTree:
 
     @property
     def black_height(self):
-        if not (hasattr(self.root, 'bh')):
-            raise ValueError('Augment with black_height first')
+        if not (hasattr(self.root, "bh")):
+            raise ValueError("Augment with black_height first")
         return self.root.bh
 
     def augment_with_black_height(self):
@@ -653,7 +673,7 @@ class RedBlackTree:
             expected_len = len(t1) + len(t2)
 
             if direction is None:
-                direction = not(t1.minimum[0] > t2.maximum[0])
+                direction = not (t1.minimum[0] > t2.maximum[0])
 
             if direction == LEFT:
                 key, item = t2.maximum
@@ -665,7 +685,9 @@ class RedBlackTree:
 
             node = t1.root
             phi = node.parent
-            while node is not self.null and not (node.bh == t2.black_height and node.color == BLACK):
+            while node is not self.null and not (
+                node.bh == t2.black_height and node.color == BLACK
+            ):
                 phi = node
                 node = node.child[direction]
 
@@ -736,9 +758,10 @@ class RedBlackTree:
         return smaller, larger
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from datetime import datetime
     from pympler import asizeof
+
     # #
     # # # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88, 88]
     # #

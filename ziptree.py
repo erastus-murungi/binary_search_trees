@@ -17,6 +17,7 @@ class ZipNode:
 
 class ZipTree(BST):
     """duplicate keys not allowed"""
+
     def __init__(self):
         super().__init__()
 
@@ -38,7 +39,9 @@ class ZipTree(BST):
 
         prev, curr, fix = None, self.root, None
 
-        while curr is not None and (rank < curr.rank or (rank == curr.rank and key > curr.key)):
+        while curr is not None and (
+            rank < curr.rank or (rank == curr.rank and key > curr.key)
+        ):
             prev = curr
             curr = curr.child[key >= curr.key]
 
@@ -107,7 +110,7 @@ class ZipTree(BST):
         self.size -= 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from datetime import datetime
     from pympler import asizeof
 
@@ -124,8 +127,10 @@ if __name__ == '__main__':
         zp = ZipTree()
         for key, item in nodes:
             zp.insert(key, item)
-        print(f"Zip tree used {asizeof.asizeof(zp) / (1 << 20):.2f} MB of memory and ran in"
-              f" {(datetime.now() - t1).total_seconds()} seconds for {num_nodes} insertions.")
+        print(
+            f"Zip tree used {asizeof.asizeof(zp) / (1 << 20):.2f} MB of memory and ran in"
+            f" {(datetime.now() - t1).total_seconds()} seconds for {num_nodes} insertions."
+        )
 
         print(zp.height())
         # print(95858277 in zp)
@@ -133,5 +138,5 @@ if __name__ == '__main__':
         # print(zp.check_weak_search_property())
 
         for key, _ in nodes:
-            assert(key in zp), (nodes, key)
+            assert key in zp, (nodes, key)
         print(len(zp))

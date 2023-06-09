@@ -10,7 +10,9 @@ class Node:
         self.parent = parent
 
     def __repr__(self):
-        return "Node(({}, {}), children: {}])".format(str(self.key), str(self.item), repr(self.child))
+        return "Node(({}, {}), children: {}])".format(
+            str(self.key), str(self.item), repr(self.child)
+        )
 
 
 class SplayTree:
@@ -77,8 +79,8 @@ class SplayTree:
 
     def join(self, other):
         """Combines trees t1 and t2 into a single tree containing all items from
-            both trees and return the resulting tree. This operation assumes that
-            all items in t1 are less than all those in t2 and destroys both t1 and t2."""
+        both trees and return the resulting tree. This operation assumes that
+        all items in t1 are less than all those in t2 and destroys both t1 and t2."""
 
         assert self.root is not None
         assert other.root is not None
@@ -93,8 +95,8 @@ class SplayTree:
 
     def split(self, i):
         """Construct and return two trees t1 and t2, where t1 contains all items
-            in t less than or equal to i, and t2 contains all items in t greater than
-            i. This operation destroys t. """
+        in t less than or equal to i, and t2 contains all items in t greater than
+        i. This operation destroys t."""
 
         assert self.root is not None
 
@@ -210,7 +212,7 @@ class SplayTree:
             right.parent = m
 
     def clear(self):
-        """delete all the elements in the tree """
+        """delete all the elements in the tree"""
 
         self.__clear_helper(self.root.child[LEFT])
         self.__clear_helper(self.root.child[RIGHT])
@@ -229,33 +231,55 @@ class SplayTree:
     def __print_helper(self, node, indent, last):
         """Simple recursive tree printer"""
         if node is not None:
-            print(indent, end='')
+            print(indent, end="")
             if last:
-                print("R----", end='')
+                print("R----", end="")
                 indent += "     "
             else:
-                print("L----", end='')
+                print("L----", end="")
                 indent += "|    "
-            print('(' + str(node.key) + ', ' + str(node.item) + ")")
+            print("(" + str(node.key) + ", " + str(node.item) + ")")
             self.__print_helper(node.child[LEFT], indent, False)
             self.__print_helper(node.child[RIGHT], indent, True)
 
     def __str__(self):
         if self.root is None:
-            return 'Empty'
+            return "Empty"
         else:
             self.__print_helper(self.root, "", True)
-            return ''
+            return ""
 
     def __repr__(self):
         """Simple repr method"""
         return repr(self.root)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     from random import choice
+
     st = SplayTree()
-    values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88]
+    values = [
+        3,
+        52,
+        31,
+        55,
+        93,
+        60,
+        81,
+        93,
+        46,
+        37,
+        47,
+        67,
+        34,
+        95,
+        10,
+        23,
+        90,
+        14,
+        13,
+        88,
+    ]
 
     for val in values:
         st.insert(val)

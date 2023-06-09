@@ -1,383 +1,431 @@
-from random import randint
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import (
+    Generic,
+    Protocol,
+    TypeVar,
+    Optional,
+    MutableMapping,
+    Iterator,
+    Type,
+    Self,
+    runtime_checkable,
+)
 
-LEFT = 0  # False
-RIGHT = 1  # True
-
-__author__ = 'Erastus Murungi'
-__email__ = 'murungi@mit.edu'
-
-
-class BSTNode:
-    def __init__(self, key, item, parent=None):
-        """constructor"""
-        self.key = key
-        self.item = item
-        self.child = [None, None]
-        self.parent = parent
-
-    def __repr__(self):
-        return "Node(({}, {}), children: {}])".format(str(self.key), str(self.item), repr(self.child))
+from typeguard import typechecked  # type: ignore
+import operator as op
 
 
-class BST:
-    """A simple full implementation of a binary search tree"""
+@runtime_checkable
+class SupportsLessThan(Protocol):
+    def __lt__(self: "Comparable", other: "Comparable") -> bool:
+        pass
 
-    def __init__(self):
-        self.root = None
-        self.size = 0
 
-    def insert(self, key, item=0):
-        """Inserts a node with a key and item
-        Assumes key is comparable with the other keys"""
+Comparable = TypeVar("Comparable", bound=SupportsLessThan)
+Value = TypeVar("Value")
+KeyValue = tuple[Comparable, Value]
 
-        # if the tree was empty, just insert the key at the root
-        if self.root is None:
-            self.root = BSTNode(key, item)
-        else:
-            # create x and y for readability
-            x = self.root
-            y = x.parent
 
-            # the while loop can only stop if we are at an external node or we are at a leaf node
-            while x is not None and not self.is_leaf(x):
-                y = x
-                x = x.child[key >= x.key]
+@dataclass(slots=True)
+class InternalNode(Generic[Comparable, Value], ABC):
+    key: Comparable
+    value: Value
+    left: Optional["InternalNode"] = None
+    right: Optional["InternalNode"] = None
 
-            if x is None:
-                # while loop broke we are at an external node, insert the node in the parent y
-                # if left child is not None, expression evaluates to True => 1 => RIGHT
-                y.child[y.child[LEFT] is not None] = BSTNode(key, item, y)
+    @typechecked
+    def __lt__(self, other: "InternalNode[Comparable, Value]") -> bool:
+        return self.key < other.key
+
+    def insert(self, key: Comparable, value: Value) -> Self:
+        if key < self.key:
+            if isinstance(self.left, InternalNode):
+                self.left.insert(key, value)
             else:
-                # while loop broke because x is a leaf, just insert the node in the leaf x
-                x.child[key >= x.key] = BSTNode(key, item, x)
-        self.size += 1
-
-    def find(self, key):
-        """Returns the node with the current key if key exists else None
-        We impose the >= condition instead of > because a node with a similar key to the current node in
-        the traversal to be placed in the right subtree"""
-
-        # boilerplate code
-        if self.root is None:
-            return None
-
-        # traverse to the lowest node possible
-        current = self.root
-        while current is not None and current.key != key:
-            # the expression 'key >= current.key' evaluates to True => 1 => RIGHT or False => 0 => LEFT
-            current = current.child[key >= current.key]
-
-        if current is None or current.key != key:
-            return None
+                self.left = self.__class__(key, value)
+        elif key == self.key:
+            self.value = value
         else:
-            return current
+            if isinstance(self.right, InternalNode):
+                self.right.insert(key, value)
+            else:
+                self.right = self.__class__(key, value)
+        return self
 
-    def __contains__(self, item):
-        """Returns True if the node with the key is in the BST and False otherwise"""
-
-        return self.find(item) is not None
-
-    def in_order(self):
-        """Creates an In-order traversal generator of the BST"""
-
-        def helper(node):
-            # visit left node's subtree first if that subtree is not an external node
-            if node.child[LEFT]:
-                yield from helper(node.child[LEFT])
-            # then visit node
-            yield node
-            # lastly visit the right subtree
-            if node.child[RIGHT]:
-                yield from helper(node.child[RIGHT])
-
-        if self.root is not None:
-            yield from helper(self.root)
+    def access(self, key: Comparable) -> "Node":
+        if key == self.key:
+            return self
+        elif key < self.key:
+            return self.left.access(key) if self.left else None
         else:
-            yield ''
-
-    def iteritems(self):
-        def helper(node):
-            if node.child[LEFT]:
-                yield from helper(node.child[LEFT])
-            yield node.key, node.item
-            if node.child[RIGHT]:
-                yield from helper(node.child[RIGHT])
-
-        if self.root is not None:
-            yield from helper(self.root)
-        else:
-            yield ''
-
-    def is_empty(self):
-        return self.root is None
-
-    @staticmethod
-    def is_leaf(node):
-        """Returns True if node is a leaf"""
-        return node.child[LEFT] is None and node.child[RIGHT] is None
+            return self.right.access(key) if self.right else None
 
     @property
-    def minimum(self):
-        """Returns a tuple of the (min_key, item) """
-        x = self.find_min(self.root)
-        return x.key, x.item
+    def is_leaf(self):
+        return self.left is None and self.right is None
 
-    @property
-    def maximum(self):
-        """Returns a tuple of the (max_key, item) """
-        x = self.find_max(self.root)
-        return x.key, x.item
-
-    @staticmethod
-    def find_min(x):
-        """Return the node with minimum key in x's subtree"""
-
-        if x is None:
-            return None
-
-        # traverse to the leftmost node
-        while x.child[LEFT] is not None:
-            x = x.child[LEFT]
-        return x
-
-    @staticmethod
-    def find_max(x):
-        """Return the node maximum key in x's subtree"""
-
-        if x is None:
-            return None
-
-        # traverse to the rightmost node
-        while x.child[RIGHT] is not None:
-            x = x.child[RIGHT]
-        return x
-
-    def extract_max(self, current=None):
-        """Returns a tuple of (max_key, item) and deletes it from the BST"""
-
-        # preprocessing starts
-        if self.root is None:
-            raise ValueError("empty tree")
-        if current is None:
-            current = self.root
-        # preprocessing ends
-
-        while current.child[RIGHT] is not None:
-            current = current.child[RIGHT]
-        ret = current.key, current.item
-
-        # if node with max key has a left child, replace that node with its left child
-        if current.child[LEFT]:
-            self.__replace(current, current.child[LEFT])
+    def choose(self, key: Comparable) -> "Node":
+        if key < self.key:
+            return self.left
         else:
-            # if the root is the only remaining node, current.parent.child is None existent
-            if current is self.root and self.is_leaf(current):
-                self.root = None
-                return ret
-            # node must be a left node, so just remove it
-            current.parent.child[current.key >= current.parent.key] = None
+            return self.right
 
-        self.size -= 1
-        return ret
-
-    def extract_min(self, current=None):
-        """Returns a tuple of (min_key, item) and deletes it from the BST"""
-
-        # pre-processing starts
-        if self.root is None:
-            raise ValueError("empty tree")
-        if current is None:
-            current = self.root
-        # pre-processing ends
-
-        # traverse to the leftmost node and get its key and satellite data
-        while current.child[LEFT] is not None:
-            current = current.child[LEFT]
-        ret = current.key, current.item
-
-        # if node with min key has a right child, replace the node with its right child
-        if current.child[RIGHT]:
-            self.__replace(current, current.child[RIGHT])
+    def choose_set(self, key: Comparable, node: "Node") -> "Node":
+        if key < self.key:
+            self.left = node
+            return self.left
         else:
-            # if the root is the only remaining node, current.parent.child is None existent
-            if current is self.root and self.is_leaf(current):
-                self.root = None
-                return ret
-            # node must be a left node, so just remove it
-            current.parent.child[current.key >= current.parent.key] = None
+            self.right = node
+            return self.right
 
-        self.size -= 1
-        return ret
+    def minimum(self) -> "Node":
+        return self.left.minimum() if isinstance(self.left, InternalNode) else self
 
-    def successor(self, current: BSTNode) -> BSTNode:
-        """Find the node whose key immediately succeeds current.key"""
-        # boilerplate
-        if current is None:
-            raise ValueError("can't find the node with the key")
+    def maximum(self) -> "Node":
+        return self.right.maximum() if isinstance(self.right, InternalNode) else self
 
-        # case 1: if node has right subtree, then return the min in the subtree
-        if current.child[RIGHT] is not None:
-            y = self.find_min(current.child[RIGHT])
-            return y
+    def inorder(self):
+        if self.left:
+            yield from self.left.inorder()
+        yield self
+        if self.right:
+            yield from self.right.inorder()
 
-        # case 2: traverse to the first instance where there is a right edge and return the node incident on the edge
-        while current.parent is not None and current is current.parent.child[RIGHT]:
-            current = current.parent
+    def preorder(self):
+        yield self
+        if self.left:
+            yield from self.left.preorder()
+        if self.right:
+            yield from self.right.preorder()
 
-        y = current.parent
-        return y
+    def postorder(self):
+        if self.left:
+            yield from self.left.postorder()
+        if self.right:
+            yield from self.right.postorder()
+        yield self
+
+    def aggregate(self, f, g, initial):
+        return g(
+            self,
+            f(
+                self.left.aggregate(f, g, initial) if self.left else initial,
+                self.right.aggregate(f, g, initial) if self.right else initial,
+            ),
+        )
 
     def height(self):
-        """Get the height of the tree"""
-        def helper(node):
-            if node is None:
-                return -1
-            else:
-                return max(helper(node.child[LEFT]), helper(node.child[RIGHT])) + 1
-        return helper(self.root)
+        return self.aggregate(max, lambda _, y: 1 + y, 0)
 
     def s_value(self):
-        def helper(node):
-            if node is None:
-                return - 1
-            else:
-                return min(helper(node.child[LEFT]), helper(node.child[RIGHT])) + 1
-        return helper(self.root)
+        return self.aggregate(min, op.add, 0)
 
-    def predecessor(self, current: BSTNode) -> BSTNode:
-        """Find the node whose key immediately precedes current.key
-        It is important to deal with nodes and note their (key, item) pair because
-        the pairs are not unique but the nodes identities are unique.
-        That us why the comparisons use is rather than '=='.
-        """
+    def __len__(self):
+        return (
+            1
+            + (0 if self.left is None else len(self.left))
+            + (0 if self.right is None else len(self.right))
+        )
 
-        # check that the type is correct
-        if current is None:
-            raise ValueError("can't find the node with the given key")
-
-        # case 1: if node has a left subtree, then return the max in the subtree
-        if current.child[LEFT] is not None:
-            y = self.find_max(current.child[LEFT])
-            return y
-
-        # case 2: traverse to the first instance where there is a left edge and return the node incident on the edge
-        while current.parent is not None and current is current.parent.child[LEFT]:
-            current = current.parent
-
-        y = current.parent
-        return y
-
-    def check_weak_search_property(self):
-        """Recursively checks's whether x.left.key <= x.key >= x.right.key
-        I have no formal reason to call it 'weak' search other than that this method does not
-        check whether 'all_keys_in_left_subtree' <= x.key >= 'all_keys_in_right_subtree"""
-        return self.__check_weak_search_property_helper(self.root)
-
-    def __check_weak_search_property_helper(self, node):
-        """Helper method"""
-        if node is None:
-            return True
+    def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
+        yield f"{indent}{prefix}----{self}\n"
+        indent += "     " if prefix == "R" else "|    "
+        if self.left:
+            yield from self.left.yield_line(indent, "L")
         else:
-            if node.child[LEFT] is not None:
-                assert node.key >= node.child[LEFT].key, repr(node)
-            if node.child[RIGHT] is not None:
-                assert node.key <= node.child[RIGHT].key, repr(node)
-
-            self.__check_weak_search_property_helper(node.child[LEFT])
-            self.__check_weak_search_property_helper(node.child[RIGHT])
-        return True
-
-    @staticmethod
-    def __replace(x: BSTNode, y: BSTNode):
-        """Simple method to cody data from one node to the other"""
-        x.key = y.key
-        x.item = y.item
-        x.child = y.child
-
-    def delete(self, target_key):
-        """Deletes a key from the BST"""
-        target_node = self.find(target_key)
-        if target_node is None:
-            return False
-
-        if target_node.child[RIGHT] and target_node.child[LEFT]:
-            # swap key with successor and delete using extract_min
-            key, item = self.extract_min(target_node.child[RIGHT])
-            target_node.key, target_node.item = key, item
-
-        elif target_node.child[LEFT] is None and target_node.child[RIGHT]:
-            # replace node with its right child
-            self.__replace(target_node, target_node.child[RIGHT])
-
-        elif target_node.child[RIGHT] is None and target_node.child[LEFT]:
-            # replace node with its left child
-            self.__replace(target_node, target_node.child[LEFT])
-
+            yield f"{indent}{prefix}----{self}\n"
+        if self.right:
+            yield from self.right.yield_line(indent, "R")
         else:
-            # the target node is the root and it is a leaf node, then setting the root to None will suffice
-            if target_node == self.root:
-                self.root = None
-            else:
-                # else the target is a leaf node which has a parent
-                target_node.parent.child[target_key >= target_node.parent.key] = None
+            yield f"{indent}{prefix}----{self}\n"
 
-        self.size -= 1
+    def swap(self, other: "InternalNode") -> None:
+        self.key = other.key
+        self.value = other.value
+        self.left = other.left
+        self.right = other.right
 
-    def clear(self):
-        """delete all the elements in the tree,
-        this time without maintaining red-black tree properties """
+    def check_bst_property(
+        self, lower_limit: Comparable, upper_limit: Comparable
+    ) -> bool:
+        def valid(
+            node: Node, lower_limit_: Comparable, upper_limit_: Comparable
+        ) -> bool:
+            if not node:
+                return True
+            if not (lower_limit_ < node.key < upper_limit_):
+                return False
+            return valid(node.left, lower_limit_, node.key) and valid(
+                node.right, node.key, upper_limit_
+            )
 
-        self.__clear_helper(self.root.child[LEFT])
-        self.__clear_helper(self.root.child[RIGHT])
-        self.root = None
+        return valid(self, lower_limit, upper_limit)
+
+    def __iter__(self):
+        yield from (node.key for node in self.inorder())
+
+
+NodeClassType = TypeVar("NodeClassType", bound=InternalNode)
+Node = Optional[NodeClassType]
+
+
+class NodeClassMixin(ABC, Generic[NodeClassType]):
+    @abstractmethod
+    def node_class(self) -> Type[NodeClassType]:
+        pass
+
+
+class BST(
+    Generic[Comparable, Value, NodeClassType],
+    MutableMapping[Comparable, Value],
+    NodeClassMixin[InternalNode],
+):
+    def __init__(self):
+        self.root: Node = None
         self.size = 0
 
-    def __clear_helper(self, node):
-        if node.child[LEFT] is None and node.child[RIGHT] is None:
-            del node
-        else:
-            if node.child[LEFT] is not None:
-                self.__clear_helper(node.child[LEFT])
-            if node.child[RIGHT] is not None:
-                self.__clear_helper(node.child[RIGHT])
-            del node
+    @property
+    def node_class(self) -> Type[InternalNode]:
+        return InternalNode
 
-    def __print_helper(self, node, indent, last):
-        """Simple recursive tree printer"""
-        if node is not None:
-            print(indent, end='')
-            if last:
-                print("R----", end='')
-                indent += "     "
+    def __setitem__(self, key, value):
+        self.insert(key, value)
+
+    def access(self, key: Comparable) -> "Node":
+        x = self.root
+        while x is not None:
+            if x.key == key:
+                return x
+            elif x.key < key:
+                x = x.right
             else:
-                print("L----", end='')
-                indent += "|    "
-            print('(' + str(node.key) + ', ' + str(node.item) + ")")
-            self.__print_helper(node.child[LEFT], indent, False)
-            self.__print_helper(node.child[RIGHT], indent, True)
+                x = x.left
+        return None
+
+    def __contains__(self, item):
+        return self.access(item) is not None
+
+    def __getitem__(self, item):
+        x = self.access(item)
+        if x is None:
+            raise KeyError(f"{item} not found")
+        else:
+            return x.value
+
+    def __delitem__(self, key):
+        self.delete(key)
+
+    def clear(self):
+        self.root = None
+        self.size = 0
 
     def __len__(self):
         return self.size
 
-    def __str__(self):
+    def pretty_str(self):
         if self.root is None:
-            return str(None)
+            return "Empty Tree"
+        return "".join(self.root.yield_line("", "R"))
+
+    @typechecked
+    def parent(self, node: InternalNode) -> "Node":
+        current, parent = self.root, None
+        while current is not None and current is not node:
+            parent = current
+            current = current.choose(node.key)
+        return parent
+
+    def __iter__(self):
+        yield from iter(self.root)
+
+    def insert(self, key: Comparable, value: Value) -> Node:
+        if self.root is None:
+            self.root = self.node_class(key, value)
+            self.size = 1
+            return self.root
         else:
-            self.__print_helper(self.root, "", True)
-            return ''
+            current: Node = self.root
+            parent: InternalNode = self.root
+
+            while current is not None and not current.is_leaf:
+                if current.key == key:
+                    current.value = value
+                    return current
+
+                parent = current
+                current = current.choose(key)
+
+            self.size += 1
+            if current is None:
+                return parent.choose_set(key, self.node_class(key, value))
+            else:
+                return current.choose_set(key, self.node_class(key, value))
+
+    def inorder(self) -> Iterator[InternalNode]:
+        if self.root is not None:
+            yield from self.root.inorder()
+
+    def preorder(self) -> Iterator[InternalNode]:
+        if self.root is not None:
+            yield from self.root.preorder()
+
+    def postorder(self) -> Iterator[InternalNode]:
+        if self.root is not None:
+            yield from self.root.postorder()
+
+    def iteritems(self) -> Iterator[tuple[Comparable, Value]]:
+        yield from ((node.key, node.value) for node in self.inorder())
+
+    def minimum(self):
+        if self.root is None:
+            return None
+
+        current = self.root
+        while current.left is not None:
+            current = current.left
+        return current
+
+    def maximum(self):
+        if self.root is None:
+            return None
+
+        current = self.root
+        while current.right is not None:
+            current = current.right
+        return current
+
+    @typechecked
+    def extract_max(self, node: InternalNode) -> KeyValue:
+        current: InternalNode = node
+        parent: Node = self.parent(node)
+        while current.right is not None:
+            parent, current = current, current.right
+
+        max_key_value = (current.key, current.value)
+
+        if current.left:
+            current.swap(current.left)
+        elif current is self.root and current.is_leaf:
+            assert self.size == 1
+            self.root = None
+        else:
+            assert parent is not None
+            parent.choose_set(current.key, None)
+
+        return max_key_value
+
+    @typechecked
+    def extract_min(self, node: InternalNode) -> KeyValue:
+        current: InternalNode = node
+        parent: Node = self.parent(node)
+        while current.left is not None:
+            parent, current = current, current.left
+        min_key_value = (current.key, current.value)
+
+        if current.right:
+            current.swap(current.right)
+        elif current is self.root and current.is_leaf:
+            assert self.size == 1
+            self.root = None
+        else:
+            assert parent is not None
+            parent.choose_set(current.key, None)
+
+        return min_key_value
+
+    @typechecked
+    def successor(self, key: Comparable) -> Node:
+        if (node := self.access(key)) is None:
+            raise ValueError(f"Key {key} not found")
+        if node.right:
+            return node.right.minimum()
+        else:
+            candidate = None
+            current = self.root
+            while current != node:
+                if current.key > node.key:
+                    candidate = current
+                    current = current.left
+                else:
+                    current = current.right
+        return candidate
+
+    @typechecked
+    def predecessor(self, key: Comparable) -> Node:
+        if (node := self.access(key)) is None:
+            raise ValueError(f"Key {key} not found")
+        if node.left:
+            return node.left.maximum()
+        else:
+            candidate = None
+            current = self.root
+            while current != node:
+                if current.key < node.key:
+                    candidate = current
+                    current = current.right
+                else:
+                    current = current.left
+        return candidate
+
+    def delete(self, target_key: Comparable):
+        target_node = self.access(target_key)
+        if target_node is None:
+            raise ValueError(f"Key {target_key} not found")
+
+        if target_node.right and target_node.left:
+            # swap key with successor and delete using extract_min
+            key, value = self.extract_min(target_node.right)
+            target_node.key, target_node.value = key, value
+
+        elif target_node.right:
+            target_node.swap(target_node.right)
+
+        elif target_node.left:
+            target_node.swap(target_node.left)
+        else:
+            # the target node is the root, and it is a leaf node, then setting the root to None will suffice
+            if target_node == self.root:
+                self.root = None
+            else:
+                assert target_node.is_leaf
+                # else the target is a leaf node which has a parent
+                self.parent(target_node).choose_set(target_node.key, None)
+
+        self.size -= 1
 
     def __repr__(self):
-        """Simple repr method"""
         return repr(self.root)
 
 
-if __name__ == '__main__':
-    bst = BST()
-    values = [randint(1, 100) for _ in range(20)]
-    # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88]
+if __name__ == "__main__":
+    bst: BST = BST()
+    values = [
+        3,
+        52,
+        31,
+        55,
+        93,
+        60,
+        81,
+        93,
+        46,
+        37,
+        47,
+        67,
+        34,
+        95,
+        10,
+        23,
+        90,
+        14,
+        13,
+        88,
+    ]
 
     for i, val in enumerate(values):
-        bst.insert(val)
+        bst.insert(val, None)
         print(values[i] in bst)
+        assert 101 not in bst
 
-    print(bst)
+    print(bst.pretty_str())

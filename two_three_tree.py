@@ -61,8 +61,13 @@ class Node:
             if len(self.data) == 1:
                 assert self.children[LEFT] <= self.data[0][0] <= self.children[MIDDLE]
             if len(self.data) == 2:
-                assert self.data[0][0] >= self.children[LEFT] and \
-                       self.data[0][0] >= self.children[MIDDLE] <= self.data[0][1] <= self.children[RIGHT]
+                assert (
+                    self.data[0][0] >= self.children[LEFT]
+                    and self.data[0][0]
+                    >= self.children[MIDDLE]
+                    <= self.data[0][1]
+                    <= self.children[RIGHT]
+                )
 
     def height_is_equal(self):
         if self.isleaf:
@@ -344,17 +349,17 @@ class Tree:
             return str(None)
         else:
             self.__print_helper(self.root, "", True)
-            return ''
+            return ""
 
     def __print_helper(self, node, indent, last, pos="R"):
         """Simple recursive tree printer"""
         if node is not None:
-            print(indent, end='')
+            print(indent, end="")
             if last:
-                print("R----", end='')
+                print("R----", end="")
                 indent += "     "
             else:
-                print(f"{pos}----", end='')
+                print(f"{pos}----", end="")
                 indent += "|    "
             print(*node.data)
             if len(node.children) > 0:

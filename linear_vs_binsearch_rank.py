@@ -12,7 +12,7 @@ def linear_rank(A, k):
     return i
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     key = 2_500_000
     test = random.randint(0, 10000000, 3000000)
     test.sort()

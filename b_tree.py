@@ -69,9 +69,9 @@ class BNode:
         return i
 
     def recursive_search(self, k):
-        """ Recursively searches for the given keys in the subtree rooted at self.
-            If the key is found, the function returns the node containing the key
-            and the index of k in the array of keys stored at the node. Otherwise returns None.
+        """Recursively searches for the given keys in the subtree rooted at self.
+        If the key is found, the function returns the node containing the key
+        and the index of k in the array of keys stored at the node. Otherwise returns None.
         """
         i = self.pos(k)
         if i < self.n and k == self.key[i]:
@@ -120,7 +120,7 @@ class BNode:
         self.key.insert(i, y.key[t - 1])
 
         z.key.extend(y.key[t:])  # split the keys
-        y.key = y.key[:t - 1]
+        y.key = y.key[: t - 1]
 
         if not y.isleaf:
             z.children.extend(y.children[t:])
@@ -136,11 +136,16 @@ class BNode:
                 return self.key[n]
         j, s = 0, 0
         while j < self.n and s <= n:
-            j, s = j + 1, s + self.children[j].numkeys() + 1  # plus 1 for plus the element itself
+            j, s = (
+                j + 1,
+                s + self.children[j].numkeys() + 1,
+            )  # plus 1 for plus the element itself
         if s - 1 == n:
             return self.key[j - 1]
         elif s > n and j > 0:
-            return self.children[j - 1].nsmallest(n - (s - self.children[j - 1].numkeys() - 1))
+            return self.children[j - 1].nsmallest(
+                n - (s - self.children[j - 1].numkeys() - 1)
+            )
         else:  # s >= n
             return self.children[j].nsmallest(n - s)
 
@@ -230,7 +235,7 @@ class BNode:
 
     def _successor(self, i):
         """Returns the successor of an element once the index is known.
-            Doesn't handle edge cases because its a private method."""
+        Doesn't handle edge cases because its a private method."""
 
         current = self.children[i + 1]
         while not current.isleaf:
@@ -246,7 +251,7 @@ class BNode:
         return current.key[-1]
 
     def successor(self, k):
-        """Return the next-larger key. This method does not handle duplicates. If the key is not in the   """
+        """Return the next-larger key. This method does not handle duplicates. If the key is not in the"""
         if self.isempty:
             return None
         node, parent_key = self, None
@@ -271,7 +276,7 @@ class BNode:
 
     def predecessor(self, k):
         """Return the next-smaller key. Always returns the next smaller key regardless of whether or not the
-         key is in the tree."""
+        key is in the tree."""
 
         if self.isempty:
             return None
@@ -428,14 +433,16 @@ class BTree:
             assert self.t <= len(node.children) <= (self.t << 1), repr(node)
 
             h = self._check(node.children[0])
-            assert all(self._check(node.children[j]) == h for j in range(1, len(node.children)))
+            assert all(
+                self._check(node.children[j]) == h for j in range(1, len(node.children))
+            )
             return h + 1
 
     def check_btree_properties(self):
-        """ Checks that for every node other than the root:
-            1.  a) t - 1 <= x.n <= 2t - 1
-                b) t <= x.num_children <= 2t
-            2.  The height of every subtree rooted at self is the same.
+        """Checks that for every node other than the root:
+        1.  a) t - 1 <= x.n <= 2t - 1
+            b) t <= x.num_children <= 2t
+        2.  The height of every subtree rooted at self is the same.
         """
 
         h = self._check(self.root.children[0])
@@ -444,7 +451,7 @@ class BTree:
         return True
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import numpy as np
     from random import shuffle, randint
     from pympler import asizeof
@@ -474,15 +481,17 @@ if __name__ == '__main__':
         assert x == y
         print(x[:10], y[:10])
         print(v[:10], w[:10])
-        assert (btree.minimum == min(values))
-        assert (btree.maximum == max(values))
-        assert (len(btree) == len(x))
+        assert btree.minimum == min(values)
+        assert btree.maximum == max(values)
+        assert len(btree) == len(x)
         print(btree.predecessor(71))
         print(btree.successor(69))
         btree.check_btree_properties()
         stop = perf_counter()
-        print(f"The btree used {asizeof.asizeof(btree) / 1000000:.2f} MB, and ran in{stop - start: .3f}"
-              f" seconds for {n} insertions into a BTree of degree {t}. ")
+        print(
+            f"The btree used {asizeof.asizeof(btree) / 1000000:.2f} MB, and ran in{stop - start: .3f}"
+            f" seconds for {n} insertions into a BTree of degree {t}. "
+        )
 
         shuffle(values)
         start = perf_counter()
