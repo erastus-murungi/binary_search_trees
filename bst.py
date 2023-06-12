@@ -71,13 +71,11 @@ class InternalNode(Generic[Comparable, Value], ABC):
         else:
             return self.right
 
-    def choose_set(self, key: Comparable, node: "Node") -> "Node":
+    def choose_set(self, key: Comparable, node: "Node"):
         if key < self.key:
             self.left = node
-            return self.left
         else:
             self.right = node
-            return self.right
 
     def minimum(self) -> "Node":
         return self.left.minimum() if isinstance(self.left, InternalNode) else self
@@ -115,8 +113,8 @@ class InternalNode(Generic[Comparable, Value], ABC):
             ),
         )
 
-    def height(self):
-        return self.aggregate(max, lambda _, y: 1 + y, 0)
+    def compute_height(self):
+        return self.aggregate(max, lambda _, y: 1 + y, -1)
 
     def s_value(self):
         return self.aggregate(min, op.add, 0)
@@ -133,12 +131,8 @@ class InternalNode(Generic[Comparable, Value], ABC):
         indent += "     " if prefix == "R" else "|    "
         if self.left:
             yield from self.left.yield_line(indent, "L")
-        else:
-            yield f"{indent}{prefix}----{self}\n"
         if self.right:
             yield from self.right.yield_line(indent, "R")
-        else:
-            yield f"{indent}{prefix}----{self}\n"
 
     def swap(self, other: "InternalNode") -> None:
         self.key = other.key
@@ -185,6 +179,10 @@ class BST(
         self.root: Node = None
         self.size = 0
 
+    def check_invariants(self, lower_limit: Comparable, upper_limit: Comparable):
+        if self.root:
+            self.root.check_bst_property(lower_limit, upper_limit)
+
     @property
     def node_class(self) -> Type[InternalNode]:
         return InternalNode
@@ -197,6 +195,19 @@ class BST(
         while x is not None:
             if x.key == key:
                 return x
+            elif x.key < key:
+                x = x.right
+            else:
+                x = x.left
+        return None
+
+    def access_ancestry(self, key: Comparable) -> Optional[list[Node]]:
+        ancestry = []
+        x = self.root
+        while x is not None:
+            ancestry.append(x)
+            if x.key == key:
+                return ancestry
             elif x.key < key:
                 x = x.right
             else:
@@ -240,27 +251,24 @@ class BST(
         yield from iter(self.root)
 
     def insert(self, key: Comparable, value: Value) -> Node:
-        if self.root is None:
-            self.root = self.node_class(key, value)
-            self.size = 1
-            return self.root
-        else:
-            current: Node = self.root
-            parent: InternalNode = self.root
+        node = self.root
+        parent: Node = None
 
-            while current is not None and not current.is_leaf:
-                if current.key == key:
-                    current.value = value
-                    return current
-
-                parent = current
-                current = current.choose(key)
-
-            self.size += 1
-            if current is None:
-                return parent.choose_set(key, self.node_class(key, value))
+        while True:
+            if node is None:
+                node = self.node_class(key, value)
+                if parent:
+                    parent.choose_set(key, node)
+                else:
+                    self.root = node
+                break
+            elif node.key == key:
+                node.value = value
+                return node
             else:
-                return current.choose_set(key, self.node_class(key, value))
+                parent = node
+                node = node.choose(key)
+        self.size += 1
 
     def inorder(self) -> Iterator[InternalNode]:
         if self.root is not None:
@@ -369,8 +377,7 @@ class BST(
         return candidate
 
     def delete(self, target_key: Comparable):
-        target_node = self.access(target_key)
-        if target_node is None:
+        if (target_node := self.access(target_key)) is None:
             raise ValueError(f"Key {target_key} not found")
 
         if target_node.right and target_node.left:
@@ -427,5 +434,4 @@ if __name__ == "__main__":
         bst.insert(val, None)
         print(values[i] in bst)
         assert 101 not in bst
-
     print(bst.pretty_str())

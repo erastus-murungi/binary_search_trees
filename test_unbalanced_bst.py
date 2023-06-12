@@ -1,27 +1,36 @@
 from random import randint
+from sys import maxsize
+from typing import Type
+
+import pytest
 
 from bst import BST
+from avl import AVL
 
 
-def test_insertion():
+@pytest.mark.parametrize("bst_class", [BST, AVL])
+def test_insertion(bst_class: Type[BST]):
     for _ in range(100):
         values = frozenset([randint(-10000, 10000) for _ in range(500)])
-        bst = BST[int, None]()
+        bst = bst_class[int, None]()
         for val in values:
             bst.insert(val, None)
             assert val in bst
+            bst.check_invariants(-maxsize, maxsize)
 
         for val in values:
             del bst[val]
+            bst.check_invariants(-maxsize, maxsize)
 
         assert not bst
         assert len(bst) == 0
         assert bst.root is None
 
 
-def test_sorted():
+@pytest.mark.parametrize("bst_class", [BST, AVL])
+def test_sorted(bst_class: Type[BST]):
     for _ in range(100):
-        bst = BST[int, None]()
+        bst = bst_class[int, None]()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
         for value in values:
             bst.insert(value, None)
@@ -29,9 +38,10 @@ def test_sorted():
         assert list(bst) == sorted(values)
 
 
-def test_successor():
+@pytest.mark.parametrize("bst_class", [BST, AVL])
+def test_successor(bst_class: Type[BST]):
     for _ in range(100):
-        bst = BST[int, None]()
+        bst = bst_class[int, None]()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
         for value in values:
             bst.insert(value, None)
@@ -43,9 +53,10 @@ def test_successor():
         assert bst.successor(sorted_values[-1]) is None
 
 
-def test_predecessor():
+@pytest.mark.parametrize("bst_class", [BST, AVL])
+def test_predecessor(bst_class: Type[BST]):
     for _ in range(100):
-        bst = BST[int, None]()
+        bst = bst_class[int, None]()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
         for value in values:
             bst.insert(value, None)

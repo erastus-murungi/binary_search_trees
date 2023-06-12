@@ -43,7 +43,7 @@ class Node:
         if self.isleaf:
             return 0
         else:
-            return max(node.height for node in self.children) + 1
+            return max(node.compute_height for node in self.children) + 1
 
     @property
     def size(self):
@@ -72,10 +72,12 @@ class Node:
     def height_is_equal(self):
         if self.isleaf:
             return 0
-        h = self.children[0].height
+        h = self.children[0].compute_height
         if len(self.children) == 1:
             return h + 1
-        heights = [self.children[i].height for i in range(1, len(self.children))]
+        heights = [
+            self.children[i].compute_height for i in range(1, len(self.children))
+        ]
         assert all(h == hn for hn in heights)
         return h + 1
 
@@ -220,7 +222,7 @@ class Tree:
 
     @property
     def height(self):
-        return self.root.height
+        return self.root.compute_height
 
     @property
     def minimum(self):
