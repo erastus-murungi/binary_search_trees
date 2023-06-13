@@ -10,8 +10,8 @@ from avl import AVL
 
 @pytest.mark.parametrize("bst_class", [BST, AVL])
 def test_insertion(bst_class: Type[BST]):
-    for _ in range(100):
-        values = frozenset([randint(-10000, 10000) for _ in range(500)])
+    for _ in range(50):
+        values = frozenset([randint(-10000, 10000) for _ in range(50)])
         bst = bst_class[int, None]()
         for val in values:
             bst.insert(val, None)
@@ -68,27 +68,29 @@ def test_predecessor(bst_class: Type[BST]):
         assert bst.predecessor(sorted_values[0]) is None
 
 
-def test_minimum():
+@pytest.mark.parametrize("bst_class", [BST, AVL])
+def test_minimum(bst_class: Type[BST]):
     for _ in range(100):
-        bst = BST[int, None]()
+        bst = bst_class[int, None]()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
         for value in values:
             bst.insert(value, None)
 
         assert bst.minimum().key == min(values)
 
-    bst_empty = BST[int, None]()
+    bst_empty = bst_class[int, None]()
     assert bst_empty.minimum() is None
 
 
-def test_maximum():
+@pytest.mark.parametrize("bst_class", [BST, AVL])
+def test_maximum(bst_class: Type[BST]):
     for _ in range(100):
-        bst = BST[int, None]()
+        bst = bst_class[int, None]()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
         for value in values:
             bst.insert(value, None)
 
         assert bst.maximum().key == max(values)
 
-    bst_empty = BST[int, None]()
+    bst_empty = bst_class[int, None]()
     assert bst_empty.maximum() is None

@@ -1,8 +1,9 @@
 from dataclasses import dataclass
+from sys import maxsize
 
 from typeguard import typechecked
 
-from bst import Node, BST, InternalNode, Comparable, Value
+from bst import Node, BST, InternalNode, Comparable, Value, KeyValue
 
 
 def height(node: Node) -> int:
@@ -32,9 +33,9 @@ class InternalAVLNode(InternalNode[Comparable, Value]):
     def right_rotate(self):
         """
                  y                              x
-               / \                            / \
+               // \\                          // \\
               x   Ω  = {right_rotate(y)} =>  𝛼   y
-             / \                                / \
+            // \\                              // \\
             𝛼   ß                              ß   Ω
         """
         assert self.left
@@ -120,48 +121,30 @@ class AVL(BST[Comparable, Value, InternalAVLNode]):
     def check_invariants(self, lower_limit: Comparable, upper_limit: Comparable):
         super().check_invariants(lower_limit, upper_limit)
         for node in self.inorder():
-            assert abs(balance_factor(node)) <= 1
+            assert abs(balance_factor(node)) in (-1, 0, 1)
 
     @property
     def node_class(self) -> type[InternalAVLNode]:
         return InternalAVLNode
 
     def insert(self, key: Comparable, value: Value) -> Node:
-        ancestry, node = [], self.root
-
-        while True:
-            if node is None:
-                node = self.node_class(key, value)
-                if ancestry:
-                    ancestry[-1].choose_set(key, node)
-                else:
-                    self.root = node
-                ancestry.append(node)
-                break
-            elif node.key == key:
-                node.value = value
-                return node
-            else:
-                ancestry.append(node)
-                node = node.choose(key)
-
-        self.size += 1
-
-        # fixup the height and re-balance the tree
-        self.avl_fixup(ancestry)
+        ancestry = self.insert_ancestry(key, value)
+        if ancestry:
+            # fixup the height and re-balance the tree
+            node = ancestry[-1]
+            self.avl_fixup(ancestry)
+            return node
+        return None
 
     def avl_fixup(self, ancestry: list[Node]):
         while ancestry:
             node = ancestry.pop()
             update_height(node)
             if (new_node := node.re_balance()) is not None:
-                if ancestry:
-                    ancestry[-1].choose_set(new_node.key, new_node)
-                else:
-                    self.root = new_node
+                self.set_child(ancestry, new_node)
 
     @typechecked
-    def extract_min(self, node: InternalAVLNode):
+    def extract_min(self, node: InternalAVLNode) -> KeyValue:
         current: InternalNode = node
         ancestry = self.access_ancestry(current.key)
         while current.left is not None:
@@ -212,38 +195,41 @@ class AVL(BST[Comparable, Value, InternalAVLNode]):
 
 
 if __name__ == "__main__":
+    from random import randint
 
-    for _ in range(1):
-        values = [
-            3,
-            52,
-            31,
-            55,
-            93,
-            60,
-            81,
-            93,
-            46,
-            37,
-            47,
-            67,
-            34,
-            95,
-            10,
-            23,
-            90,
-            14,
-            13,
-            88,
-        ]
+    for _ in range(10000):
+        # values = [
+        #     3,
+        #     52,
+        #     31,
+        #     55,
+        #     93,
+        #     60,
+        #     81,
+        #     93,
+        #     46,
+        #     37,
+        #     47,
+        #     67,
+        #     34,
+        #     95,
+        #     10,
+        #     23,
+        #     90,
+        #     14,
+        #     13,
+        #     88,
+        # ]
+        num_nodes = 10
+        values = list({randint(0, 1000) for _ in range(num_nodes)})
         avl = AVL()
         for i, k in enumerate(values):
             avl.insert(k, None)
             assert k in avl, values
-            avl.check_avl_invariant()
+            avl.check_invariants(-maxsize, maxsize)
             assert len(avl) == i + 1, values
         for i, k in enumerate(values):
             del avl[k]
             assert k not in avl, values
-            avl.check_avl_invariant()
+            avl.check_invariants(-maxsize, maxsize)
             assert len(avl) == len(values) - i - 1, values

@@ -214,6 +214,31 @@ class BST(
                 x = x.left
         return None
 
+    def set_child(self, ancestry: list[Node], node: InternalNode):
+        if ancestry:
+            ancestry[-1].choose_set(node.key, node)
+        else:
+            self.root = node
+
+    def insert_ancestry(self, key: Comparable, value: Value) -> Optional[list[Node]]:
+        ancestry, node = [], self.root
+
+        while True:
+            if node is None:
+                node = self.node_class(key, value)
+                self.set_child(ancestry, node)
+                ancestry.append(node)
+                break
+            elif node.key == key:
+                node.value = value
+                return None
+            else:
+                ancestry.append(node)
+                node = node.choose(key)
+
+        self.size += 1
+        return ancestry
+
     def __contains__(self, item):
         return self.access(item) is not None
 

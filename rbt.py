@@ -2,64 +2,35 @@
 
 from random import randint
 
+from bst import InternalNode, Comparable, Value, BST, Node
+
 BLACK = 1
 RED = 0
 LEFT = 0
 RIGHT = 1
 
-__author__ = "Erastus Murungi"
+
+def color(node):
+    """Returns the color of a node"""
+    return BLACK if node is None else node.color
 
 
-class RBNull:
-    """Universal null in red-black trees"""
-
-    def __init__(self):
-        self.color = BLACK
-        self.parent = self
-
-    # don't define __bool__ method
-
-    def __repr__(self):
-        return "NIL"
+def parent(node):
+    """Returns the parent of a node"""
+    return None if node is None else node.parent
 
 
-class RBNode:
+class InternalRBTNode(InternalNode[Comparable, Value]):
     """A template for a node in a red-black tree
     Every node has a 'bit' for color and other field's found in regular BSTs"""
 
-    null = RBNull()
-
-    def __init__(self, key, item, parent, color=RED):
-        self.key = key
-        self.item = item
-        self.parent = parent
-        self.color = color
-        self.child = [self.null, self.null]
-
-    def __iter__(self):
-        yield from [
-            self.child[LEFT],
-            self.key,
-            self.item,
-            self.color,
-            self.child[RIGHT],
-        ]
-
-    @property
-    def is_leaf(self):
-        """Returns true if an internal node is a leaf node and false otherwise"""
-        return self.child[LEFT] == self.child[RIGHT]  # == self.null
-
-    def __repr__(self):
-        return "Node(({}, {}, {}), children: {}])".format(
-            str(self.key),
-            str(self.item),
-            str(self.color),
-            ";".join([repr(c) for c in self.child]),
-        )
+    color: int = BLACK
+    left: "InternalRBTNode[Comparable, Value]" = None
+    right: "InternalRBTNode[Comparable, Value]" = None
+    parent: "InternalRBTNode[Comparable, Value]" = None
 
 
-class RedBlackTree:
+class RedBlackTree(BST[Comparable, Value, InternalRBTNode]):
     """
     A Red-Black tree is a height-balanced binary search tree which supports queries and updates in O(log n) time.
     Red-Black Trees provide faster insertion and removal operations than AVL trees because they need fewer rotations.
@@ -75,45 +46,13 @@ class RedBlackTree:
         See CLRS pg. 309 for the proof of this lemma.
     """
 
-    def __init__(self):
-        self.null = RBNode.null
-        self.root = self.null
-        self.size = 0
+    @property
+    def node_class(self):
+        return InternalRBTNode
 
-    def insert(self, key, item=0):
-        # perform insertion just like in a normal BST
-
-        # if the tree was empty, just insert the key at the root
-        if self.root is self.null:
-            z = RBNode(key, item, self.null)
-            self.root = RBNode(key, item, self.null)
-        else:
-            # create x and y for readability
-            x = self.root
-            y = x.parent
-
-            # the while loop can only stop if we are at an external node or we are at a leaf node
-            # the expression 'key >= current.key' evaluates to True => 1 => RIGHT or False => 0 => LEFT
-            while x is not self.null and not x.is_leaf:
-                y = x
-                x = x.child[key >= x.key]
-
-            if x is self.null:
-                # while loop broke we are at an external node, insert the node in the parent y
-                # if left child is not None, expression evaluates to True => 1 => RIGHT
-                z = RBNode(key, item, y)
-                y.child[y.child[LEFT] is not self.null] = z
-
-            else:
-                # while loop broke because x is a leaf, just insert the node in the leaf x
-                z = RBNode(key, item, x)
-                x.child[key >= x.key] = z
-
-        if z is self.null:
-            raise ValueError
-
-        self.__insert_fix(z)
-        self.size += 1
+    def insert(self, key: Comparable, value: Value):
+        ancestry = self.insert_ancestry(key, value)
+        self.__insert_fix(ancestry[-1])
 
     def delete(self, target_key):
 
@@ -158,126 +97,6 @@ class RedBlackTree:
             # the x might be a null pointer
             self.__delete_fix(x)
         self.size -= 1
-
-    def is_empty(self):
-        return self.root is self.null
-
-    def access(self, key):
-        """Returns the node with the current key if key exists else None
-        We impose the >= condition instead of > because a node with a similar key to the current node in
-        the traversal to be placed in the right subtree"""
-
-        # boilerplate code
-        if self.root is self.null:
-            raise ValueError("empty tree")
-
-        # traverse to the lowest node possible
-        current = self.root
-        while current is not self.null and current.key != key:
-            # here we use > than because we want to find the first occurrence of a node with a certain key
-            current = current.child[key > current.key]
-
-        # the while stopped because we reached the node with the desired key
-        if current is self.null:
-            return None
-        # the while loop stopped because we reached an external node
-        else:
-            return current
-
-    def __contains__(self, key):
-        """Returns true if the key is found in the tree and false otherwise"""
-        return self.access(key) is not None
-
-    @property
-    def minimum(self):
-        """Returns a tuple of the (min_key, item)"""
-        x = self.access_min(self.root)
-        return x.key, x.item
-
-    @property
-    def maximum(self):
-        """Returns a tuple of the (max_key, item)"""
-        x = self.access_max(self.root)
-        return x.key, x.item
-
-    def access_min(self, x: RBNode):
-        """Return the node with minimum key in x's subtree"""
-
-        if x is self.null:
-            raise ValueError("x can't be none")
-
-        # traverse to the leftmost node
-        while x.child[LEFT] is not self.null:
-            x = x.child[LEFT]
-        return x
-
-    def access_max(self, x):
-        """Return the node maximum key in x's subtree"""
-
-        if x is self.null:
-            raise ValueError("x can't be none")
-
-        # traverse to the rightmost node
-        while x.child[RIGHT] is not self.null:
-            x = x.child[RIGHT]
-        return x
-
-    def extract_max(self):
-        """can be used a max priority queue"""
-        node = self.access_max(self.root)
-        ret = node.key, node.item
-        self.delete(node.key)
-        return ret
-
-    def extract_min(self):
-        """can be used as a min priority queue"""
-        node = self.access_min(self.root)
-        ret = node.key, node.item
-        self.delete(node.key)
-        return ret
-
-    def successor(self, current: RBNode) -> RBNode:
-        """Find the node whose key immediately succeeds current.key"""
-        # boilerplate
-        if current is self.null:
-            raise ValueError("can't find the node with the key")
-
-        # case 1: if node has right subtree, then return the min in the subtree
-        if current.child[RIGHT] is not self.null:
-            y = self.access_min(current.child[RIGHT])
-            return y
-
-        # case 2: traverse to the first instance where there is a right edge and return the node incident on the edge
-        while (
-            current.parent is not self.null and current is current.parent.child[RIGHT]
-        ):
-            current = current.parent
-
-        y = current.parent
-        return y
-
-    def predecessor(self, current: RBNode) -> RBNode:
-        """Find the node whose key immediately precedes current.key
-        It is important to deal with nodes and note their (key, item) pair because
-        the pairs are not unique but the nodes identities are unique.
-        That us why the comparisons use is rather than '=='.
-        """
-
-        # check that the type is correct
-        if current is self.null:
-            raise ValueError("can't find the node with the given key")
-
-        # case 1: if node has a left subtree, then return the max in the subtree
-        if current.child[LEFT] is not self.null:
-            y = self.access_max(current.child[LEFT])
-            return y
-
-        # case 2: traverse to the first instance where there is a left edge and return the node incident on the edge
-        while current.parent is not self.null and current is current.parent.child[LEFT]:
-            current = current.parent
-
-        y = current.parent
-        return y
 
     def in_order(self):
         """In-order traversal generator of the BST"""
@@ -337,50 +156,6 @@ class RedBlackTree:
         check whether 'all_keys_in_left_subtree' <= x.key >= 'all_keys_in_right_subtree"""
         return self.__check_weak_search_property_helper(self.root)
 
-    def __rotate(self, y: RBNode, direction: float):
-        """x is the node to be taken to the top
-        y = x.parent
-                y                              x
-               / \                            / \
-              x   Ω   ={right_rotate(y)} =>   𝛼  y
-             / \                               / \
-            𝛼   ß                             ß  Ω
-        the comments use the specific case of a right-rotation which of course is symmetric to left-rotation
-        """
-
-        if y == self.null:
-            raise ValueError("can't rotate null value")
-
-        # move ß to the left child of y
-        x = y.child[not direction]
-        beta = x.child[direction]
-        y.child[not direction] = beta
-
-        # set ß's parent to y
-        # sometimes ß might be an external node, we need to be careful about that
-        if beta is not self.null:
-            beta.parent = y
-
-        # now we deal with replacing y with x in z (y.parent)
-        z = y.parent
-        if z is self.null:
-            # y was the root
-            self.root = x
-        # make the initial parent of y the parent of x, if y is not the root, i.e y.parent == z is not self.null
-        else:
-            # this part must be >, because of cases like:
-            #    z=93
-            #     /  \
-            #  y=93   95
-            #
-            # y.key > z.key should evaluate to false so that y goes in the left subtree
-            z.child[y is not z.child[LEFT]] = x
-        x.parent = z
-
-        # make y x's subtree, and make sure to make y.parent x
-        x.child[direction] = y
-        y.parent = x
-
     @staticmethod
     def __insert_first_case(a, y):
         """a is z's parent, y is z's uncle"""
@@ -394,11 +169,13 @@ class RedBlackTree:
         parent.color = BLACK
         grandparent.color = RED
 
-    def __insert_fix(self, z):
-
-        while z.parent.color == RED:
+    def __insert_fix(self, ancestry: list[InternalRBTNode]):
+        """Fixes violations of the red-black tree properties after insertion"""
+        z = ancestry.pop()
+        z_parent = ancestry[-1]
+        while z_parent.color == RED:
             # let a = x's parent
-            a = z.parent
+            a = z_parent
             # if z's parent is a left child, the uncle will be z's grandparent right child
             if a.parent is self.null:
                 break
