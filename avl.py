@@ -3,7 +3,15 @@ from typing import Iterator, Optional
 
 from typeguard import typechecked
 
-from bst import BinarySearchTreeIterative, Comparable, Internal, KeyValue, Node, Value
+from bst import (
+    BinarySearchTreeIterative,
+    Comparable,
+    Internal,
+    InternalNode,
+    KeyValue,
+    Node,
+    Value,
+)
 
 
 @dataclass(slots=True)
@@ -132,7 +140,7 @@ class AVLTreeIterative(BinarySearchTreeIterative[Comparable, Value, AVLAuxiliary
 
     def insert(
         self, key: Comparable, value: Value, aux: Optional[AVLAuxiliaryData] = None
-    ) -> Internal[Comparable, Value, AVLAuxiliaryData]:
+    ) -> InternalNode:
         node = self.access(key)
         if isinstance(node, Internal):
             node.value = value

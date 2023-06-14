@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import (
@@ -7,6 +9,7 @@ from typing import (
     Optional,
     Protocol,
     TypeVar,
+    Union,
     runtime_checkable,
 )
 
@@ -29,31 +32,31 @@ class BinarySearchTreeNode(Generic[Comparable, Value, AuxiliaryData], ABC):
     @abstractmethod
     def insert(
         self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
-    ) -> "Internal[Comparable, Value, AuxiliaryData]":
+    ) -> InternalNode:
         pass
 
     @abstractmethod
-    def access(self, key: Comparable) -> "Node":
+    def access(self, key: Comparable) -> Node:
         pass
 
     @abstractmethod
-    def delete(self, key: Comparable) -> "Node":
+    def delete(self, key: Comparable) -> Node:
         pass
 
     @abstractmethod
-    def inorder(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def inorder(self) -> Iterator[InternalNode]:
         pass
 
     @abstractmethod
-    def preorder(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def preorder(self) -> Iterator[InternalNode]:
         pass
 
     @abstractmethod
-    def postorder(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def postorder(self) -> Iterator[InternalNode]:
         pass
 
     @abstractmethod
-    def level_order(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def level_order(self) -> Iterator[InternalNode]:
         pass
 
     @abstractmethod
@@ -81,11 +84,11 @@ class BinarySearchTreeNode(Generic[Comparable, Value, AuxiliaryData], ABC):
         pass
 
     @abstractmethod
-    def minimum(self) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def minimum(self) -> InternalNode:
         pass
 
     @abstractmethod
-    def maximum(self) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def maximum(self) -> InternalNode:
         pass
 
     @abstractmethod
@@ -97,15 +100,11 @@ class BinarySearchTreeNode(Generic[Comparable, Value, AuxiliaryData], ABC):
         pass
 
     @abstractmethod
-    def successor(
-        self, key: Comparable
-    ) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def successor(self, key: Comparable) -> InternalNode:
         pass
 
     @abstractmethod
-    def predecessor(
-        self, key: Comparable
-    ) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def predecessor(self, key: Comparable) -> InternalNode:
         pass
 
     @abstractmethod
@@ -134,7 +133,7 @@ class Leaf(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
 
     def insert(
         self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
-    ) -> "Internal[Comparable, Value, AuxiliaryData]":
+    ) -> InternalNode:
         return Internal(key, value, aux=aux)
 
     def access(self, key: Comparable) -> "Node":
@@ -143,16 +142,16 @@ class Leaf(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
     def delete(self, key: Comparable) -> "Node":
         return self
 
-    def inorder(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def inorder(self) -> Iterator[InternalNode]:
         yield from ()
 
-    def preorder(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def preorder(self) -> Iterator[InternalNode]:
         yield from ()
 
-    def postorder(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def postorder(self) -> Iterator[InternalNode]:
         yield from ()
 
-    def level_order(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def level_order(self) -> Iterator[InternalNode]:
         yield from ()
 
     def __len__(self) -> int:
@@ -170,20 +169,16 @@ class Leaf(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
     def __delitem__(self, key: Comparable) -> None:
         raise ValueError(f"Leaf nodes hold no keys")
 
-    def minimum(self) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def minimum(self) -> InternalNode:
         raise ValueError("Empty tree has no minimum")
 
-    def maximum(self) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def maximum(self) -> InternalNode:
         raise ValueError("Empty tree has no maximum")
 
-    def successor(
-        self, key: Comparable
-    ) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def successor(self, key: Comparable) -> InternalNode:
         raise ValueError("Empty tree has no successor")
 
-    def predecessor(
-        self, key: Comparable
-    ) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def predecessor(self, key: Comparable) -> InternalNode:
         raise ValueError("Empty tree has no predecessor")
 
     def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
@@ -206,12 +201,8 @@ class Leaf(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
 class Internal(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
     key: Comparable
     value: Value
-    left: BinarySearchTreeNode[Comparable, Value, AuxiliaryData] = field(
-        default_factory=Leaf, repr=False
-    )
-    right: BinarySearchTreeNode[Comparable, Value, AuxiliaryData] = field(
-        default_factory=Leaf, repr=False
-    )
+    left: "Node" = field(default_factory=Leaf, repr=False)
+    right: "Node" = field(default_factory=Leaf, repr=False)
     aux: Optional[AuxiliaryData] = None
 
     def __iter__(self) -> Iterator[Comparable]:
@@ -227,7 +218,7 @@ class Internal(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
 
     def insert(
         self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
-    ) -> "Internal[Comparable, Value, AuxiliaryData]":
+    ) -> InternalNode:
         if self.key == key:
             raise ValueError(f"Key {key} already exists in tree")
         elif key < self.key:
@@ -260,22 +251,22 @@ class Internal(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
                 self.right = self.right.delete(successor.key)
         return self
 
-    def inorder(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def inorder(self) -> Iterator[InternalNode]:
         yield from self.left.inorder()
         yield self
         yield from self.right.inorder()
 
-    def preorder(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def preorder(self) -> Iterator[InternalNode]:
         yield self
         yield from self.left.preorder()
         yield from self.right.preorder()
 
-    def postorder(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def postorder(self) -> Iterator[InternalNode]:
         yield from self.left.postorder()
         yield from self.right.postorder()
         yield self
 
-    def level_order(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def level_order(self) -> Iterator[InternalNode]:
         raise NotImplementedError
 
     def __len__(self) -> int:
@@ -285,19 +276,19 @@ class Internal(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
         node = self.access(key)
         return isinstance(node, Internal) and node.key == key
 
-    def maximum(self) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def maximum(self) -> InternalNode:
         if isinstance(self.right, Leaf):
             return self
         else:
             return self.right.maximum()
 
-    def minimum(self) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def minimum(self) -> InternalNode:
         if isinstance(self.left, Leaf):
             return self
         else:
             return self.left.minimum()
 
-    def __lt__(self, other: "Internal[Comparable, Value, AuxiliaryData]") -> bool:
+    def __lt__(self, other: InternalNode) -> bool:
         return self.key < other.key
 
     @property
@@ -322,7 +313,7 @@ class Internal(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
         yield from self.left.yield_line(indent, "L")
         yield from self.right.yield_line(indent, "R")
 
-    def swap(self, other: "Internal[Comparable, Value, AuxiliaryData]") -> None:
+    def swap(self, other: InternalNode) -> None:
         self.key = other.key
         self.value = other.value
         self.left = other.left
@@ -340,9 +331,7 @@ class Internal(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
     def __delitem__(self, key: Comparable) -> None:
         self.delete(key)
 
-    def successor(
-        self, key: Comparable
-    ) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def successor(self, key: Comparable) -> InternalNode:
         if key > self.key:
             return self.right.successor(key)
         elif key < self.key:
@@ -353,9 +342,7 @@ class Internal(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
         else:
             return self.right.minimum()
 
-    def predecessor(
-        self, key: Comparable
-    ) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def predecessor(self, key: Comparable) -> InternalNode:
         if key < self.key:
             return self.left.predecessor(key)
         elif key > self.key:
@@ -392,29 +379,26 @@ class Internal(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
                 return keyval, self.left
 
 
-Node = (
-    BinarySearchTreeNode[Comparable, Value, AuxiliaryData]
-    | Leaf[Comparable, Value, AuxiliaryData]
-)
+InternalNode = Internal[Comparable, Value, AuxiliaryData]
+LeafNode = Leaf[Comparable, Value, AuxiliaryData]
+Node = Union[InternalNode, LeafNode]
 
 
 @dataclass
 class BinarySearchTree(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
-    root: BinarySearchTreeNode[Comparable, Value, AuxiliaryData] = field(
-        default_factory=Leaf
-    )
+    root: Node = field(default_factory=Leaf)
     size: int = 0
 
-    def inorder(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def inorder(self) -> Iterator[InternalNode]:
         return self.root.inorder()
 
-    def preorder(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def preorder(self) -> Iterator[InternalNode]:
         return self.root.preorder()
 
-    def postorder(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def postorder(self) -> Iterator[InternalNode]:
         return self.root.postorder()
 
-    def level_order(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def level_order(self) -> Iterator[InternalNode]:
         return self.root.level_order()
 
     def __len__(self) -> int:
@@ -432,15 +416,15 @@ class BinarySearchTree(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
     def __setitem__(self, key: Comparable, value: Value) -> None:
         self.root.__setitem__(key, value)
 
-    def minimum(self) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def minimum(self) -> InternalNode:
         return self.root.minimum()
 
-    def maximum(self) -> "Internal[Comparable, Value, AuxiliaryData]":
+    def maximum(self) -> InternalNode:
         return self.root.maximum()
 
     def insert(
         self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
-    ) -> Internal[Comparable, Value, AuxiliaryData]:
+    ) -> InternalNode:
         node = self.access(key)
         if isinstance(node, Internal):
             node.value = value
@@ -472,15 +456,13 @@ class BinarySearchTree(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
     def check_invariants(self, lower_limit: Comparable, upper_limit: Comparable):
         return self.root.check_invariants(lower_limit, upper_limit)
 
-    def predecessor(
-        self, key: Comparable
-    ) -> Internal[Comparable, Value, AuxiliaryData]:
+    def predecessor(self, key: Comparable) -> InternalNode:
         try:
             return self.root.predecessor(key)
         except ValueError as e:
             raise KeyError(f"No predecessor found, {key} is minimum key in tree") from e
 
-    def successor(self, key: Comparable) -> Internal[Comparable, Value, AuxiliaryData]:
+    def successor(self, key: Comparable) -> InternalNode:
         try:
             return self.root.successor(key)
         except ValueError as e:
@@ -510,7 +492,7 @@ class BinarySearchTreeIterative(
     def __setitem__(self, key, value):
         self.insert(key, value)
 
-    def level_order(self) -> Iterator["Internal[Comparable, Value, AuxiliaryData]"]:
+    def level_order(self) -> Iterator[InternalNode]:
         return self.root.level_order()
 
     def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
@@ -545,8 +527,8 @@ class BinarySearchTreeIterative(
 
     def set_child(
         self,
-        ancestry: list[Internal[Comparable, Value, AuxiliaryData]],
-        node: Internal[Comparable, Value, AuxiliaryData],
+        ancestry: list[InternalNode],
+        node: InternalNode,
     ):
         if ancestry:
             ancestry[-1].choose_set(node.key, node)
@@ -555,8 +537,8 @@ class BinarySearchTreeIterative(
 
     def insert_ancestry(
         self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
-    ) -> list[Internal[Comparable, Value, AuxiliaryData]]:
-        ancestry: list[Internal[Comparable, Value, AuxiliaryData]] = []
+    ) -> list[InternalNode]:
+        ancestry: list[InternalNode] = []
         node = self.root
 
         while True:
@@ -587,7 +569,7 @@ class BinarySearchTreeIterative(
         return "".join(self.root.yield_line("", "R"))
 
     @typechecked
-    def parent(self, node: Internal[Comparable, Value, AuxiliaryData]) -> Node:
+    def parent(self, node: InternalNode) -> Node:
         current: Node = self.root
         parent: Node = Leaf()
         while isinstance(current, Internal) and current is not node:
@@ -600,7 +582,7 @@ class BinarySearchTreeIterative(
 
     def insert(
         self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
-    ) -> Internal[Comparable, Value, AuxiliaryData]:
+    ) -> InternalNode:
         node: Node = self.root
         parent: Node = Leaf()
 
@@ -658,7 +640,7 @@ class BinarySearchTreeIterative(
             ancestry.append(current)
         return ancestry
 
-    def access_ancestry_max(self, node: Internal[Comparable, Value, AuxiliaryData]):
+    def access_ancestry_max(self, node: InternalNode):
         current: Internal = node
         ancestry = self.access_ancestry(node.key)
         assert ancestry is not None
