@@ -122,37 +122,25 @@ class BinarySearchTreeNode(Generic[Comparable, Value, AuxiliaryData], ABC):
 
 @dataclass(slots=True, frozen=True)
 class Leaf(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
-    def __iter__(self) -> Iterator[Comparable]:
-        yield from ()
+    def unsupported(self, *args, **kwargs):
+        raise ValueError(f"Operation not supported on a Leaf")
 
-    def __repr__(self):
-        return "Leaf()"
+    __iter__ = inorder = preorder = postorder = level_order = lambda self: iter(())  # type: ignore
 
-    def __str__(self):
-        return "Leaf()"
+    minimum = maximum = successor = predecessor = extract_min = extract_max = __getitem__ = __setitem__ = __delitem__ = unsupported  # type: ignore
+
+    def access(self, key: Comparable) -> Node:
+        return self
+
+    def delete(self, key: Comparable) -> Node:
+        return self
+
+    __repr__ = __str__ = pretty_str = lambda self: "Leaf()"  # type: ignore
 
     def insert(
         self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
     ) -> InternalNode:
         return Internal(key, value, aux=aux)
-
-    def access(self, key: Comparable) -> "Node":
-        return self
-
-    def delete(self, key: Comparable) -> "Node":
-        return self
-
-    def inorder(self) -> Iterator[InternalNode]:
-        yield from ()
-
-    def preorder(self) -> Iterator[InternalNode]:
-        yield from ()
-
-    def postorder(self) -> Iterator[InternalNode]:
-        yield from ()
-
-    def level_order(self) -> Iterator[InternalNode]:
-        yield from ()
 
     def __len__(self) -> int:
         return 0
@@ -160,41 +148,11 @@ class Leaf(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
     def __contains__(self, key: Comparable) -> bool:
         return False
 
-    def __getitem__(self, key: Comparable) -> Value:
-        raise ValueError(f"Leaf nodes hold no keys")
-
-    def __setitem__(self, key: Comparable, value: Value) -> None:
-        raise ValueError(f"Leaf nodes hold no keys")
-
-    def __delitem__(self, key: Comparable) -> None:
-        raise ValueError(f"Leaf nodes hold no keys")
-
-    def minimum(self) -> InternalNode:
-        raise ValueError("Empty tree has no minimum")
-
-    def maximum(self) -> InternalNode:
-        raise ValueError("Empty tree has no maximum")
-
-    def successor(self, key: Comparable) -> InternalNode:
-        raise ValueError("Empty tree has no successor")
-
-    def predecessor(self, key: Comparable) -> InternalNode:
-        raise ValueError("Empty tree has no predecessor")
-
     def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
         yield f"{indent}{prefix}----Leaf\n"
 
     def check_invariants(self, lower_limit: Comparable, upper_limit: Comparable):
         return True
-
-    def pretty_str(self):
-        return "Leaf"
-
-    def extract_min(self) -> tuple[KeyValue, "Node"]:
-        raise ValueError("Empty tree has no minimum")
-
-    def extract_max(self) -> tuple[KeyValue, "Node"]:
-        raise ValueError("Empty tree has no maximum")
 
 
 @dataclass(slots=True)
