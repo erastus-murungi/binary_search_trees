@@ -87,56 +87,16 @@ def re_balance(node: Internal) -> Optional[Internal]:
 
 
 class AVLTreeIterative(BinarySearchTreeIterative[Comparable, Value, AVLAuxiliaryData]):
-    """
-    Little History:
-        AVL trees, developed in 1962, were the first class of balanced binary search
-        trees to be invented. They’re named after their inventors Адельсо́н-Ве́льский
-        and Ла́ндис (Adelson-Velsky and Landis).
-        A binary tree is an AVL tree if either:
-            (1) the tree is empty or
-            (2) the left and right children of the root are AVL trees and the heights of the left and right
-                subtrees differ by at most one.
-        AVL Trees are balanced because of the AVL condition that:
-            For every node in the tree, the heights of its left subtree and right subtree
-             differ by at most 1.
-        Is this condition strong enough to guarantee O( log n) per operation?
-        let N(h) denote the minimum number of nodes in an AVL Tree of height h, where h is the length of
-        the longest root to leaf path.
-        Clearly, N(0) = 1.
-            N(h) = N(h-1) + N(h-2) + 1
-        To make the recurrence well-defined, we add the case N(1) = 2
-        This recurrence looks very similar to the Fibonacci recurrence.
-        (by a little approximation and a little constructive induction). It can be proved that:
-                N(h) ≈ (φ)^5, where φ is the golden ratio ≈ 1.618
-                Solving for h results in h = O(log n)
-
-        The class supports standard BST Queries and Updates:
-        UPDATES:
-            Insert(x, k)  : insert value x with key
-            Delete(k)     : delete value with key k
-
-        Queries:
-            Search(k)     : return true if item with key k is in the dictionary
-            Min()         : return the item with the minimum key
-            Max()         : return the item with the maxium key
-            Successor(n)  : return the node which is the successor of node n
-            Predecessor(n): return the node which is the successor of node n
-
-        The Class can also be used as a priority queue:
-            Extract-min  : return a (key, value) pair where key is the min among all other keys in the Tree
-            Extraxt-max  : return a (key, value) pair where key is the max among all other keys in the Tree
-
-        Other methods:
-            In-order-traversal: returns the element in sorted order
-    """
-
     def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
         raise NotImplementedError()
 
     def check_invariants(self, lower_limit: Comparable, upper_limit: Comparable):
         super().check_invariants(lower_limit, upper_limit)
         for node in self.inorder():
-            assert abs(balance_factor(node)) in (-1, 0, 1)
+            if abs(balance_factor(node)) not in (-1, 0, 1):
+                raise RuntimeError(
+                    f"Invalid AVL Tree, balance factor = {balance_factor(node)} not in [-1, 0, 1]"
+                )
 
     def insert(
         self, key: Comparable, value: Value, aux: Optional[AVLAuxiliaryData] = None
@@ -147,7 +107,6 @@ class AVLTreeIterative(BinarySearchTreeIterative[Comparable, Value, AVLAuxiliary
             return node
         else:
             ancestry = self.insert_ancestry(key, value, AVLAuxiliaryData(height=0))
-            # fixup the height and re-balance the tree
             node = ancestry[-1]
             self.avl_fixup(ancestry)
             return node
@@ -170,6 +129,18 @@ class AVLTreeIterative(BinarySearchTreeIterative[Comparable, Value, AVLAuxiliary
         if ancestry := self.access_ancestry(target_key):
             super().delete(target_key)
             self.avl_fixup(ancestry)
+
+    def extract_min(self) -> tuple[KeyValue, Node]:
+        min_node = self.minimum()
+        keyval = (min_node.key, min_node.value)
+        self.delete(min_node.key)
+        return keyval, self.root
+
+    def extract_max(self) -> tuple[KeyValue, Node]:
+        max_node = self.maximum()
+        keyval = (max_node.key, max_node.value)
+        self.delete(max_node.key)
+        return keyval, self.root
 
 
 if __name__ == "__main__":

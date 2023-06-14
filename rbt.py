@@ -1,36 +1,81 @@
-#!/usr/bin/env python
+from __future__ import annotations
 
-from random import randint
+from dataclasses import field, dataclass
+from typing import Union, Optional, Iterator
 
-from bst import BST, BinarySearchTreeIterative, Comparable, Node, Value
+from typeguard import typechecked
+from enum import IntEnum
 
-BLACK = 1
-RED = 0
-LEFT = 0
-RIGHT = 1
+from bst import (
+    BinarySearchTreeIterative,
+    Comparable,
+    Internal,
+    Leaf,
+    Value,
+    KeyValue,
+)
 
 
-def color(node):
+class Color(IntEnum):
+    RED = 0
+    BLACK = 1
+
+
+@dataclass(slots=True)
+class RBTAuxiliaryData:
+    """Auxiliary data for a node in a red-black tree"""
+
+    color: Color = Color.BLACK
+    parent: InternalNode = field(default_factory=Leaf, repr=False, compare=False)
+
+
+InternalNode = Internal[Comparable, Value, RBTAuxiliaryData]
+Node = Union[InternalNode, Leaf]
+
+
+def get_color(node: Node) -> Color:
     """Returns the color of a node"""
-    return BLACK if node is None else node.color
+    return node.aux.color if isinstance(node, Internal) else Color.BLACK
 
 
-def parent(node):
+leaf_parents = {}
+
+
+def get_parent(node: Node) -> Node:
     """Returns the parent of a node"""
-    return None if node is None else node.parent
+    return (
+        node.aux.parent if isinstance(node, Internal) else leaf_parents.get(node, node)
+    )
 
 
-class InternalRBTNode(BST[Comparable, Value]):
-    """A template for a node in a red-black tree
-    Every node has a 'bit' for color and other field's found in regular BSTs"""
-
-    color: int = BLACK
-    left: "InternalRBTNode[Comparable, Value]" = None
-    right: "InternalRBTNode[Comparable, Value]" = None
-    parent: "InternalRBTNode[Comparable, Value]" = None
+def set_parent(node: InternalNode, parent: InternalNode):
+    """Sets the parent of a node"""
+    if isinstance(node, Internal):
+        node.aux.parent = parent
+    else:
+        leaf_parents[node] = parent
 
 
-class RedBlackTree(BinarySearchTreeIterative[Comparable, Value, InternalRBTNode]):
+@typechecked
+def set_color(node: Node, color: Color):
+    """Sets the color of a node"""
+    if isinstance(node, Internal):
+        node.aux.color = color
+    else:
+        assert color == Color.BLACK
+
+
+def black_height(node: Node) -> int:
+    if isinstance(node, Internal):
+        if get_color(node) == Color.BLACK:
+            return 1 + black_height(node.right)
+        else:
+            return black_height(node.right)
+    else:
+        return 0
+
+
+class RedBlackTree(BinarySearchTreeIterative[Comparable, Value, RBTAuxiliaryData]):
     """
     A Red-Black tree is a height-balanced binary search tree which supports queries and updates in O(log n) time.
     Red-Black Trees provide faster insertion and removal operations than AVL trees because they need fewer rotations.
@@ -46,207 +91,159 @@ class RedBlackTree(BinarySearchTreeIterative[Comparable, Value, InternalRBTNode]
         See CLRS pg. 309 for the proof of this lemma.
     """
 
-    @property
-    def node_class(self):
-        return InternalRBTNode
+    def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
+        raise NotImplementedError()
 
-    def insert(self, key: Comparable, value: Value):
-        ancestry = self.insert_ancestry(key, value)
-        self.__insert_fix(ancestry[-1])
+    def parent(self, node: InternalNode) -> Node:
+        return node.aux.parent
 
-    def delete(self, target_key):
-
-        # find the key first
-        z = self.access(target_key)
-        if z is None:
-            raise ValueError("key not in tree")
-
-        # y identifies the node to be deleted
-        # We maintain node y as the node either removed from the tree or moved within the tree
-        y = z
-        y_original_color = y.color
-        if z.child[LEFT] == self.null:
-            # if z.right is also null, then z => nil, the null node will also have a parent pointer
-            x = z.child[RIGHT]
-            # replace the node with its right child
-            self.__replace(z, z.child[RIGHT])
-        elif z.child[RIGHT] is self.null:
-            x = z.child[LEFT]
-            self.__replace(z, z.child[LEFT])
+    def insert(
+        self, key: Comparable, value: Value, aux: Optional[RBTAuxiliaryData] = None
+    ) -> InternalNode:
+        node = self.access(key)
+        if isinstance(node, Internal):
+            node.value = value
         else:
-            y = self.access_min(z.child[RIGHT])  # find z's successor
-            y_original_color = y.color
-            x = y.child[
-                RIGHT
-            ]  # we will start fixing violations from the successor's right child
-            # z might be the minimum's parent
-            if y.parent == z:
-                # x might be null node, in which case we need to give it a parent pointer
-                x.parent = y
-            else:
-                # transplant y with its right child, which might be a null
-                self.__replace(y, y.child[RIGHT])
-                y.child[RIGHT] = z.child[RIGHT]
-                # if y does have a right subtree we need the subtree to point to the new y
-                y.child[RIGHT].parent = y
-            self.__replace(z, y)
-            y.child[LEFT] = z.child[LEFT]
-            y.child[LEFT].parent = y
-            y.color = z.color
-        if y_original_color == BLACK:
-            # the x might be a null pointer
-            self.__delete_fix(x)
-        self.size -= 1
+            ancestry = self.insert_ancestry(key, value, RBTAuxiliaryData())
+            assert ancestry and len(ancestry) > 0
+            node = ancestry.pop()
+            if ancestry:
+                set_parent(node, ancestry[-1])
+            set_color(node, Color.RED)
+            self.rbt_insert_fixup(node)
+        return node
 
-    def in_order(self):
-        """In-order traversal generator of the BST"""
+    def check_invariants(self, lower_limit: Comparable, upper_limit: Comparable):
+        super().check_invariants(lower_limit, upper_limit)
+        self.check_black_height_invariant()
+        self.check_property_4()
 
-        def helper(node):
-            # visit left node's subtree first if that subtree is not an external node
-            if node.child[LEFT] != self.null:
-                yield from helper(node.child[LEFT])
-            # then visit node
-            yield node
-            # lastly visit the right subtree
-            if node.child[RIGHT] != self.null:
-                yield from helper(node.child[RIGHT])
-
-        if self.root is not self.null:
-            yield from helper(self.root)
-        else:
-            yield None
-
-    def iteritems(self):
-        def helper(node):
-            # visit left node's subtree first if that subtree is not an external node
-            if node.child[LEFT] != self.null:
-                yield from helper(node.child[LEFT])
-            # then visit node
-            yield node.key, node.item
-            # lastly visit the right subtree
-            if node.child[RIGHT] != self.null:
-                yield from helper(node.child[RIGHT])
-
-        if self.root is not self.null:
-            yield from helper(self.root)
-        else:
-            yield None
-
-    def clear(self):
-        """delete all the elements in the tree,
-        this time without maintaining red-black tree properties"""
-
-        self.__clear_helper(self.root.child[LEFT])
-        self.__clear_helper(self.root.child[RIGHT])
-        self.null.parent = self.null
-        self.root = self.null
-
-    def check_black_height(self):
-        if self.root is not self.null:
-            bh = self.__check_black_height_helper(self.root)
-            print("Tree black-height =", bh)
-            return bh
-        else:
-            print("Empty tree")
-            return 0
-
-    def check_weak_search_property(self):
-        """Recursively checks's whether x.left.key <= x.key >= x.right.key
-        I have no formal reason to call it 'weak' search other than that this method does not
-        check whether 'all_keys_in_left_subtree' <= x.key >= 'all_keys_in_right_subtree"""
-        return self.__check_weak_search_property_helper(self.root)
-
-    @staticmethod
-    def __insert_first_case(a, y):
-        """a is z's parent, y is z's uncle"""
-        a.color = BLACK
-        y.color = BLACK
-        a.parent.color = RED
-
-    def __insert_third_case(self, parent, grandparent, direction):
-        """Case three fixup"""
-        self.__rotate(grandparent, direction)
-        parent.color = BLACK
-        grandparent.color = RED
-
-    def __insert_fix(self, ancestry: list[InternalRBTNode]):
-        """Fixes violations of the red-black tree properties after insertion"""
-        z = ancestry.pop()
-        z_parent = ancestry[-1]
-        while z_parent.color == RED:
+    def rbt_insert_fixup(self, z):
+        while get_color(get_parent(z)) == Color.RED:
             # let a = x's parent
-            a = z_parent
+            z_p = get_parent(z)
             # if z's parent is a left child, the uncle will be z's grandparent right child
-            if a.parent is self.null:
+            z_pp = get_parent(z_p)
+            if isinstance(z_pp, Leaf):
                 break
-            if a.parent.child[LEFT] == a:
-                y = a.parent.child[RIGHT]
-                # if z's uncle is RED (and z's parent is RED), then we are in case 1
-                if y.color == RED:
-                    self.__insert_first_case(a, y)
-                    z = z.parent.parent
-                # z's uncle is BLACK (z's parent is RED), we check for case 2 first
+            if z_p == z_pp.left:
+                y = z_pp.right
+                # if z's uncle is Color.RED (and z's parent is Color.RED), then we are in case 1
+                if get_color(y) == Color.RED:
+                    set_color(z_p, Color.BLACK)
+                    set_color(y, Color.BLACK)
+                    set_color(z_pp, Color.RED)
+                    z = get_parent(get_parent(z))
+                # z's uncle is Color.BLACK (z's parent is Color.RED), we check for case 2 first
                 else:
                     # if z is a right child (and remember z's parent is a left child), we left-rotate z.p
-                    if a.child[RIGHT] == z:
-                        z = a
-                        self.__rotate(a, LEFT)
-                        # z with be back to a child node after the rotation
-                    # now we are in case 3
-                    self.__insert_third_case(z.parent, z.parent.parent, RIGHT)
+                    if z_p.right == z:
+                        z = z_p
+                        self.left_rotate_with_parent(z)
+                    set_color(get_parent(z), Color.BLACK)
+                    set_color(get_parent(get_parent(z)), Color.RED)
+                    self.right_rotate_with_parent(get_parent(get_parent(z)))
 
             else:
                 # z's parent is a right child, z's uncle is the left child of z's grandparent
-                y = a.parent.child[LEFT]
+                y = z_pp.left
                 # check for case 1
-                if y.color == RED:
-                    self.__insert_first_case(a, y)
-                    z = z.parent.parent
-
+                if get_color(y) == Color.RED:
+                    set_color(z_p, Color.BLACK)
+                    set_color(y, Color.BLACK)
+                    set_color(z_pp, Color.RED)
+                    z = get_parent(get_parent(z))
                 else:
                     # z's parent is already a right child, so check if z is a left child and rotate
-                    if a.child[LEFT] == z:
-                        z = a
-                        self.__rotate(z, RIGHT)
-                    # now case 3
-                    self.__insert_third_case(z.parent, z.parent.parent, LEFT)
+                    if z_p.left == z:
+                        z = z_p
+                        self.right_rotate_with_parent(z)
+                    set_color(get_parent(z), Color.BLACK)
+                    set_color(get_parent(get_parent(z)), Color.RED)
+                    self.left_rotate_with_parent(get_parent(get_parent(z)))
 
         # make the root black
-        self.root.color = BLACK
+        set_color(self.root, Color.BLACK)
 
-    def __replace(self, u, v):
+    def delete(self, target_key: Comparable):
+        z = self.access(target_key)
+        if isinstance(z, Internal):
+            # y identifies the node to be deleted
+            # We maintain node y as the node either removed from the tree or moved within the tree
+            y = z
+            y_original_color = get_color(y)
+            if isinstance(z.left, Leaf):
+                # if z.right is also null, then z => nil, the null node will also have a parent pointer
+                x = z.right
+                # replace the node with its right child
+                self.transplant(z, z.right)
+            elif isinstance(z.right, Leaf):
+                x = z.left
+                self.transplant(z, z.left)
+            else:
+                y = z.right.minimum()  # find z's successor
+                y_original_color = get_color(y)
+                x = y.right
+                if y != z.right:
+                    self.transplant(y, y.right)
+                    y.right = z.right
+                    set_parent(y.right, y)
+                else:
+                    set_parent(x, y)
+                self.transplant(z, y)
+                y.left = z.left
+                set_parent(y.left, y)
+                set_color(y, get_color(z))
+            if y_original_color == Color.BLACK:
+                # the x might be a null pointer
+                self.delete_fixup(x)
+            self.size -= 1
+        else:
+            raise ValueError(f"key={target_key} not in tree")
+
+    def transplant(self, u: Node, v: Node):
         # u is the initial node and v is the node to transplant u
-        if u.parent is self.null:
+        if isinstance(get_parent(u), Internal):
             #                g        g
             #                |        |
             #                u   =>   v
             #               / \      / \
             #             u.a  u.ß  v.a v.ß
-            self.root = v
+            if u == get_parent(u).left:
+                get_parent(u).left = v
+            else:
+                get_parent(u).right = v
         else:
-            u.parent.child[u is not u.parent.child[LEFT]] = v
-        v.parent = u.parent
+            self.root = v
 
-    def __delete_fix(self, x):
-        while x != self.root and x.color == BLACK:
-            if x == x.parent.child[LEFT]:
-                w = x.parent.child[RIGHT]  # w is the sibling of x
+        set_parent(v, get_parent(u))
+
+    def delete_fixup(self, x: Node):
+        while x != self.root and get_color(x) == Color.BLACK:
+            x_p = get_parent(x)
+            if isinstance(x_p, Leaf):
+                break
+            if x == x_p.left:
+                w = x_p.right  # w is the sibling of x
                 # case 1: w is red
                 # Since w must have black children, we can switch the
                 # colors of w and x: p and then perform a left-rotation on x: p without violating any
                 # of the red-black properties. The new sibling of x, which is one of w’s children
                 # prior to the rotation, is now black
-                if w.color == RED:
-                    w.color = BLACK
-                    x.parent.color = RED
-                    self.__rotate(x.parent, LEFT)
-                    w = x.parent.child[RIGHT]
+                if get_color(w) == Color.RED:
+                    set_color(w, Color.BLACK)
+                    set_color(x_p, Color.RED)
+                    self.left_rotate_with_parent(get_parent(x))
+                    w = get_parent(x).right
 
                 # case 2: x’s sibling w is black, and both of w’s children are black
                 # the color of w is black, so we take of one black from both and add it to x.parent
-                if w.child[LEFT].color == BLACK and w.child[RIGHT].color == BLACK:
-                    w.color = RED
-                    x = x.parent
+                if (
+                    get_color(w.left) == Color.BLACK
+                    and get_color(w.right) == Color.BLACK
+                ):
+                    set_color(w, Color.RED)
+                    x = get_parent(x)
                     # if x was black, then the loop terminates, and x is colored black
                 else:
                     # case 3: x’s sibling w is black, w’s left child is red, and w’s right child is black
@@ -254,348 +251,149 @@ class RedBlackTree(BinarySearchTreeIterative[Comparable, Value, InternalRBTNode]
                     # child w: left and then perform a right rotation on w without violating any of the
                     # red-black properties.
 
-                    if w.child[RIGHT].color == BLACK:
-                        w.child[LEFT].color = BLACK
-                        w.color = RED
-                        self.__rotate(w, RIGHT)
-                        w = x.parent.child[RIGHT]
+                    if get_color(w.right) == Color.BLACK:
+                        set_color(w.left, Color.BLACK)
+                        set_color(w, Color.RED)
+                        self.right_rotate_with_parent(w)
+                        w = get_parent(x).right
 
                     # case 4: x’s sibling w is black, and w’s right child is red
                     # By making some color changes and performing a left rotation
                     # on x: p, we can remove the extra black on x, making it singly black, without
                     # violating any of the red-black properties. Setting x to be the root causes the while
                     # loop to terminate when it tests the loop condition
-                    w.color = x.parent.color
-                    x.parent.color = BLACK
-                    w.child[RIGHT].color = BLACK
-                    self.__rotate(x.parent, LEFT)
+                    set_color(w, get_color(x_p))
+                    set_color(get_parent(x), Color.BLACK)
+                    set_color(w.right, Color.BLACK)
+                    self.left_rotate_with_parent(get_parent(x))
                     x = self.root
             else:
                 # symmetric to the cases 1 to case 4
-                w = x.parent.child[LEFT]
-                if w.color == RED:
-                    w.color = BLACK
-                    x.parent.color = RED
-                    self.__rotate(x.parent, RIGHT)
-                    w = x.parent.child[LEFT]
-                if w.child[LEFT].color == BLACK and w.child[RIGHT].color == BLACK:
-                    w.color = RED
-                    x = x.parent
+                w = x_p.left
+                if get_color(w) == Color.RED:
+                    set_color(w, Color.BLACK)
+                    set_color(x_p, Color.RED)
+                    self.right_rotate_with_parent(x_p)
+                    assert get_parent(x) == x_p
+                    w = x_p.left
+                if (
+                    get_color(w.left) == Color.BLACK
+                    and get_color(w.right) == Color.BLACK
+                ):
+                    set_color(w, Color.RED)
+                    x = get_parent(x)
                 else:
-                    if w.child[LEFT].color == BLACK:
-                        w.child[RIGHT].color = BLACK
-                        w.color = RED
-                        self.__rotate(w, LEFT)
-                        w = x.parent.child[LEFT]
-                    w.color = x.parent.color
-                    x.parent.color = BLACK
-                    w.child[LEFT].color = BLACK
-                    self.__rotate(x.parent, RIGHT)
+                    if get_color(w.left) == Color.BLACK:
+                        set_color(w.right, Color.BLACK)
+                        set_color(w, Color.RED)
+                        self.left_rotate_with_parent(w)
+                        w = get_parent(x).left
+                    assert get_parent(x) == x_p
+                    set_color(w, get_color(x_p))
+                    set_color(x_p, Color.BLACK)
+                    set_color(w.left, Color.BLACK)
+                    self.right_rotate_with_parent(x_p)
                     x = self.root
-        x.color = BLACK
+        set_color(x, Color.BLACK)
 
-    def __check_weak_search_property_helper(self, node):
-        """Helper method"""
-        if node is self.null:
-            return True
-        else:
-            if node.child[LEFT] is not self.null:
-                assert node.key >= node.child[LEFT].key, repr(node)
-            if node.child[RIGHT] is not self.null:
-                assert node.key <= node.child[RIGHT].key, repr(node)
+    def check_property_4(self):
+        for node in self.inorder():
+            if get_color(node) == Color.RED:
+                if (
+                    get_color(node.left) == Color.RED
+                    or get_color(node.right) == Color.RED
+                ):
+                    raise RuntimeError(f"Property 4 violated at {node} {values}")
 
-            self.__check_weak_search_property_helper(node.child[LEFT])
-            self.__check_weak_search_property_helper(node.child[RIGHT])
-        return True
-
-    def __check_black_height_helper(self, node):
+    def check_black_height_invariant(self):
         """Checks whether the black-height is the same for all paths starting at the root"""
-        if node is self.null:  # we are at an external node
-            return 0
-        else:
-            bh_right = self.__check_black_height_helper(node.child[RIGHT])
-            bh_left = self.__check_black_height_helper(node.child[LEFT])
-            assert bh_left == bh_right, repr(node)
-            if node.color == BLACK:
-                return 1 + bh_right
-            else:
-                return bh_right
 
-    def __print_helper(self, node, indent, last):
-        """Simple recursive tree printer"""
-        if node is not self.null:
-            print(indent, end="")
-            if last:
-                print("R----", end="")
-                indent += "     "
-            else:
-                print("L----", end="")
-                indent += "|    "
-            color_to_string = "BLACK" if node.color == 1 else "RED"
-            print("(" + str(node.key), node.item, color_to_string + ")")
-            self.__print_helper(node.child[LEFT], indent, False)
-            self.__print_helper(node.child[RIGHT], indent, True)
-
-    def __clear_helper(self, node):
-        if node.child[LEFT] is self.null and node.child[RIGHT] is self.null:
-            del node
-        else:
-            if node.child[LEFT] is not self.null:
-                self.__clear_helper(node.child[LEFT])
-            if node.child[RIGHT] is not self.null:
-                self.__clear_helper(node.child[RIGHT])
-            del node
-
-    def max_height(self):
-        """Calculates and returns the max height of the tree
-        Since this tree is not augmented, this runs in linear time"""
-
-        return self.__max_height_helper(self.root)
-
-    def __max_height_helper(self, node):
-        if node is self.null:
-            return -1
-        else:
-            return (
-                max(
-                    self.__max_height_helper(node.child[LEFT]),
-                    self.__max_height_helper(node.child[RIGHT]),
-                )
-                + 1
-            )
-
-    def __len__(self):
-        return self.size
-
-    def __str__(self):
-        if self.root is self.null:
-            return repr(self.root)
-        else:
-            self.__print_helper(self.root, "", True)
-            return ""
-
-    def __getitem__(self, key):
-        assert (type(key)) in [int, float]
-        return self.access(key)
-
-    def __setitem__(self, key, value):
-        assert (type(key)) in [int, float]
-        self.insert(key, value)
-
-    def __repr__(self):
-        return repr(self.root)
-
-    def height(self):
-        """Get the height of the tree"""
-
-        def helper(node):
-            if node is self.null:
-                return -1
-            else:
-                return max(helper(node.child[LEFT]), helper(node.child[RIGHT])) + 1
-
-        return helper(self.root)
-
-    def s_value(self):
-        def helper(node):
-            if node is self.null:
-                return -1
-            else:
-                return min(helper(node.child[LEFT]), helper(node.child[RIGHT])) + 1
-
-        return helper(self.root)
-
-    def recalc_size(self):
-        def helper(node):
-            if node is self.null:
+        def recurse(node: Node):
+            """Checks whether the black-height is the same for all paths starting at the root"""
+            if isinstance(node, Leaf):
                 return 0
             else:
-                return helper(node.child[LEFT]) + helper(node.child[RIGHT]) + 1
-
-        return helper(self.root)
-
-    @property
-    def black_height(self):
-        if not (hasattr(self.root, "bh")):
-            raise ValueError("Augment with black_height first")
-        return self.root.bh
-
-    def augment_with_black_height(self):
-        def helper(node):
-            if node is not self.null:
-                helper(node.child[RIGHT])
-                helper(node.child[LEFT])
-
-                if node.color == BLACK:
-                    node.bh = 1 + node.child[RIGHT].bh
+                assert isinstance(node, Internal)
+                if (bh_right := recurse(node.right)) != recurse(node.left):
+                    raise RuntimeError(f"Black height invariant violated at {node}")
+                if get_color(node) == Color.BLACK:
+                    return 1 + bh_right
                 else:
-                    node.bh = node.child[LEFT].bh
+                    return bh_right
 
-        self.null.bh = 0
-        helper(self.root)
+        recurse(self.root)
 
-    def join(self, other, direction=None):
-        """Assumes that other is the smaller tree."""
+    def left_rotate_with_parent(self, node: InternalNode):
+        parent = get_parent(node)
+        right_child = node.right
 
-        def join_rb(t1, t2, direction) -> RedBlackTree:
-            # when we are traversing the left spine of a tree
-            # assume that all the keys in t2 are less than those in t1
-            # assume that the black_height(t2) <= black_height(t1)
-            # assumes that the trees have been augmented with black heights
-            assert t1.black_height >= t2.black_height
-            if t1.root is t1.null:
-                return t2
-            if t2.root is t2.null:
-                return t1
-            expected_len = len(t1) + len(t2)
+        node.right = right_child.left
+        if isinstance(right_child.left, Internal):
+            set_parent(right_child.left, node)
 
-            if direction is None:
-                direction = not (t1.minimum[0] > t2.maximum[0])
-
-            if direction == LEFT:
-                key, item = t2.maximum
-            else:
-                key, item = t2.minimum
-
-            t2.delete(key)
-            t2.augment_with_black_height()
-
-            node = t1.root
-            phi = node.parent
-            while node is not self.null and not (
-                node.bh == t2.black_height and node.color == BLACK
-            ):
-                phi = node
-                node = node.child[direction]
-
-            if node.bh != t2.black_height:
-                print(t1, node, node.bh, t2.black_height)
-                raise ValueError
-
-            v = RBNode(key, item, phi, RED)
-            if phi is t1.null:
-                t1.root = v
-            v.child = [t2.root, node]
-            node.parent = t2.root.parent = v
-            if phi not in [None, t1.null]:
-                phi.child[direction] = v
-                t1.__insert_fix(v)
-            t1.root.parent = t1.null
-            t1.size = expected_len
-            return t1
-
-        self.augment_with_black_height()
-        other.augment_with_black_height()
-
-        if self.black_height >= other.black_height:
-            return join_rb(self, other, direction)
+        set_parent(right_child, parent)
+        if isinstance(parent, Leaf):
+            self.root = right_child
+        elif node is parent.left:
+            parent.left = right_child
         else:
-            return join_rb(other, self, direction)
+            parent.right = right_child
 
-    @property
-    def num_nodes(self):
-        return self.recalc_size()
+        right_child.left = node
+        set_parent(node, right_child)
 
-    def split(self, x):
-        """This is a very expensive method as can be seen by the required calls to the methods:
-                augment_with_black_height()
-                recalc_size()
-        This method is buggy
-        """
-        smaller, larger = RedBlackTree(), RedBlackTree()
+    def right_rotate_with_parent(self, node: InternalNode):
+        parent = get_parent(node)
+        left_child = node.left
 
-        node: RBNode = self.root
+        node.left = left_child.right
+        if isinstance(left_child.right, Internal):
+            set_parent(left_child.right, node)
 
-        while node is not self.null and not node.is_leaf:
-            if node.key < x:
-                self.null.parent = None  # assert
-                left = RedBlackTree()
-                left.root = node.child[LEFT]
-                left.root.parent, left.size = left.null, left.recalc_size()
-                smaller = smaller.join(left)
-                self.null.parent = None  # assert
-                smaller.insert(node.key, node.item)
-                node = node.child[RIGHT]
-            else:  # node.key >= x
-                self.null.parent = None  # assert
-                right = RedBlackTree()
-                right.root = node.child[RIGHT]
-                right.root.parent, right.size = right.null, right.recalc_size()
-                larger = larger.join(right)
-                self.null.parent = None  # assert
-                larger.insert(node.key, node.item)
-                node = node.child[LEFT]
+        set_parent(left_child, parent)
+        if isinstance(parent, Leaf):
+            self.root = left_child
+        elif node is parent.left:
+            parent.left = left_child
+        else:
+            parent.right = left_child
 
-        if node is not self.null:
-            if node.key < x:
-                smaller.insert(node.key, node.item)
-            else:
-                larger.insert(node.key, node.item)
+        left_child.right = node
+        set_parent(node, left_child)
 
-        return smaller, larger
+    def extract_min(self) -> tuple[KeyValue, Node]:
+        min_node = self.minimum()
+        keyval = (min_node.key, min_node.value)
+        self.delete(min_node.key)
+        return keyval, self.root
+
+    def extract_max(self) -> tuple[KeyValue, Node]:
+        max_node = self.maximum()
+        keyval = (max_node.key, max_node.value)
+        self.delete(max_node.key)
+        return keyval, self.root
 
 
 if __name__ == "__main__":
-    from datetime import datetime
-
-    from pympler import asizeof
 
     # #
     # # # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88, 88]
     # #
-    num_nodes = 3
-    while True:
-        values = [(randint(0, 100), None) for _ in range(num_nodes)]
-        t1 = datetime.now()
+    from random import randint
+
+    num_nodes = 100
+    for _ in range(1000):
+        values = list({randint(0, 100) for _ in range(num_nodes)})
         rb = RedBlackTree()
-        for key, val in values:
-            rb.insert(key, val)
-        # print(f"Red-Black Tree tree used {asizeof.asizeof(rb) / (1 << 20):.2f} MB of memory and ran in"
-        #       f" {(datetime.now() - t1).total_seconds()} seconds for {num_nodes} insertions.")
-        # print(rb.height())
+        for k in values:
+            rb.insert(k, None)
+            rb.check_invariants(-1, 100000)
+            assert k in rb
 
-        values1 = [(randint(101, 200), None) for _ in range(2)]
-        rb1 = RedBlackTree()
-        for key, val in values1:
-            rb1[key] = val
+        for k in values:
+            rb.delete(k)
+            rb.check_invariants(-1, 100000)
+            assert k not in rb, values
 
-        t2 = datetime.now()
-        rb2 = rb1.join(rb)
-        print("Joined two trees in ", (datetime.now() - t2).total_seconds(), "seconds.")
-        # rb2.check_weak_search_property()
-        # print(rb2.recalc_size())
-        # print(len(rb2))
-        rb2.check_black_height()
-        rb2.check_weak_search_property()
-        rb0, rb1 = rb2.split(100)
-        rb0.check_black_height()
-        rb0.check_weak_search_property()
-        rb1.check_black_height()
-        rb1.check_weak_search_property()
-
-    # print(len(list(rb.iteritems())))
-    # print(len(rb))
-
-    # for val in values:
-    #     rb.delete(val)
-
-    # print(rb)
-    # values1 = [(randint(0, 100), None) for _ in range(num_nodes)]
-    # values2 = [(randint(0, 100), None) for _ in range(num_nodes)]
-    # print(values1, values2)
-    # rb1, rb2 = RedBlackTree(), RedBlackTree()
-    #
-    # for key, val in values1:
-    #     rb1.insert(key, val)
-    # for key, val in values2:
-    #     rb2.insert(key, val)
-    # rb1.check_black_height()
-    # rb2.check_black_height()
-    #
-    # rb3 = rb1.join(rb2)
-    # rb3.check_black_height()
-    # rb3.check_weak_search_property()
-    #
-    # rb1_, rb2_ = rb3.split(100)
-    # rb1_.check_weak_search_property()
-    # rb2_.check_weak_search_property()
+        assert not rb
+        assert isinstance(rb.root, Leaf)

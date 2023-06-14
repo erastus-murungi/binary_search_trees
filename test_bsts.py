@@ -6,10 +6,12 @@ import pytest
 
 from avl import AVLTreeIterative
 from bst import BinarySearchTree, BinarySearchTreeIterative, Leaf
+from rbt import RedBlackTree
 
 
 @pytest.mark.parametrize(
-    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+    "bst_class",
+    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree],
 )
 def test_insertion(bst_class: Type[BinarySearchTree]):
     for _ in range(50):
@@ -31,7 +33,8 @@ def test_insertion(bst_class: Type[BinarySearchTree]):
 
 
 @pytest.mark.parametrize(
-    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+    "bst_class",
+    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree],
 )
 def test_sorted(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -44,7 +47,8 @@ def test_sorted(bst_class: Type[BinarySearchTree]):
 
 
 @pytest.mark.parametrize(
-    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+    "bst_class",
+    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree],
 )
 def test_successor(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -62,7 +66,8 @@ def test_successor(bst_class: Type[BinarySearchTree]):
 
 
 @pytest.mark.parametrize(
-    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+    "bst_class",
+    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree],
 )
 def test_predecessor(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -82,7 +87,8 @@ def test_predecessor(bst_class: Type[BinarySearchTree]):
 
 
 @pytest.mark.parametrize(
-    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+    "bst_class",
+    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree],
 )
 def test_minimum(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -99,7 +105,8 @@ def test_minimum(bst_class: Type[BinarySearchTree]):
 
 
 @pytest.mark.parametrize(
-    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+    "bst_class",
+    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree],
 )
 def test_maximum(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -116,7 +123,8 @@ def test_maximum(bst_class: Type[BinarySearchTree]):
 
 
 @pytest.mark.parametrize(
-    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+    "bst_class",
+    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree],
 )
 def test_extract_min(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -129,13 +137,15 @@ def test_extract_min(bst_class: Type[BinarySearchTree]):
         for expected_key in sorted(values):
             (key, _), _ = bst.extract_min()
             assert key == expected_key
+            bst.check_invariants(-maxsize, maxsize)
             assert expected_key not in bst
 
         assert not bst
 
 
 @pytest.mark.parametrize(
-    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+    "bst_class",
+    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree],
 )
 def test_extract_max(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -148,6 +158,7 @@ def test_extract_max(bst_class: Type[BinarySearchTree]):
         for expected_key in sorted(values, reverse=True):
             (key, _), _ = bst.extract_max()
             assert key == expected_key
+            bst.check_invariants(-maxsize, maxsize)
             assert expected_key not in bst
 
         assert not bst
