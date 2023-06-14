@@ -6,8 +6,8 @@ An implementation of various Trees.
 
 Currently added:
  - Unbalanced Binary Search Trees
-  - Recursive
-  - Iterative
+    - Recursive
+    - Iterative
  - Red Black Tree
  - AVL Tree
  - Splay Tree
