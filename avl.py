@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from sys import maxsize
 from typing import Iterator, Optional
 
 from typeguard import typechecked
@@ -14,6 +13,7 @@ class AVLAuxiliaryData:
 
 def height(node: Node) -> int:
     if isinstance(node, Internal):
+        assert isinstance(node.aux, AVLAuxiliaryData)
         return node.aux.height
     return -1
 
@@ -132,14 +132,17 @@ class AVLTreeIterative(BinarySearchTreeIterative[Comparable, Value, AVLAuxiliary
 
     def insert(
         self, key: Comparable, value: Value, aux: Optional[AVLAuxiliaryData] = None
-    ) -> Optional[Node]:
-        ancestry = self.insert_ancestry(key, value, AVLAuxiliaryData(height=0))
-        if ancestry:
+    ) -> Internal[Comparable, Value, AVLAuxiliaryData]:
+        node = self.access(key)
+        if isinstance(node, Internal):
+            node.value = value
+            return node
+        else:
+            ancestry = self.insert_ancestry(key, value, AVLAuxiliaryData(height=0))
             # fixup the height and re-balance the tree
             node = ancestry[-1]
             self.avl_fixup(ancestry)
             return node
-        return None
 
     def avl_fixup(self, ancestry: list[Internal]):
         while ancestry:
@@ -151,7 +154,6 @@ class AVLTreeIterative(BinarySearchTreeIterative[Comparable, Value, AVLAuxiliary
     @typechecked
     def extract_min_iterative(self, node: Internal) -> KeyValue:
         ancestry_min = self.access_ancestry_min(node)
-        self.check_invariants(-float("inf"), float("inf"))
         keyval = super().extract_min_iterative(node)
         self.avl_fixup(ancestry_min)
         return keyval
@@ -163,44 +165,4 @@ class AVLTreeIterative(BinarySearchTreeIterative[Comparable, Value, AVLAuxiliary
 
 
 if __name__ == "__main__":
-    from random import randint
-
-    for _ in range(1000):
-        # values = [
-        #     3,
-        #     52,
-        #     31,
-        #     55,
-        #     93,
-        #     60,
-        #     81,
-        #     93,
-        #     46,
-        #     37,
-        #     47,
-        #     67,
-        #     34,
-        #     95,
-        #     10,
-        #     23,
-        #     90,
-        #     14,
-        #     13,
-        #     88,
-        # ]
-        num_nodes = 12
-        values = list({randint(0, 1000) for _ in range(num_nodes)})
-        # values = [608, 612, 583, 234, 875, 618, 689, 625, 376, 409, 701, 671]
-        # values = [610, 511]
-        avl = AVLTreeIterative()
-        for i, k in enumerate(values):
-            avl.insert(k, None)
-            assert k in avl, values
-            avl.check_invariants(-maxsize, maxsize)
-            assert len(avl) == i + 1, values
-        # print(avl.pretty_str())
-        for i, k in enumerate(values):
-            del avl[k]
-            assert k not in avl, values
-            avl.check_invariants(-maxsize, maxsize)
-            assert len(avl) == len(values) - i - 1, values
+    pass

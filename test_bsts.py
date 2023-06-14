@@ -14,7 +14,7 @@ from bst import BinarySearchTree, BinarySearchTreeIterative, Leaf
 def test_insertion(bst_class: Type[BinarySearchTree]):
     for _ in range(50):
         values = frozenset([randint(-10000, 10000) for _ in range(100)])
-        bst = bst_class[int, None]()
+        bst = bst_class()
         for val in values:
             bst.insert(val, None)
             assert val in bst
@@ -35,7 +35,7 @@ def test_insertion(bst_class: Type[BinarySearchTree]):
 )
 def test_sorted(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
-        bst = bst_class[int, None]()
+        bst = bst_class()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
         for value in values:
             bst.insert(value, None)
@@ -48,7 +48,7 @@ def test_sorted(bst_class: Type[BinarySearchTree]):
 )
 def test_successor(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
-        bst = bst_class[int, None]()
+        bst = bst_class()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
         for value in values:
             bst.insert(value, None)
@@ -66,7 +66,7 @@ def test_successor(bst_class: Type[BinarySearchTree]):
 )
 def test_predecessor(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
-        bst = bst_class[int, None]()
+        bst = bst_class()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
         for value in values:
             bst.insert(value, None)
@@ -86,14 +86,14 @@ def test_predecessor(bst_class: Type[BinarySearchTree]):
 )
 def test_minimum(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
-        bst = bst_class[int, None]()
+        bst = bst_class()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
         for value in values:
             bst.insert(value, None)
 
         assert bst.minimum().key == min(values)
 
-    bst_empty = bst_class[int, None]()
+    bst_empty = bst_class()
     with pytest.raises(ValueError):
         _ = bst_empty.minimum()
 
@@ -103,14 +103,14 @@ def test_minimum(bst_class: Type[BinarySearchTree]):
 )
 def test_maximum(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
-        bst = bst_class[int, None]()
+        bst = bst_class()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
         for value in values:
             bst.insert(value, None)
 
         assert bst.maximum().key == max(values)
 
-    bst_empty = bst_class[int, None]()
+    bst_empty = bst_class()
     with pytest.raises(ValueError):
         _ = bst_empty.maximum()
 
@@ -120,7 +120,7 @@ def test_maximum(bst_class: Type[BinarySearchTree]):
 )
 def test_extract_min(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
-        bst = bst_class[int, None]()
+        bst = bst_class()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
         for value in values:
             bst.insert(value, None)
