@@ -332,7 +332,7 @@ class Internal(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
         except ValueError:
             keyval = (self.key, self.value)
             if isinstance(self.left, Leaf):
-                return keyval, self
+                return keyval, Leaf()
             else:
                 return keyval, self.left
 

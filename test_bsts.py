@@ -132,3 +132,22 @@ def test_extract_min(bst_class: Type[BinarySearchTree]):
             assert expected_key not in bst
 
         assert not bst
+
+
+@pytest.mark.parametrize(
+    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+)
+def test_extract_max(bst_class: Type[BinarySearchTree]):
+    for _ in range(100):
+        bst = bst_class()
+        values = frozenset([randint(-10000, 10000) for _ in range(50)])
+        for value in values:
+            bst.insert(value, None)
+            assert value in bst
+
+        for expected_key in sorted(values, reverse=True):
+            (key, _), _ = bst.extract_max()
+            assert key == expected_key
+            assert expected_key not in bst
+
+        assert not bst
