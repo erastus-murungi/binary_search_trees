@@ -1,19 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import field, dataclass
-from typing import Union, Optional, Iterator
+from dataclasses import dataclass, field
+from enum import IntEnum
+from typing import Iterator, Optional, Union
 
 from typeguard import typechecked
-from enum import IntEnum
 
-from bst import (
-    BinarySearchTreeIterative,
-    Comparable,
-    Internal,
-    Leaf,
-    Value,
-    KeyValue,
-)
+from bst import BinarySearchTreeIterative, Comparable, Internal, KeyValue, Leaf, Value
 
 
 class Color(IntEnum):
@@ -26,7 +19,7 @@ class RBTAuxiliaryData:
     """Auxiliary data for a node in a red-black tree"""
 
     color: Color = Color.BLACK
-    parent: InternalNode = field(default_factory=Leaf, repr=False, compare=False)
+    parent: Node = field(default_factory=Leaf, repr=False, compare=False)
 
 
 InternalNode = Internal[Comparable, Value, RBTAuxiliaryData]
@@ -97,21 +90,14 @@ class RedBlackTree(BinarySearchTreeIterative[Comparable, Value, RBTAuxiliaryData
     def parent(self, node: InternalNode) -> Node:
         return node.aux.parent
 
-    def insert(
+    def insert_impl(
         self, key: Comparable, value: Value, aux: Optional[RBTAuxiliaryData] = None
     ) -> InternalNode:
-        node = self.access(key)
-        if isinstance(node, Internal):
-            node.value = value
-        else:
-            ancestry = self.insert_ancestry(key, value, RBTAuxiliaryData())
-            assert ancestry and len(ancestry) > 0
-            node = ancestry.pop()
-            if ancestry:
-                set_parent(node, ancestry[-1])
-            set_color(node, Color.RED)
-            self.rbt_insert_fixup(node)
-        return node
+        parent, child = self.insert_parent(key, value, RBTAuxiliaryData())
+        set_parent(child, parent)
+        set_color(child, Color.RED)
+        self.rbt_insert_fixup(child)
+        return child
 
     def check_invariants(self, lower_limit: Comparable, upper_limit: Comparable):
         super().check_invariants(lower_limit, upper_limit)
@@ -199,7 +185,7 @@ class RedBlackTree(BinarySearchTreeIterative[Comparable, Value, RBTAuxiliaryData
                 self.delete_fixup(x)
             self.size -= 1
         else:
-            raise ValueError(f"key={target_key} not in tree")
+            raise ValueError(f"key={target_key} not in tree {values}")
 
     def transplant(self, u: Node, v: Node):
         # u is the initial node and v is the node to transplant u
@@ -381,9 +367,10 @@ if __name__ == "__main__":
     # #
     from random import randint
 
-    num_nodes = 100
+    num_nodes = 2
     for _ in range(1000):
-        values = list({randint(0, 100) for _ in range(num_nodes)})
+        # values = list({randint(0, 100) for _ in range(num_nodes)})
+        values = [96, 36]
         rb = RedBlackTree()
         for k in values:
             rb.insert(k, None)

@@ -98,18 +98,13 @@ class AVLTreeIterative(BinarySearchTreeIterative[Comparable, Value, AVLAuxiliary
                     f"Invalid AVL Tree, balance factor = {balance_factor(node)} not in [-1, 0, 1]"
                 )
 
-    def insert(
+    def insert_impl(
         self, key: Comparable, value: Value, aux: Optional[AVLAuxiliaryData] = None
     ) -> InternalNode:
-        node = self.access(key)
-        if isinstance(node, Internal):
-            node.value = value
-            return node
-        else:
-            ancestry = self.insert_ancestry(key, value, AVLAuxiliaryData(height=0))
-            node = ancestry[-1]
-            self.avl_fixup(ancestry)
-            return node
+        ancestry = self.insert_ancestry(key, value, AVLAuxiliaryData(height=0))
+        node = ancestry[-1]
+        self.avl_fixup(ancestry)
+        return node
 
     def avl_fixup(self, ancestry: list[Internal]):
         while ancestry:

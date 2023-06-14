@@ -119,6 +119,12 @@ class BinarySearchTreeNode(Generic[Comparable, Value, AuxiliaryData], ABC):
     def extract_max(self) -> KeyValue:
         pass
 
+    @abstractmethod
+    def insert_impl(
+        self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
+    ) -> InternalNode:
+        pass
+
 
 @dataclass(slots=True, frozen=True)
 class Leaf(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
@@ -137,10 +143,15 @@ class Leaf(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
 
     __repr__ = __str__ = pretty_str = lambda self: "Leaf()"  # type: ignore
 
-    def insert(
+    def insert_impl(
         self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
     ) -> InternalNode:
         return Internal(key, value, aux=aux)
+
+    def insert(
+        self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
+    ) -> InternalNode:
+        return self.insert_impl(key, value, aux)
 
     def __len__(self) -> int:
         return 0
@@ -177,12 +188,17 @@ class Internal(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
     def insert(
         self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
     ) -> InternalNode:
+        return self.insert_impl(key, value, aux)
+
+    def insert_impl(
+        self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
+    ) -> InternalNode:
         if self.key == key:
             raise ValueError(f"Key {key} already exists in tree")
         elif key < self.key:
-            self.left = self.left.insert(key, value, aux)
+            self.left = self.left.insert_impl(key, value, aux)
         else:
-            self.right = self.right.insert(key, value, aux)
+            self.right = self.right.insert_impl(key, value, aux)
         return self
 
     def access(self, key: Comparable) -> "Node":
@@ -347,6 +363,13 @@ class BinarySearchTree(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
     root: Node = field(default_factory=Leaf)
     size: int = 0
 
+    def insert_impl(
+        self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
+    ) -> InternalNode:
+        self.root = self.root.insert_impl(key, value, aux)
+        self.size += 1
+        return self.root
+
     def inorder(self) -> Iterator[InternalNode]:
         return self.root.inorder()
 
@@ -388,10 +411,7 @@ class BinarySearchTree(BinarySearchTreeNode[Comparable, Value, AuxiliaryData]):
             node.value = value
             return node
         else:
-            node = self.root.insert(key, value, aux=aux)
-            self.root = node
-            self.size += 1
-            return node
+            return self.insert_impl(key, value, aux=aux)
 
     def access(self, key: Comparable) -> Node:
         return self.root.access(key)
@@ -446,6 +466,9 @@ class BinarySearchTreeIterative(
 ):
     root: Node = field(default_factory=Leaf)
     size: int = 0
+
+    def __post_init__(self):
+        assert len(self.root) == self.size
 
     def __setitem__(self, key, value):
         self.insert(key, value)
@@ -516,6 +539,31 @@ class BinarySearchTreeIterative(
         self.size += 1
         return ancestry
 
+    @typechecked
+    def insert_parent(
+        self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
+    ) -> tuple[Node, InternalNode]:
+        node = self.root
+        parent: Node = Leaf()
+
+        while True:
+            if isinstance(node, Leaf):
+                node = Internal(key, value, aux=aux)
+                if isinstance(parent, Internal):
+                    parent.choose_set(node.key, node)
+                else:
+                    self.root = node
+                break
+            else:
+                assert isinstance(node, Internal)
+                if node.key == key:
+                    raise ValueError(f"Key {key} already in tree")
+                else:
+                    parent = node
+                    node = node.choose(key)
+        self.size += 1
+        return parent, node
+
     def clear(self):
         self.root = Leaf()
         self.size = 0
@@ -538,7 +586,7 @@ class BinarySearchTreeIterative(
     def __iter__(self):
         yield from iter(self.root)
 
-    def insert(
+    def insert_impl(
         self, key: Comparable, value: Value, aux: Optional[AuxiliaryData] = None
     ) -> InternalNode:
         node: Node = self.root
@@ -555,8 +603,7 @@ class BinarySearchTreeIterative(
             else:
                 assert isinstance(node, Internal)
                 if node.key == key:
-                    node.value = value
-                    return node
+                    raise ValueError(f"Key {key} already in tree")
                 else:
                     parent = node
                     node = node.choose(key)

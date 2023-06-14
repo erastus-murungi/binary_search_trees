@@ -1,94 +1,139 @@
-LEFT = 0  # False
-RIGHT = 1  # True
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Iterator, Optional, Union
+
+from bst import BinarySearchTreeIterative, Comparable, Internal, Leaf, Value
+
+leaf_parents = {}
 
 
-class Node:
-    def __init__(self, key, item, parent=None):
-        self.key = key
-        self.item = item
-        self.child = [None, None]
-        self.parent = parent
-
-    def __repr__(self):
-        return "Node(({}, {}), children: {}])".format(
-            str(self.key), str(self.item), repr(self.child)
-        )
+def get_parent(node: Node) -> Node:
+    """Returns the parent of a node"""
+    return (
+        node.aux.parent if isinstance(node, Internal) else leaf_parents.get(node, node)
+    )
 
 
-class SplayTree:
-    def __init__(self, root=None):
-        self.root = root
+def set_parent(node: InternalNode, parent: Node):
+    """Sets the parent of a node"""
+    if isinstance(node, Internal):
+        node.aux.parent = parent
+    else:
+        leaf_parents[node] = parent
 
-    def insert(self, key, item=0):
-        if self.root is None:
-            self.root = Node(key, item)
-        else:
-            x = self.root
-            y = x.parent
 
-            while x is not None and not self.is_leaf(x):
-                y = x
-                x = x.child[key >= x.key]
+@dataclass(slots=True)
+class SplayTreeAux:
+    parent: Node = field(default_factory=Leaf, repr=False)
 
-            if x is None:
-                z = Node(key, item, y)
-                y.child[y.child[LEFT] is not None] = z
 
-            else:
-                z = Node(key, item, x)
-                x.child[key >= x.key] = z
+InternalNode = Internal[Comparable, Value, SplayTreeAux]
+Node = Union[InternalNode, Leaf]
 
-            self.splay(z)
+
+class SplayTree(BinarySearchTreeIterative[Comparable, Value, SplayTreeAux]):
+    def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
+        raise NotImplementedError()
+
+    def insert_impl(
+        self, key: Comparable, value: Value, aux: Optional[SplayTreeAux] = None
+    ):
+        parent, child = super().insert_parent(key, value, SplayTreeAux())
+        set_parent(child, parent)
+        self.splay(child)
 
     def access(self, key):
-        if self.root is None:
-            raise ValueError("empty tree")
+        if isinstance(self.root, Leaf):
+            return self.root
 
         x = self.root
-        y = x.parent  # last non-null node
-        while x is not None and x.key != key:
+        y = get_parent(x)  # last non-null node
+        while isinstance(x, Internal) and x.key != key:
             y = x
-            x = x.child[key >= x.key]
+            x = x.choose(key)
 
-        if x is None or x.key != key:
-            if y is not None:
+        if isinstance(x, Leaf) or x.key != key:
+            if isinstance(y, Internal):
                 self.splay(y)
-            return None
+            return Leaf()
         else:
             self.splay(x)
             return x
 
-    def __contains__(self, item):
-        return self.access(item) is not None
-
     def splay(self, x):
-        while x.parent is not None:
-            p = x.parent
-            g = p.parent
-            dirx = x is not p.child[LEFT]
-            if g is None:  # zig
-                self.__rotate(p, not dirx)
+        while isinstance(get_parent(x), Internal):
+            x_p = get_parent(x)
+            assert isinstance(x_p, Internal)
+            x_pp = get_parent(x_p)
+            if isinstance(x_pp, Leaf):
+                if x_p.left is x:
+                    self.right_rotate_with_parent(x_p)
+                else:
+                    self.left_rotate_with_parent(x_p)
+            elif x_p.left is x and x_pp.left is x_p:
+                self.right_rotate_with_parent(x_pp)
+                self.right_rotate_with_parent(x_p)
+            elif x_p.right is x and x_pp.right is x_p:
+                self.left_rotate_with_parent(x_pp)
+                self.left_rotate_with_parent(x_p)
+            elif x_p.left is x and x_pp.right is x_p:
+                self.right_rotate_with_parent(x_p)
+                self.left_rotate_with_parent(x_pp)
             else:
-                dirp = p is not g.child[LEFT]
-                if dirp == dirx:  # zig-zig
-                    self.__rotate(g, not dirp)
-                    self.__rotate(p, not dirp)
-                else:  # zig-zag
-                    self.__rotate(p, dirp)
-                    self.__rotate(g, not dirp)
+                self.left_rotate_with_parent(x_p)
+                self.right_rotate_with_parent(x_pp)
+
+    def left_rotate_with_parent(self, node: InternalNode):
+        parent = get_parent(node)
+        right_child = node.right
+
+        node.right = right_child.left
+        if isinstance(right_child.left, Internal):
+            set_parent(right_child.left, node)
+
+        set_parent(right_child, parent)
+        if isinstance(parent, Leaf):
+            self.root = right_child
+        elif node is parent.left:
+            parent.left = right_child
+        else:
+            parent.right = right_child
+
+        right_child.left = node
+        set_parent(node, right_child)
+
+    def right_rotate_with_parent(self, node: InternalNode):
+        parent = get_parent(node)
+        left_child = node.left
+
+        node.left = left_child.right
+        if isinstance(left_child.right, Internal):
+            set_parent(left_child.right, node)
+
+        set_parent(left_child, parent)
+        if isinstance(parent, Leaf):
+            self.root = left_child
+        elif node is parent.left:
+            parent.left = left_child
+        else:
+            parent.right = left_child
+
+        left_child.right = node
+        set_parent(node, left_child)
 
     def join(self, other):
         """Combines trees t1 and t2 into a single tree containing all items from
         both trees and return the resulting tree. This operation assumes that
         all items in t1 are less than all those in t2 and destroys both t1 and t2."""
 
-        assert self.root is not None
-        assert other.root is not None
+        assert isinstance(self.root, Internal)
+        assert isinstance(other.root, Internal)
 
-        x = self.find_max(self.root)
+        x = self.maximum()
         self.splay(x)
-        self.root.child[RIGHT] = other.root
-        other.root.parent = self.root.child[RIGHT]
+        self.root.right = other.root
+        other.root.parent = self.root.right
         del other
 
         return self
@@ -98,193 +143,100 @@ class SplayTree:
         in t less than or equal to i, and t2 contains all items in t greater than
         i. This operation destroys t."""
 
-        assert self.root is not None
+        assert isinstance(self.root, Internal)
 
         self.access(i)
-        y = self.root.child[RIGHT]
-        self.__replace(y, None)
-        y.parent = None
-        return self, SplayTree(self.root.child[RIGHT])
+        y = self.root.right
+        assert isinstance(y, Internal)
+        self.transplant(y, Leaf())
+        set_parent(y, Leaf())
+        return self, SplayTree(self.root.right, len(self.root.right))
 
-    def __rotate(self, y, direction):
-
-        if y is None:
-            raise ValueError("can't rotate null value")
-
-        x = y.child[not direction]
-        beta = x.child[direction]
-        y.child[not direction] = beta
-
-        if beta is not None:
-            beta.parent = y
-
-        z = y.parent
-        if z is None:
-            self.root = x
-        else:
-            z.child[y is not z.child[LEFT]] = x
-        x.parent = z
-
-        x.child[direction] = y
-        y.parent = x
-
-    def in_order(self):
-        """Creates an In-order traversal generator of the BST"""
-
-        def helper(node):
-            if node.child[LEFT]:
-                yield from helper(node.child[LEFT])
-            yield node
-            if node.child[RIGHT]:
-                yield from helper(node.child[RIGHT])
-
-        return helper(self.root)
-
-    def is_empty(self):
-        return self.root is None
-
-    @staticmethod
-    def is_leaf(node):
-        return node.child[LEFT] is None and node.child[RIGHT] is None
-
-    @property
-    def minimum(self):
-        x = self.find_min(self.root)
-        return x.item
-
-    @property
-    def maximum(self):
-        x = self.find_max(self.root)
-        return x.item
-
-    @staticmethod
-    def find_min(x):
-        if x is None:
-            raise ValueError("Empty Tree!")
-
-        while x.child[LEFT] is not None:
-            x = x.child[LEFT]
-        return x
-
-    @staticmethod
-    def find_max(x):
-        if x is None:
-            raise ValueError("x can't be none")
-
-        while x.child[RIGHT] is not None:
-            x = x.child[RIGHT]
-        return x
-
-    def __replace(self, u, v):
+    def transplant(self, u: Node, v: Node):
         # u is the initial node and v is the node to transplant u
-        if u.parent is None:
+        if isinstance(get_parent(u), Internal):
             #                g        g
             #                |        |
             #                u   =>   v
             #               / \      / \
             #             u.a  u.ß  v.a v.ß
-            self.root = v
+            if u == get_parent(u).left:
+                get_parent(u).left = v
+            else:
+                get_parent(u).right = v
         else:
-            u.parent.child[u is not u.parent.child[LEFT]] = v
-        if v:
-            v.parent = u.parent
+            self.root = v
+
+        set_parent(v, get_parent(u))
 
     def delete(self, target_key):
         """Deletes a key from the Splay Tree"""
 
         z = self.access(target_key)
-        if z is None:
-            raise KeyError("Key not found")
-        left, right = self.root.child[LEFT], self.root.child[RIGHT]
+        if isinstance(z, Internal):
+            self.splay(z)
+            left, right = self.root.left, self.root.right
+            self.transplant(z, Leaf())
 
-        m = None
-        if left:
-            m = self.find_max(left)
-            left.parent = None
-            left = SplayTree(left)
-            left.splay(m)
-            self.root = left.root
-        if right:
-            if left:
-                self.root.child[RIGHT] = right
-            else:
-                self.root = right
-            right.parent = m
-
-    def clear(self):
-        """delete all the elements in the tree"""
-
-        self.__clear_helper(self.root.child[LEFT])
-        self.__clear_helper(self.root.child[RIGHT])
-        self.root = None
-
-    def __clear_helper(self, node):
-        if node.child[LEFT] is None and node.child[RIGHT] is None:
-            del node
+            m = Leaf()
+            if isinstance(left, Internal):
+                set_parent(left, Leaf())
+                m = left.maximum()
+                self.splay(m)
+                self.root = m
+            if isinstance(right, Internal):
+                if isinstance(left, Internal):
+                    m.right = right
+                else:
+                    self.root = right
+                set_parent(right, m)
+            self.size -= 1
         else:
-            if node.child[LEFT] is not None:
-                self.__clear_helper(node.child[LEFT])
-            if node.child[RIGHT] is not None:
-                self.__clear_helper(node.child[RIGHT])
-            del node
-
-    def __print_helper(self, node, indent, last):
-        """Simple recursive tree printer"""
-        if node is not None:
-            print(indent, end="")
-            if last:
-                print("R----", end="")
-                indent += "     "
-            else:
-                print("L----", end="")
-                indent += "|    "
-            print("(" + str(node.key) + ", " + str(node.item) + ")")
-            self.__print_helper(node.child[LEFT], indent, False)
-            self.__print_helper(node.child[RIGHT], indent, True)
-
-    def __str__(self):
-        if self.root is None:
-            return "Empty"
-        else:
-            self.__print_helper(self.root, "", True)
-            return ""
-
-    def __repr__(self):
-        """Simple repr method"""
-        return repr(self.root)
+            raise KeyError(f"Key = {target_key} not found {values}")
 
 
 if __name__ == "__main__":
-    from random import choice
+    from random import randint
 
-    st = SplayTree()
-    values = [
-        3,
-        52,
-        31,
-        55,
-        93,
-        60,
-        81,
-        93,
-        46,
-        37,
-        47,
-        67,
-        34,
-        95,
-        10,
-        23,
-        90,
-        14,
-        13,
-        88,
-    ]
+    for _ in range(100):
+        st = SplayTree()
+        # values = [
+        #     3,
+        #     52,
+        #     31,
+        #     55,
+        #     93,
+        #     60,
+        #     81,
+        #     93,
+        #     46,
+        #     37,
+        #     47,
+        #     67,
+        #     34,
+        #     95,
+        #     10,
+        #     23,
+        #     90,
+        #     14,
+        #     13,
+        #     88,
+        # ]
+        num_nodes = 1000
+        values = list({randint(0, 100) for _ in range(num_nodes)})
+        # values = [72, 49, 94]
+        # values = [80, 93]
+        # values = [1]
 
-    for val in values:
-        st.insert(val)
+        for val in values:
+            st.insert(val, None)
+            assert val in st
+            st.check_invariants(-10000, 100000)
 
-    for val in values:
-        assert val in st
+        for val in values:
+            st.delete(val)
+            assert val not in st, values
+            st.check_invariants(-10000, 100000)
 
-    print(st)
+        assert st.size == 0
+        assert isinstance(st.root, Leaf)
