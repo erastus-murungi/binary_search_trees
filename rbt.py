@@ -2,7 +2,7 @@
 
 from random import randint
 
-from bst import InternalNode, Comparable, Value, BST, Node
+from bst import BST, Comparable, Value, BinarySearchTreeIterative, Node
 
 BLACK = 1
 RED = 0
@@ -20,7 +20,7 @@ def parent(node):
     return None if node is None else node.parent
 
 
-class InternalRBTNode(InternalNode[Comparable, Value]):
+class InternalRBTNode(BST[Comparable, Value]):
     """A template for a node in a red-black tree
     Every node has a 'bit' for color and other field's found in regular BSTs"""
 
@@ -30,7 +30,7 @@ class InternalRBTNode(InternalNode[Comparable, Value]):
     parent: "InternalRBTNode[Comparable, Value]" = None
 
 
-class RedBlackTree(BST[Comparable, Value, InternalRBTNode]):
+class RedBlackTree(BinarySearchTreeIterative[Comparable, Value, InternalRBTNode]):
     """
     A Red-Black tree is a height-balanced binary search tree which supports queries and updates in O(log n) time.
     Red-Black Trees provide faster insertion and removal operations than AVL trees because they need fewer rotations.

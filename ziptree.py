@@ -1,4 +1,4 @@
-from bst import BST, LEFT, RIGHT
+from bst import BinarySearchTreeIterative, LEFT, RIGHT
 from random import randint
 import numpy as np
 from collections import Counter
@@ -15,7 +15,7 @@ class ZipNode:
         return f"Node(({self.key}, {self.item}), children: {repr(self.child)}])"
 
 
-class ZipTree(BST):
+class ZipTree(BinarySearchTreeIterative):
     """duplicate keys not allowed"""
 
     def __init__(self):

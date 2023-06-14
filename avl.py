@@ -3,7 +3,7 @@ from sys import maxsize
 
 from typeguard import typechecked
 
-from bst import Node, BST, InternalNode, Comparable, Value, KeyValue
+from bst import Node, BinarySearchTreeIterative, Comparable, Value, KeyValue, Internal
 
 
 def height(node: Node) -> int:
@@ -21,7 +21,7 @@ def update_height(node: Node):
 
 
 @dataclass(slots=True)
-class InternalAVLNode(InternalNode[Comparable, Value]):
+class InternalAVLNode(Internal[Comparable, Value]):
     """As a reminder, the empty tree has height -1,
     the height of a nonempty tree whose root’s left child has height h₁ and
     root’s right child has height h₂ is 1 + max(h₁, h₂)"""
@@ -74,7 +74,7 @@ class InternalAVLNode(InternalNode[Comparable, Value]):
         return None
 
 
-class AVL(BST[Comparable, Value, InternalAVLNode]):
+class AVL(BinarySearchTreeIterative[Comparable, Value, InternalAVLNode]):
     """
     Little History:
         AVL trees, developed in 1962, were the first class of balanced binary search
@@ -123,6 +123,10 @@ class AVL(BST[Comparable, Value, InternalAVLNode]):
         for node in self.inorder():
             assert abs(balance_factor(node)) in (-1, 0, 1)
 
+    @classmethod
+    def new(cls, *args, **kwargs):
+        return cls(*args, **kwargs)
+
     @property
     def node_class(self) -> type[InternalAVLNode]:
         return InternalAVLNode
@@ -145,7 +149,7 @@ class AVL(BST[Comparable, Value, InternalAVLNode]):
 
     @typechecked
     def extract_min(self, node: InternalAVLNode) -> KeyValue:
-        current: InternalNode = node
+        current = node
         ancestry = self.access_ancestry(current.key)
         while current.left is not None:
             ancestry.append(current.left)
@@ -155,7 +159,7 @@ class AVL(BST[Comparable, Value, InternalAVLNode]):
 
         if current.right:
             current.swap(current.right)
-        elif current is self.root and current.is_leaf:
+        elif current is self.root and current.has_no_children:
             assert self.size == 1
             self.root = None
         else:
