@@ -1,4 +1,4 @@
-from bisect import bisect_right, bisect_left, insort
+from bisect import bisect_left, bisect_right, insort
 
 __author__ = "Erastus Murungi"
 __email__ = "erastusmurungi@gmail.com"
@@ -452,10 +452,11 @@ class BTree:
 
 
 if __name__ == "__main__":
-    import numpy as np
-    from random import shuffle, randint
-    from pympler import asizeof
+    from random import randint, shuffle
     from time import perf_counter
+
+    import numpy as np
+    from pympler import asizeof
 
     num_iter = 1
     t = 50

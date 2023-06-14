@@ -1,80 +1,84 @@
 from dataclasses import dataclass
 from sys import maxsize
+from typing import Iterator, Optional
 
 from typeguard import typechecked
 
-from bst import Node, BinarySearchTreeIterative, Comparable, Value, KeyValue, Internal
+from bst import BinarySearchTreeIterative, Comparable, Internal, KeyValue, Node, Value
+
+
+@dataclass(slots=True)
+class AVLAuxiliaryData:
+    height: int = 0
 
 
 def height(node: Node) -> int:
-    return node.height if node else -1
+    if isinstance(node, Internal):
+        return node.aux.height
+    return -1
 
 
 def balance_factor(node: Node) -> int:
-    if node:
+    if isinstance(node, Internal):
         return height(node.right) - height(node.left)
     return 0
 
 
 def update_height(node: Node):
-    node.height = max(height(node.left), height(node.right)) + 1
+    if isinstance(node, Internal):
+        assert isinstance(node.aux, AVLAuxiliaryData)
+        node.aux.height = max(height(node.left), height(node.right)) + 1
 
 
-@dataclass(slots=True)
-class InternalAVLNode(Internal[Comparable, Value]):
-    """As a reminder, the empty tree has height -1,
-    the height of a nonempty tree whose root’s left child has height h₁ and
-    root’s right child has height h₂ is 1 + max(h₁, h₂)"""
+def right_rotate(node: Node) -> Internal:
+    """
+             y                              x
+           // \\                          // \\
+          x   Ω  = {right_rotate(y)} =>  𝛼   y
+        // \\                              // \\
+        𝛼   ß                              ß   Ω
+    """
+    assert isinstance(node, Internal)
+    assert isinstance(node.left, Internal)
+    left_child = node.left
 
-    left: "InternalAVLNode[Comparable, Value]" = None
-    right: "InternalAVLNode[Comparable, Value]" = None
-    height: int = 0
+    node.left = left_child.right
+    left_child.right = node
 
-    def right_rotate(self):
-        """
-                 y                              x
-               // \\                          // \\
-              x   Ω  = {right_rotate(y)} =>  𝛼   y
-            // \\                              // \\
-            𝛼   ß                              ß   Ω
-        """
-        assert self.left
-        left_child = self.left
+    update_height(node)
+    update_height(left_child)
 
-        self.left = left_child.right
-        left_child.right = self
-
-        update_height(self)
-        update_height(left_child)
-
-        return left_child
-
-    def left_rotate(self):
-        assert self.right
-        right_child = self.right
-
-        self.right = right_child.left
-        right_child.left = self
-
-        update_height(self)
-        update_height(right_child)
-
-        return right_child
-
-    def re_balance(self):
-        bf = balance_factor(self)
-        if bf < -1:
-            if balance_factor(self.left) > 0:
-                self.left = self.left.left_rotate()
-            return self.right_rotate()
-        if bf > 1:
-            if balance_factor(self.right) < 0:
-                self.right = self.right.right_rotate()
-            return self.left_rotate()
-        return None
+    return left_child
 
 
-class AVL(BinarySearchTreeIterative[Comparable, Value, InternalAVLNode]):
+def left_rotate(node: Node) -> Internal:
+    assert isinstance(node, Internal)
+    assert isinstance(node.right, Internal)
+    right_child = node.right
+
+    node.right = right_child.left
+    right_child.left = node
+
+    update_height(node)
+    update_height(right_child)
+
+    return right_child
+
+
+def re_balance(node: Internal) -> Optional[Internal]:
+    bf = balance_factor(node)
+    if bf < -1:
+        if balance_factor(node.left) > 0:
+            node.left = left_rotate(node.left)
+        return right_rotate(node)
+    if bf > 1:
+        if balance_factor(node.right) < 0:
+            node.right = right_rotate(node.right)
+        return left_rotate(node)
+    return None
+
+
+class AVLTreeIterative(BinarySearchTreeIterative[Comparable, Value, AVLAuxiliaryData]):
     """
     Little History:
         AVL trees, developed in 1962, were the first class of balanced binary search
@@ -118,21 +122,18 @@ class AVL(BinarySearchTreeIterative[Comparable, Value, InternalAVLNode]):
             In-order-traversal: returns the element in sorted order
     """
 
+    def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
+        raise NotImplementedError()
+
     def check_invariants(self, lower_limit: Comparable, upper_limit: Comparable):
         super().check_invariants(lower_limit, upper_limit)
         for node in self.inorder():
             assert abs(balance_factor(node)) in (-1, 0, 1)
 
-    @classmethod
-    def new(cls, *args, **kwargs):
-        return cls(*args, **kwargs)
-
-    @property
-    def node_class(self) -> type[InternalAVLNode]:
-        return InternalAVLNode
-
-    def insert(self, key: Comparable, value: Value) -> Node:
-        ancestry = self.insert_ancestry(key, value)
+    def insert(
+        self, key: Comparable, value: Value, aux: Optional[AVLAuxiliaryData] = None
+    ) -> Optional[Node]:
+        ancestry = self.insert_ancestry(key, value, AVLAuxiliaryData(height=0))
         if ancestry:
             # fixup the height and re-balance the tree
             node = ancestry[-1]
@@ -140,68 +141,31 @@ class AVL(BinarySearchTreeIterative[Comparable, Value, InternalAVLNode]):
             return node
         return None
 
-    def avl_fixup(self, ancestry: list[Node]):
+    def avl_fixup(self, ancestry: list[Internal]):
         while ancestry:
             node = ancestry.pop()
             update_height(node)
-            if (new_node := node.re_balance()) is not None:
+            if (new_node := re_balance(node)) is not None:
                 self.set_child(ancestry, new_node)
 
     @typechecked
-    def extract_min(self, node: InternalAVLNode) -> KeyValue:
-        current = node
-        ancestry = self.access_ancestry(current.key)
-        while current.left is not None:
-            ancestry.append(current.left)
-            current = current.left
-
-        min_key_value = (current.key, current.value)
-
-        if current.right:
-            current.swap(current.right)
-        elif current is self.root and current.has_no_children:
-            assert self.size == 1
-            self.root = None
-        else:
-            assert len(ancestry) >= 2
-            ancestry[-2].choose_set(current.key, None)
-        self.avl_fixup(ancestry)
-        return min_key_value
+    def extract_min_iterative(self, node: Internal) -> KeyValue:
+        ancestry_min = self.access_ancestry_min(node)
+        self.check_invariants(-float("inf"), float("inf"))
+        keyval = super().extract_min_iterative(node)
+        self.avl_fixup(ancestry_min)
+        return keyval
 
     def delete(self, target_key: Comparable):
-        if (ancestry := self.access_ancestry(target_key)) is None:
-            raise ValueError(f"Key {target_key} not found")
-        target_node = ancestry[-1]
-
-        if target_node.right and target_node.left:
-            # swap key with successor and delete using extract_min
-            key, value = self.extract_min(target_node.right)
-            target_node.key, target_node.value = key, value
-
-        elif target_node.right:
-            target_node.swap(target_node.right)
-
-        elif target_node.left:
-            target_node.swap(target_node.left)
-        else:
-            # the target node is the root, and it is a leaf node, then setting the root to None will suffice
-            if target_node is self.root:
-                self.root = None
-            else:
-                assert len(ancestry) >= 2
-                assert target_node.is_leaf
-                # else the target is a leaf node which has a parent
-                parent = ancestry[-2]
-                parent.choose_set(target_node.key, None)
-
-        self.avl_fixup(ancestry)
-        self.size -= 1
+        if ancestry := self.access_ancestry(target_key):
+            super().delete(target_key)
+            self.avl_fixup(ancestry)
 
 
 if __name__ == "__main__":
     from random import randint
 
-    for _ in range(10000):
+    for _ in range(1000):
         # values = [
         #     3,
         #     52,
@@ -224,14 +188,17 @@ if __name__ == "__main__":
         #     13,
         #     88,
         # ]
-        num_nodes = 10
+        num_nodes = 12
         values = list({randint(0, 1000) for _ in range(num_nodes)})
-        avl = AVL()
+        # values = [608, 612, 583, 234, 875, 618, 689, 625, 376, 409, 701, 671]
+        # values = [610, 511]
+        avl = AVLTreeIterative()
         for i, k in enumerate(values):
             avl.insert(k, None)
             assert k in avl, values
             avl.check_invariants(-maxsize, maxsize)
             assert len(avl) == i + 1, values
+        # print(avl.pretty_str())
         for i, k in enumerate(values):
             del avl[k]
             assert k not in avl, values

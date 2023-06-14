@@ -1,6 +1,7 @@
-from numpy import random
 from bisect import bisect_left
 from time import perf_counter
+
+from numpy import random
 
 
 def linear_rank(A, k):

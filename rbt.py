@@ -2,7 +2,7 @@
 
 from random import randint
 
-from bst import BST, Comparable, Value, BinarySearchTreeIterative, Node
+from bst import BST, BinarySearchTreeIterative, Comparable, Node, Value
 
 BLACK = 1
 RED = 0
@@ -537,6 +537,7 @@ class RedBlackTree(BinarySearchTreeIterative[Comparable, Value, InternalRBTNode]
 
 if __name__ == "__main__":
     from datetime import datetime
+
     from pympler import asizeof
 
     # #

@@ -1,7 +1,9 @@
-from bst import BinarySearchTreeIterative, LEFT, RIGHT
-from random import randint
-import numpy as np
 from collections import Counter
+from random import randint
+
+import numpy as np
+
+from bst import LEFT, RIGHT, BinarySearchTreeIterative
 
 
 class ZipNode:
@@ -112,6 +114,7 @@ class ZipTree(BinarySearchTreeIterative):
 
 if __name__ == "__main__":
     from datetime import datetime
+
     from pympler import asizeof
 
     # check that rank function produces geometric distribution

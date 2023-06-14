@@ -4,14 +4,16 @@ from typing import Type
 
 import pytest
 
-from bst import BinarySearchTreeIterative, Leaf, BinarySearchTree
-from avl import AVL
+from avl import AVLTreeIterative
+from bst import BinarySearchTree, BinarySearchTreeIterative, Leaf
 
 
-@pytest.mark.parametrize("bst_class", [BinarySearchTreeIterative, BinarySearchTree])
+@pytest.mark.parametrize(
+    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+)
 def test_insertion(bst_class: Type[BinarySearchTree]):
     for _ in range(50):
-        values = frozenset([randint(-10000, 10000) for _ in range(50)])
+        values = frozenset([randint(-10000, 10000) for _ in range(100)])
         bst = bst_class[int, None]()
         for val in values:
             bst.insert(val, None)
@@ -28,7 +30,9 @@ def test_insertion(bst_class: Type[BinarySearchTree]):
         assert isinstance(bst.root, Leaf)
 
 
-@pytest.mark.parametrize("bst_class", [BinarySearchTreeIterative, BinarySearchTree])
+@pytest.mark.parametrize(
+    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+)
 def test_sorted(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
         bst = bst_class[int, None]()
@@ -39,8 +43,10 @@ def test_sorted(bst_class: Type[BinarySearchTree]):
         assert list(bst) == sorted(values)
 
 
-@pytest.mark.parametrize("bst_class", [BinarySearchTreeIterative, BinarySearchTree])
-def test_successor(bst_class: Type[BinarySearchTreeIterative]):
+@pytest.mark.parametrize(
+    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+)
+def test_successor(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
         bst = bst_class[int, None]()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
@@ -55,8 +61,10 @@ def test_successor(bst_class: Type[BinarySearchTreeIterative]):
             _ = bst.successor(sorted_values[-1])
 
 
-@pytest.mark.parametrize("bst_class", [BinarySearchTreeIterative, BinarySearchTree])
-def test_predecessor(bst_class: Type[BinarySearchTreeIterative]):
+@pytest.mark.parametrize(
+    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+)
+def test_predecessor(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
         bst = bst_class[int, None]()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
@@ -73,8 +81,10 @@ def test_predecessor(bst_class: Type[BinarySearchTreeIterative]):
             _ = bst.predecessor(sorted_values[0])
 
 
-@pytest.mark.parametrize("bst_class", [BinarySearchTreeIterative, BinarySearchTree])
-def test_minimum(bst_class: Type[BinarySearchTreeIterative]):
+@pytest.mark.parametrize(
+    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+)
+def test_minimum(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
         bst = bst_class[int, None]()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
@@ -88,8 +98,10 @@ def test_minimum(bst_class: Type[BinarySearchTreeIterative]):
         _ = bst_empty.minimum()
 
 
-@pytest.mark.parametrize("bst_class", [BinarySearchTreeIterative, BinarySearchTree])
-def test_maximum(bst_class: Type[BinarySearchTreeIterative]):
+@pytest.mark.parametrize(
+    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+)
+def test_maximum(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
         bst = bst_class[int, None]()
         values = frozenset([randint(-10000, 10000) for _ in range(50)])
@@ -101,3 +113,22 @@ def test_maximum(bst_class: Type[BinarySearchTreeIterative]):
     bst_empty = bst_class[int, None]()
     with pytest.raises(ValueError):
         _ = bst_empty.maximum()
+
+
+@pytest.mark.parametrize(
+    "bst_class", [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative]
+)
+def test_extract_min(bst_class: Type[BinarySearchTree]):
+    for _ in range(100):
+        bst = bst_class[int, None]()
+        values = frozenset([randint(-10000, 10000) for _ in range(50)])
+        for value in values:
+            bst.insert(value, None)
+            assert value in bst
+
+        for expected_key in sorted(values):
+            (key, _), _ = bst.extract_min()
+            assert key == expected_key
+            assert expected_key not in bst
+
+        assert not bst
