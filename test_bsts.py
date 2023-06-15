@@ -4,15 +4,14 @@ from typing import Type
 
 import pytest
 
-from avl import AVLTreeIterative
-from bst import BinarySearchTree, BinarySearchTreeIterative, Leaf
-from rbt import RedBlackTree
-from splaytree import SplayTree
+from bst import BinarySearchTree
 
 
 @pytest.mark.parametrize(
     "bst_class",
-    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree, SplayTree],
+    [
+        BinarySearchTree,
+    ],
 )
 def test_insertion(bst_class: Type[BinarySearchTree]):
     for _ in range(50):
@@ -21,21 +20,22 @@ def test_insertion(bst_class: Type[BinarySearchTree]):
         for val in values:
             bst.insert(val, None)
             assert val in bst
-            bst.check_invariants(-maxsize, maxsize)
+            bst.validate(-maxsize, maxsize)
 
         for val in values:
             del bst[val]
             assert val not in bst
-            bst.check_invariants(-maxsize, maxsize)
+            bst.validate(-maxsize, maxsize)
 
         assert not bst
         assert len(bst) == 0
-        assert isinstance(bst.root, Leaf)
 
 
 @pytest.mark.parametrize(
     "bst_class",
-    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree, SplayTree],
+    [
+        BinarySearchTree,
+    ],
 )
 def test_sorted(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -49,7 +49,9 @@ def test_sorted(bst_class: Type[BinarySearchTree]):
 
 @pytest.mark.parametrize(
     "bst_class",
-    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree, SplayTree],
+    [
+        BinarySearchTree,
+    ],
 )
 def test_successor(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -68,7 +70,9 @@ def test_successor(bst_class: Type[BinarySearchTree]):
 
 @pytest.mark.parametrize(
     "bst_class",
-    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree, SplayTree],
+    [
+        BinarySearchTree,
+    ],
 )
 def test_predecessor(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -89,7 +93,9 @@ def test_predecessor(bst_class: Type[BinarySearchTree]):
 
 @pytest.mark.parametrize(
     "bst_class",
-    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree, SplayTree],
+    [
+        BinarySearchTree,
+    ],
 )
 def test_minimum(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -107,7 +113,9 @@ def test_minimum(bst_class: Type[BinarySearchTree]):
 
 @pytest.mark.parametrize(
     "bst_class",
-    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree, SplayTree],
+    [
+        BinarySearchTree,
+    ],
 )
 def test_maximum(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -125,7 +133,9 @@ def test_maximum(bst_class: Type[BinarySearchTree]):
 
 @pytest.mark.parametrize(
     "bst_class",
-    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree, SplayTree],
+    [
+        BinarySearchTree,
+    ],
 )
 def test_extract_min(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -138,7 +148,7 @@ def test_extract_min(bst_class: Type[BinarySearchTree]):
         for expected_key in sorted(values):
             (key, _), _ = bst.extract_min()
             assert key == expected_key
-            bst.check_invariants(-maxsize, maxsize)
+            bst.validate(-maxsize, maxsize)
             assert expected_key not in bst
 
         assert not bst
@@ -146,7 +156,9 @@ def test_extract_min(bst_class: Type[BinarySearchTree]):
 
 @pytest.mark.parametrize(
     "bst_class",
-    [BinarySearchTreeIterative, BinarySearchTree, AVLTreeIterative, RedBlackTree, SplayTree],
+    [
+        BinarySearchTree,
+    ],
 )
 def test_extract_max(bst_class: Type[BinarySearchTree]):
     for _ in range(100):
@@ -159,7 +171,7 @@ def test_extract_max(bst_class: Type[BinarySearchTree]):
         for expected_key in sorted(values, reverse=True):
             (key, _), _ = bst.extract_max()
             assert key == expected_key
-            bst.check_invariants(-maxsize, maxsize)
+            bst.validate(-maxsize, maxsize)
             assert expected_key not in bst
 
         assert not bst

@@ -6,7 +6,7 @@ from typing import Iterator, Optional, Union
 
 from typeguard import typechecked
 
-from bst import BinarySearchTreeIterative, Comparable, Internal, KeyValue, Leaf, Value
+from bst import BinarySearchTreeIterative, Comparable, Internal, Leaf, Value
 
 
 class Color(IntEnum):
@@ -347,13 +347,13 @@ class RedBlackTree(BinarySearchTreeIterative[Comparable, Value, RBTAuxiliaryData
         left_child.right = node
         set_parent(node, left_child)
 
-    def extract_min(self) -> tuple[KeyValue, Node]:
+    def extract_min(self) -> tuple[tuple[Comparable, Value] :, Node]:
         min_node = self.minimum()
         keyval = (min_node.key, min_node.value)
         self.delete(min_node.key)
         return keyval, self.root
 
-    def extract_max(self) -> tuple[KeyValue, Node]:
+    def extract_max(self) -> tuple[tuple[Comparable, Value] :, Node]:
         max_node = self.maximum()
         keyval = (max_node.key, max_node.value)
         self.delete(max_node.key)

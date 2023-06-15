@@ -2,17 +2,13 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import (
-    runtime_checkable,
-    Protocol,
-    TypeVar,
-    Generic,
-    Iterator,
-    TypeGuard,
-    Union,
-    Self,
-    Sized,
-)
+from typing import (Any, Container, Generic, Iterator, MutableMapping,
+                    Protocol, Self, Sized, TypeGuard, TypeVar, Union,
+                    runtime_checkable)
+
+
+class SentinelReached(ValueError):
+    pass
 
 
 @runtime_checkable
@@ -23,7 +19,6 @@ class SupportsLessThan(Protocol):
 
 Comparable = TypeVar("Comparable", bound=SupportsLessThan)
 Value = TypeVar("Value")
-KeyValue = tuple[Comparable, Value]
 
 
 class PrettyStrMixin(ABC):
@@ -44,32 +39,32 @@ class ValidatorMixin(ABC):
         pass
 
 
-class MemberMixin(Generic[Comparable], ABC):
+SentinelType = TypeVar("SentinelType", bound="AbstractSentinel")
+NodeType = TypeVar("NodeType", bound="AbstractNode")
+
+
+class MemberMixin(
+    Generic[Comparable, NodeType, SentinelType], Container[Comparable], ABC
+):
     @abstractmethod
-    def __contains__(self, key: Comparable) -> bool:
+    def __contains__(self, item: Any) -> bool:
         pass
 
     @abstractmethod
-    def access(self, key: Comparable) -> Self:
+    def access(self, key: Comparable) -> Union[NodeType, SentinelType]:
         pass
 
 
 class AbstractSentinel(
-    Generic[Comparable],
+    Generic[Comparable, NodeType, SentinelType],
     PrettyStrMixin,
     PrettyLineYieldMixin,
     ValidatorMixin,
     Sized,
-    MemberMixin[Comparable],
+    MemberMixin[Comparable, NodeType, SentinelType],
     ABC,
 ):
     """Base class for all leaves in a tree."""
-
-    def access(self, key: Comparable) -> Self:
-        return self
-
-    def delete(self, key: Comparable) -> Self:
-        return self
 
     @classmethod
     @abstractmethod
@@ -77,33 +72,7 @@ class AbstractSentinel(
         pass
 
 
-SentinelType = TypeVar("SentinelType", bound=AbstractSentinel)
-
-
-@dataclass
-class AbstractNode(
-    Generic[Comparable, Value, SentinelType],
-    PrettyStrMixin,
-    ValidatorMixin,
-    Sized,
-    PrettyLineYieldMixin,
-    MemberMixin[Comparable],
-    ABC,
-):
-    """Base class for all nodes in a tree."""
-
-    key: Comparable
-    value: Value
-
-    @abstractmethod
-    def leaf(self) -> SentinelType:
-        pass
-
-
-NodeType = TypeVar("NodeType", bound=AbstractNode)
-
-
-class TreeQueryMixin(Generic[NodeType, Comparable, Value], ABC):
+class TreeQueryMixin(Generic[Comparable, NodeType], ABC):
     @abstractmethod
     def minimum(self) -> NodeType:
         pass
@@ -118,6 +87,28 @@ class TreeQueryMixin(Generic[NodeType, Comparable, Value], ABC):
 
     @abstractmethod
     def predecessor(self, key: Comparable) -> NodeType:
+        pass
+
+
+class TreeMutationMixin(Generic[Comparable, Value, NodeType, SentinelType], ABC):
+    @abstractmethod
+    def insert(self, key: Comparable, value: Value, allow_overwrite: bool) -> NodeType:
+        pass
+
+    @abstractmethod
+    def delete(self, key: Comparable) -> Union[NodeType, SentinelType]:
+        pass
+
+    @abstractmethod
+    def extract_min(
+        self,
+    ) -> tuple[tuple[Comparable, Value], Union[NodeType, SentinelType]]:
+        pass
+
+    @abstractmethod
+    def extract_max(
+        self,
+    ) -> tuple[tuple[Comparable, Value], Union[NodeType, SentinelType]]:
         pass
 
 
@@ -145,7 +136,7 @@ class LeafConstructorMixin(Generic[SentinelType], ABC):
         pass
 
     @abstractmethod
-    def is_leaf(self, node: AbstractNode) -> TypeGuard[SentinelType]:
+    def is_leaf(self, node: Any) -> TypeGuard[SentinelType]:
         pass
 
 
@@ -155,38 +146,49 @@ class NodeConstructorMixin(Generic[NodeType, Comparable, Value], ABC):
         pass
 
     @abstractmethod
-    def is_node(self, node: AbstractNode) -> TypeGuard[NodeType]:
+    def is_node(self, node: Any) -> TypeGuard[NodeType]:
         pass
 
 
-class TreeMutationMixin(Generic[NodeType, SentinelType, Comparable, Value], ABC):
-    @abstractmethod
-    def insert(self, key: Comparable, value: Value) -> NodeType:
-        pass
+@dataclass
+class AbstractNode(
+    Generic[Comparable, Value, NodeType, SentinelType],
+    TreeMutationMixin[Comparable, Value, NodeType, SentinelType],
+    NodeConstructorMixin[NodeType, Comparable, Value],
+    MutableMapping[Comparable, Value],
+    TreeQueryMixin[Comparable, NodeType],
+    LeafConstructorMixin[SentinelType],
+    TreeIterativeMixin[NodeType],
+    MemberMixin[Comparable, NodeType, SentinelType],
+    PrettyLineYieldMixin,
+    PrettyStrMixin,
+    ValidatorMixin,
+    Sized,
+    ABC,
+):
+    """Base class for all nodes in a tree."""
+
+    key: Comparable
+    value: Value
 
     @abstractmethod
-    def delete(self, key: Comparable) -> Union[NodeType, SentinelType]:
-        pass
-
-    @abstractmethod
-    def extract_min(self) -> KeyValue:
-        pass
-
-    @abstractmethod
-    def extract_max(self) -> KeyValue:
+    def swap(self, node: NodeType):
         pass
 
 
 @dataclass
 class AbstractTree(
     Generic[Comparable, Value, NodeType, SentinelType],
+    TreeMutationMixin[Comparable, Value, NodeType, SentinelType],
     NodeConstructorMixin[NodeType, Comparable, Value],
+    MutableMapping[Comparable, Value],
+    TreeQueryMixin[Comparable, NodeType],
     LeafConstructorMixin[SentinelType],
-    TreeQueryMixin[NodeType, Comparable, Value],
     TreeIterativeMixin[NodeType],
-    TreeMutationMixin[NodeType, SentinelType, Comparable, Value],
+    MemberMixin[Comparable, NodeType, SentinelType],
     PrettyStrMixin,
     ValidatorMixin,
+    Sized,
     ABC,
 ):
     """Base class for all trees."""

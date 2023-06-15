@@ -3,15 +3,8 @@ from typing import Iterator, Optional
 
 from typeguard import typechecked
 
-from bst import (
-    BinarySearchTreeIterative,
-    Comparable,
-    Internal,
-    InternalNode,
-    KeyValue,
-    Node,
-    Value,
-)
+from bst import (BinarySearchTreeIterative, Comparable, Internal, InternalNode,
+                 Node, Value)
 
 
 @dataclass(slots=True)
@@ -114,7 +107,7 @@ class AVLTreeIterative(BinarySearchTreeIterative[Comparable, Value, AVLAuxiliary
                 self.set_child(ancestry, new_node)
 
     @typechecked
-    def extract_min_iterative(self, node: Internal) -> KeyValue:
+    def extract_min_iterative(self, node: Internal) -> tuple[Comparable, Value]:
         ancestry_min = self.access_ancestry_min(node)
         keyval = super().extract_min_iterative(node)
         self.avl_fixup(ancestry_min)
@@ -125,13 +118,13 @@ class AVLTreeIterative(BinarySearchTreeIterative[Comparable, Value, AVLAuxiliary
             super().delete(target_key)
             self.avl_fixup(ancestry)
 
-    def extract_min(self) -> tuple[KeyValue, Node]:
+    def extract_min(self) -> tuple[tuple[Comparable, Value] :, Node]:
         min_node = self.minimum()
         keyval = (min_node.key, min_node.value)
         self.delete(min_node.key)
         return keyval, self.root
 
-    def extract_max(self) -> tuple[KeyValue, Node]:
+    def extract_max(self) -> tuple[tuple[Comparable, Value] :, Node]:
         max_node = self.maximum()
         keyval = (max_node.key, max_node.value)
         self.delete(max_node.key)
