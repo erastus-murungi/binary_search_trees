@@ -1,19 +1,21 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any, Iterator, Self, TypeGuard, Union, cast
+from abc import ABC
+from typing import Any, Iterator, TypeGuard, TypeVar, Union, cast
 
-from typeguard import typechecked
+from core import (
+    AbstractNode,
+    AbstractSentinel,
+    Comparable,
+    SentinelReached,
+    SentinelType,
+    Value,
+)
 
-from core import (AbstractNode, AbstractSentinel, Comparable, NodeType,
-                  SentinelReached, SentinelType, Value)
 
-
-class Sentinel(
-    AbstractSentinel[Comparable, "BinarySearchTreeInternalNode", "Sentinel"]
-):
+class Sentinel(AbstractSentinel[Comparable]):
     @classmethod
-    def default(cls) -> "Sentinel":
+    def default(cls) -> Sentinel[Comparable]:
         return Sentinel()
 
     def pretty_str(self) -> str:
@@ -28,29 +30,36 @@ class Sentinel(
     def __len__(self) -> int:
         return 0
 
-    def __contains__(self, key: object) -> bool:
-        return False
 
-    def access(self, key: Comparable) -> Self:
-        return self
+BinaryNodeType = TypeVar("BinaryNodeType", bound="BinarySearchTreeInternalNodeAbstract")
 
 
-class BinarySearchTreeInternalNode(
-    AbstractNode[Comparable, Value, "BinarySearchTreeInternalNode", Sentinel]
+class BinarySearchTreeInternalNodeAbstract(
+    AbstractNode[Comparable, Value, BinaryNodeType, SentinelType], ABC
 ):
-    left: Union[BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]]
-    right: Union[BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]]
+    left: Union[BinaryNodeType, SentinelType]
+    right: Union[BinaryNodeType, SentinelType]
 
     def __init__(self, key: Comparable, value: Value):
         super().__init__(key, value)
-        self.left = self.leaf()
-        self.right = self.leaf()
+        self.left = self.sentinel()
+        self.right = self.sentinel()
 
-    def leaf(self) -> Sentinel[Comparable]:
-        return Sentinel()
+    def choose(self, key: Comparable) -> Union[BinaryNodeType, SentinelType]:
+        if key > self.key:
+            return self.right
+        elif key < self.key:
+            return self.left
+        else:
+            raise ValueError(f"Key {key} already exists in tree")
 
-    def is_leaf(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
-        return isinstance(node, Sentinel)
+    def choose_set(self, key: Comparable, node: BinaryNodeType):
+        if key > self.key:
+            self.right = node
+        elif key < self.key:
+            self.left = node
+        else:
+            raise ValueError(f"Key {key} already exists in tree")
 
     def pretty_str(self) -> str:
         return "".join(self.yield_line("", "R"))
@@ -72,70 +81,68 @@ class BinarySearchTreeInternalNode(
         yield from self.right.yield_line(indent, "R")
 
     def __contains__(self, key: Any) -> bool:
-        node = self.access(key)
+        node = self.access_no_throw(cast(Comparable, key))
         return isinstance(node, type(self)) and node.key == key
 
-    def access(
-        self, key: Comparable
-    ) -> Union[BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]]:
+    def access(self, key: Comparable) -> BinaryNodeType:
         if self.key == key:
-            return self
+            return cast(BinaryNodeType, self)
         elif key < self.key:
-            return self.left.access(key)
+            if self.is_node(self.left):
+                return self.left.access(key)
+            raise SentinelReached(f"Key {key} not found, Sentinel {self.left} reached")
         else:
-            return self.right.access(key)
+            if self.is_node(self.right):
+                return self.right.access(key)
+            raise SentinelReached(f"Key {key} not found, Sentinel {self.right} reached")
 
-    def minimum(self) -> BinarySearchTreeInternalNode[Comparable, Value]:
+    def minimum(self) -> BinaryNodeType:
         if isinstance(self.left, Sentinel):
-            return self
-        return self.left.minimum()
+            return cast(BinaryNodeType, self)
+        return self.nonnull_left.minimum()
 
-    def maximum(self) -> BinarySearchTreeInternalNode[Comparable, Value]:
+    def maximum(self) -> BinaryNodeType:
         if isinstance(self.right, Sentinel):
-            return self
-        return self.right.maximum()
+            return cast(BinaryNodeType, self)
+        return self.nonnull_right.maximum()
 
     @property
-    def nonnull_right(self) -> BinarySearchTreeInternalNode[Comparable, Value]:
-        if isinstance(self.right, BinarySearchTreeInternalNode):
-            return self.right
+    def nonnull_right(self) -> BinaryNodeType:
+        if isinstance(self.right, type(self)):
+            return cast(BinaryNodeType, self.right)
         raise SentinelReached(f"Node {self.right} is not a BinarySearchTreeNode")
 
     @property
-    def nonnull_left(self) -> BinarySearchTreeInternalNode[Comparable, Value]:
-        if isinstance(self.left, BinarySearchTreeInternalNode):
-            return self.left
+    def nonnull_left(self) -> BinaryNodeType:
+        if isinstance(self.left, type(self)):
+            return cast(BinaryNodeType, self.left)
         raise SentinelReached(f"Node {self.left} is not a BinarySearchTreeNode")
 
-    def successor(
-        self, key: Comparable
-    ) -> BinarySearchTreeInternalNode[Comparable, Value]:
+    def successor(self, key: Comparable) -> BinaryNodeType:
         if key > self.key:
             return self.nonnull_right.successor(key)
         elif key < self.key:
             try:
                 return self.nonnull_left.successor(key)
             except ValueError:
-                return self
+                return cast(BinaryNodeType, self)
         else:
             return self.nonnull_right.minimum()
 
-    def predecessor(
-        self, key: Comparable
-    ) -> BinarySearchTreeInternalNode[Comparable, Value]:
+    def predecessor(self, key: Comparable) -> BinaryNodeType:
         if key < self.key:
             return self.nonnull_left.predecessor(key)
         elif key > self.key:
             try:
                 return self.nonnull_right.predecessor(key)
             except ValueError:
-                return self
+                return cast(BinaryNodeType, self)
         else:
             return self.nonnull_left.maximum()
 
     def insert(
         self, key: Comparable, value: Value, allow_overwrite: bool = False
-    ) -> BinarySearchTreeInternalNode[Comparable, Value]:
+    ) -> BinaryNodeType:
         if self.key == key:
             if allow_overwrite:
                 self.value = value
@@ -151,95 +158,75 @@ class BinarySearchTreeInternalNode(
                 self.right = self.right.insert(key, value, allow_overwrite)
             else:
                 self.right = self.node(key, value)
-        return self
+        return cast(BinaryNodeType, self)
 
-    def delete(
-        self, key: Comparable
-    ) -> Union[BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]]:
+    def delete(self, key: Comparable) -> Union[BinaryNodeType, SentinelType]:
         if key < self.key:
             self.left = self.nonnull_left.delete(key)
         elif key > self.key:
             self.right = self.nonnull_right.delete(key)
         else:
-            if self.is_leaf(self.left):
+            if self.is_sentinel(self.left):
                 return self.right
-            elif self.is_leaf(self.right):
+            elif self.is_sentinel(self.right):
                 return self.left
             else:
                 successor = self.nonnull_right.minimum()
                 self.key, self.value = successor.key, successor.value
                 self.right = self.nonnull_right.delete(successor.key)
-        return self
+        return cast(BinaryNodeType, self)
 
     def extract_min(
         self,
-    ) -> tuple[
-        tuple[Comparable, Value],
-        Union[BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]],
-    ]:
+    ) -> tuple[tuple[Comparable, Value], Union[BinaryNodeType, SentinelType]]:
         try:
             keyval, self.left = self.nonnull_left.extract_min()
-            return keyval, self
+            return keyval, cast(BinaryNodeType, self)
         except SentinelReached:
             keyval = (self.key, self.value)
             if self.is_node(self.right):
                 return keyval, self.right
             else:
-                return keyval, self.leaf()
+                return keyval, self.sentinel()
 
     def extract_max(
         self,
-    ) -> tuple[
-        tuple[Comparable, Value],
-        Union[BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]],
-    ]:
+    ) -> tuple[tuple[Comparable, Value], Union[BinaryNodeType, SentinelType]]:
         try:
             keyval, self.right = self.nonnull_right.extract_max()
-            return keyval, self
+            return keyval, cast(BinaryNodeType, self)
         except SentinelReached:
             keyval = (self.key, self.value)
             if self.is_node(self.left):
                 return keyval, self.left
             else:
-                return keyval, self.leaf()
+                return keyval, self.sentinel()
 
-    def node(
-        self, key: Comparable, value: Value, *args, **kwargs
-    ) -> BinarySearchTreeInternalNode[Comparable, Value]:
-        return BinarySearchTreeInternalNode(key, value)
-
-    def is_node(
-        self, node: Any
-    ) -> TypeGuard[BinarySearchTreeInternalNode[Comparable, Value]]:
-        if isinstance(node, BinarySearchTreeInternalNode):
-            return True
-        return False
-
-    def inorder(self) -> Iterator[BinarySearchTreeInternalNode[Comparable, Value]]:
+    def inorder(self) -> Iterator[BinaryNodeType]:
         if self.is_node(self.left):
             yield from self.left.inorder()
-        yield self
+        yield cast(BinaryNodeType, self)
         if self.is_node(self.right):
             yield from self.right.inorder()
 
-    def preorder(self) -> Iterator[BinarySearchTreeInternalNode[Comparable, Value]]:
-        yield self
+    def preorder(self) -> Iterator[BinaryNodeType]:
+        yield cast(BinaryNodeType, self)
         if self.is_node(self.left):
             yield from self.left.inorder()
         if self.is_node(self.right):
             yield from self.right.inorder()
 
-    def postorder(self) -> Iterator[BinarySearchTreeInternalNode[Comparable, Value]]:
+    def postorder(self) -> Iterator[BinaryNodeType]:
         if self.is_node(self.left):
             yield from self.left.inorder()
         if self.is_node(self.right):
             yield from self.right.inorder()
-        yield self
+        yield cast(BinaryNodeType, self)
 
-    def level_order(self) -> Iterator[BinarySearchTreeInternalNode[Comparable, Value]]:
+    def level_order(self) -> Iterator[BinaryNodeType]:
         raise NotImplementedError
 
-    def swap(self, other: BinarySearchTreeInternalNode[Comparable, Value]) -> None:
+    def swap(self, other: BinaryNodeType) -> None:
         self.key = other.key
         self.value = other.value
         self.left = other.left
@@ -260,6 +247,41 @@ class BinarySearchTreeInternalNode(
     def __iter__(self) -> Iterator[Comparable]:
         for node in self.inorder():
             yield node.key
+
+
+class BinarySearchTreeInternalNode(
+    BinarySearchTreeInternalNodeAbstract[
+        Comparable,
+        Value,
+        "BinarySearchTreeInternalNode[Comparable, Value]",
+        Sentinel[Comparable],
+    ]
+):
+    def node(
+        self, key: Comparable, value: Value, *args, **kwargs
+    ) -> BinarySearchTreeInternalNode[Comparable, Value]:
+        return BinarySearchTreeInternalNode(key, value)
+
+    def is_node(
+        self, node: Any
+    ) -> TypeGuard[BinarySearchTreeInternalNode[Comparable, Value]]:
+        if isinstance(node, BinarySearchTreeInternalNode):
+            return True
+        return False
+
+    def sentinel(self) -> Sentinel[Comparable]:
+        return Sentinel()
+
+    def is_sentinel(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
+        return isinstance(node, Sentinel)
+
+    def access_no_throw(
+        self, key: Comparable
+    ) -> Union[BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]]:
+        try:
+            return self.access(key)
+        except SentinelReached:
+            return Sentinel.default()
 
 
 if __name__ == "__main__":

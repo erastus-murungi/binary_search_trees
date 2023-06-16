@@ -3,8 +3,14 @@ from typing import Iterator, Optional
 
 from typeguard import typechecked
 
-from bst import (BinarySearchTreeIterative, Comparable, Internal, InternalNode,
-                 Node, Value)
+from bst import (
+    BinarySearchTreeIterative,
+    Comparable,
+    Internal,
+    InternalNode,
+    Node,
+    Value,
+)
 
 
 @dataclass(slots=True)

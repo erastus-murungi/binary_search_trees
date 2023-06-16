@@ -2,9 +2,20 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import (Any, Container, Generic, Iterator, MutableMapping,
-                    Protocol, Self, Sized, TypeGuard, TypeVar, Union,
-                    runtime_checkable)
+from typing import (
+    Any,
+    Container,
+    Generic,
+    Iterator,
+    MutableMapping,
+    Protocol,
+    Self,
+    Sized,
+    TypeGuard,
+    TypeVar,
+    Union,
+    runtime_checkable,
+)
 
 
 class SentinelReached(ValueError):
@@ -47,22 +58,26 @@ class MemberMixin(
     Generic[Comparable, NodeType, SentinelType], Container[Comparable], ABC
 ):
     @abstractmethod
-    def __contains__(self, item: Any) -> bool:
+    def __contains__(self, key: Any) -> bool:
         pass
 
     @abstractmethod
-    def access(self, key: Comparable) -> Union[NodeType, SentinelType]:
+    def access(self, key: Comparable) -> NodeType:
+        pass
+
+    @abstractmethod
+    def access_no_throw(self, key: Comparable) -> Union[NodeType, SentinelType]:
         pass
 
 
 class AbstractSentinel(
-    Generic[Comparable, NodeType, SentinelType],
+    Generic[Comparable],
     PrettyStrMixin,
     PrettyLineYieldMixin,
     ValidatorMixin,
     Sized,
-    MemberMixin[Comparable, NodeType, SentinelType],
     ABC,
+    Container[Comparable],
 ):
     """Base class for all leaves in a tree."""
 
@@ -71,8 +86,11 @@ class AbstractSentinel(
     def default(cls) -> Self:
         pass
 
+    def __contains__(self, key: Any) -> bool:
+        return False
 
-class TreeQueryMixin(Generic[Comparable, NodeType], ABC):
+
+class TreeQueryMixin(Generic[Comparable, NodeType, SentinelType], ABC):
     @abstractmethod
     def minimum(self) -> NodeType:
         pass
@@ -82,11 +100,11 @@ class TreeQueryMixin(Generic[Comparable, NodeType], ABC):
         pass
 
     @abstractmethod
-    def successor(self, key: Comparable) -> NodeType:
+    def successor(self, key: Comparable) -> Union[NodeType, SentinelType]:
         pass
 
     @abstractmethod
-    def predecessor(self, key: Comparable) -> NodeType:
+    def predecessor(self, key: Comparable) -> Union[NodeType, SentinelType]:
         pass
 
 
@@ -130,13 +148,13 @@ class TreeIterativeMixin(Generic[NodeType], ABC):
         pass
 
 
-class LeafConstructorMixin(Generic[SentinelType], ABC):
+class SentinelConstructorMixin(Generic[SentinelType], ABC):
     @abstractmethod
-    def leaf(self, *args, **kwargs) -> SentinelType:
+    def sentinel(self, *args, **kwargs) -> SentinelType:
         pass
 
     @abstractmethod
-    def is_leaf(self, node: Any) -> TypeGuard[SentinelType]:
+    def is_sentinel(self, node: Any) -> TypeGuard[SentinelType]:
         pass
 
 
@@ -156,8 +174,8 @@ class AbstractNode(
     TreeMutationMixin[Comparable, Value, NodeType, SentinelType],
     NodeConstructorMixin[NodeType, Comparable, Value],
     MutableMapping[Comparable, Value],
-    TreeQueryMixin[Comparable, NodeType],
-    LeafConstructorMixin[SentinelType],
+    TreeQueryMixin[Comparable, NodeType, SentinelType],
+    SentinelConstructorMixin[SentinelType],
     TreeIterativeMixin[NodeType],
     MemberMixin[Comparable, NodeType, SentinelType],
     PrettyLineYieldMixin,
@@ -182,8 +200,8 @@ class AbstractTree(
     TreeMutationMixin[Comparable, Value, NodeType, SentinelType],
     NodeConstructorMixin[NodeType, Comparable, Value],
     MutableMapping[Comparable, Value],
-    TreeQueryMixin[Comparable, NodeType],
-    LeafConstructorMixin[SentinelType],
+    TreeQueryMixin[Comparable, NodeType, SentinelType],
+    SentinelConstructorMixin[SentinelType],
     TreeIterativeMixin[NodeType],
     MemberMixin[Comparable, NodeType, SentinelType],
     PrettyStrMixin,
@@ -193,5 +211,20 @@ class AbstractTree(
 ):
     """Base class for all trees."""
 
-    root: Union[NodeType, SentinelType]
+    root_: Union[NodeType, SentinelType]
     size: int = 0
+
+    def __post_init__(self):
+        assert len(self.root_) == self.size
+
+    @property
+    def root(self) -> Union[NodeType, SentinelType]:
+        return self.root_
+
+    @root.setter
+    def root(self, node: Union[NodeType, SentinelType]):
+        self.root_ = node
+
+    def clear(self):
+        self.root = self.sentinel()
+        self.size = 0
