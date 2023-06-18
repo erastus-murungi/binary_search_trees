@@ -52,7 +52,7 @@ class Node:
         if self.isleaf:
             return len(self.data)
         else:
-            return sum(node.size for node in self.children) + len(self.data)
+            return sum(node.size_ for node in self.children) + len(self.data)
 
     def is_balanced(self):
         if self.isleaf:
@@ -218,7 +218,7 @@ class Tree:
 
     @property
     def num_nodes(self):
-        return self.root.size
+        return self.root.size_
 
     @property
     def height(self):

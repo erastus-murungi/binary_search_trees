@@ -4,7 +4,11 @@ from typing import Type
 
 import pytest
 
-from bst import BinarySearchTree, BinarySearchTreeIterative
+from bst import (
+    BinarySearchTree,
+    BinarySearchTreeIterative,
+    BinarySearchTreeIterativeWithParent,
+)
 
 
 @pytest.mark.parametrize(
@@ -12,6 +16,7 @@ from bst import BinarySearchTree, BinarySearchTreeIterative
     [
         BinarySearchTree,
         BinarySearchTreeIterative,
+        BinarySearchTreeIterativeWithParent,
     ],
 )
 def test_insertion(bst_class: Type[BinarySearchTree]):
@@ -37,6 +42,7 @@ def test_insertion(bst_class: Type[BinarySearchTree]):
     [
         BinarySearchTree,
         BinarySearchTreeIterative,
+        BinarySearchTreeIterativeWithParent,
     ],
 )
 def test_sorted(bst_class: Type[BinarySearchTree]):
@@ -54,6 +60,7 @@ def test_sorted(bst_class: Type[BinarySearchTree]):
     [
         BinarySearchTree,
         BinarySearchTreeIterative,
+        BinarySearchTreeIterativeWithParent,
     ],
 )
 def test_successor(bst_class: Type[BinarySearchTree]):
@@ -76,6 +83,7 @@ def test_successor(bst_class: Type[BinarySearchTree]):
     [
         BinarySearchTree,
         BinarySearchTreeIterative,
+        BinarySearchTreeIterativeWithParent,
     ],
 )
 def test_predecessor(bst_class: Type[BinarySearchTree]):
@@ -100,6 +108,7 @@ def test_predecessor(bst_class: Type[BinarySearchTree]):
     [
         BinarySearchTree,
         BinarySearchTreeIterative,
+        BinarySearchTreeIterativeWithParent,
     ],
 )
 def test_minimum(bst_class: Type[BinarySearchTree]):
@@ -121,6 +130,7 @@ def test_minimum(bst_class: Type[BinarySearchTree]):
     [
         BinarySearchTree,
         BinarySearchTreeIterative,
+        BinarySearchTreeIterativeWithParent,
     ],
 )
 def test_maximum(bst_class: Type[BinarySearchTree]):
@@ -142,6 +152,7 @@ def test_maximum(bst_class: Type[BinarySearchTree]):
     [
         BinarySearchTree,
         BinarySearchTreeIterative,
+        BinarySearchTreeIterativeWithParent,
     ],
 )
 def test_extract_min(bst_class: Type[BinarySearchTree]):
@@ -166,6 +177,7 @@ def test_extract_min(bst_class: Type[BinarySearchTree]):
     [
         BinarySearchTree,
         BinarySearchTreeIterative,
+        BinarySearchTreeIterativeWithParent,
     ],
 )
 def test_extract_max(bst_class: Type[BinarySearchTree]):

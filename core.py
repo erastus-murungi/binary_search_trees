@@ -54,8 +54,20 @@ SentinelType = TypeVar("SentinelType", bound="AbstractSentinel")
 NodeType = TypeVar("NodeType", bound="AbstractNode")
 
 
+class SentinelConstructorMixin(Generic[SentinelType], ABC):
+    @abstractmethod
+    def sentinel(self, *args, **kwargs) -> SentinelType:
+        pass
+
+    @abstractmethod
+    def is_sentinel(self, node: Any) -> TypeGuard[SentinelType]:
+        pass
+
+
 class MemberMixin(
-    Generic[Comparable, NodeType, SentinelType], Container[Comparable], ABC
+    Generic[Comparable, NodeType, SentinelType],
+    Container[Comparable],
+    SentinelConstructorMixin[SentinelType],
 ):
     @abstractmethod
     def __contains__(self, key: Any) -> bool:
@@ -65,9 +77,11 @@ class MemberMixin(
     def access(self, key: Comparable) -> NodeType:
         pass
 
-    @abstractmethod
     def access_no_throw(self, key: Comparable) -> Union[NodeType, SentinelType]:
-        pass
+        try:
+            return self.access(key)
+        except SentinelReached:
+            return self.sentinel()
 
 
 class AbstractSentinel(
@@ -87,6 +101,9 @@ class AbstractSentinel(
         pass
 
     def __contains__(self, key: Any) -> bool:
+        return False
+
+    def __bool__(self):
         return False
 
 
@@ -148,16 +165,6 @@ class TreeIterativeMixin(Generic[NodeType], ABC):
         pass
 
 
-class SentinelConstructorMixin(Generic[SentinelType], ABC):
-    @abstractmethod
-    def sentinel(self, *args, **kwargs) -> SentinelType:
-        pass
-
-    @abstractmethod
-    def is_sentinel(self, node: Any) -> TypeGuard[SentinelType]:
-        pass
-
-
 class NodeConstructorMixin(Generic[NodeType, Comparable, Value], ABC):
     @abstractmethod
     def node(self, key: Comparable, value: Value, *args, **kwargs) -> NodeType:
@@ -175,7 +182,6 @@ class AbstractNode(
     NodeConstructorMixin[NodeType, Comparable, Value],
     MutableMapping[Comparable, Value],
     TreeQueryMixin[Comparable, NodeType, SentinelType],
-    SentinelConstructorMixin[SentinelType],
     TreeIterativeMixin[NodeType],
     MemberMixin[Comparable, NodeType, SentinelType],
     PrettyLineYieldMixin,
@@ -201,7 +207,6 @@ class AbstractTree(
     NodeConstructorMixin[NodeType, Comparable, Value],
     MutableMapping[Comparable, Value],
     TreeQueryMixin[Comparable, NodeType, SentinelType],
-    SentinelConstructorMixin[SentinelType],
     TreeIterativeMixin[NodeType],
     MemberMixin[Comparable, NodeType, SentinelType],
     PrettyStrMixin,
@@ -211,20 +216,15 @@ class AbstractTree(
 ):
     """Base class for all trees."""
 
-    root_: Union[NodeType, SentinelType]
+    root: Union[NodeType, SentinelType]
     size: int = 0
 
     def __post_init__(self):
-        assert len(self.root_) == self.size
-
-    @property
-    def root(self) -> Union[NodeType, SentinelType]:
-        return self.root_
-
-    @root.setter
-    def root(self, node: Union[NodeType, SentinelType]):
-        self.root_ = node
+        assert len(self.root) == self.size
 
     def clear(self):
         self.root = self.sentinel()
         self.size = 0
+
+    def __len__(self):
+        return self.size
