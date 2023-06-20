@@ -137,11 +137,6 @@ class RedBlackTree(
         See CLRS pg. 309 for the proof of this lemma.
     """
 
-    def __init__(
-        self, root: Optional[RBTInternalNode[Comparable, Value]] = None, size: int = 0
-    ):
-        super().__init__(root or RBTSentinel[Comparable, Value].default(), size)
-
     def insert(
         self, key: Comparable, value: Value, allow_overwrite: bool = True
     ) -> RBTInternalNode[Comparable, Value]:

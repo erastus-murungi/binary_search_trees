@@ -123,15 +123,6 @@ class AVLTreeIterative(
         AVLSentinel[Comparable],
     ]
 ):
-    def __init__(
-        self,
-        root: Union[
-            AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]
-        ] = AVLSentinel[Comparable].default(),
-        size: int = 0,
-    ):
-        super().__init__(root, size)
-
     def re_balance(self, node: AVLTreeInternalNode[Comparable, Value]) -> None:
         if node.balance_factor < -1:
             if node.left.balance_factor > 0:

@@ -1,96 +1,81 @@
+from __future__ import annotations
 from bisect import insort
+from typing import Union, Optional, Generic, Iterator, Self
+from dataclasses import dataclass
 
-LEFT, MIDDLE, RIGHT = 0, 1, 2
+from core import (
+    AbstractNode,
+    AbstractTree,
+    Comparable,
+    Value,
+    NodeType,
+    NodeWithParentType,
+)
+from nodes import (
+    SupportsParent,
+    Sentinel,
+    AbstractBinarySearchTreeInternalNodeWithParent,
+)
+
+# LEFT, MIDDLE, RIGHT = 0, 1, 2
 KEY, ITEM = 0, 1
 
 
-class Node:
-    def __init__(self, key, val, parent=None):
-        self.parent = parent
-        self.data = [(key, val)]
-        self.children = []
+@dataclass(slots=True)
+class KeyValue(Generic[Comparable, Value]):
+    key: Comparable
+    value: Value
+
+
+@dataclass(slots=True)
+class Triple(Generic[Comparable, Value]):
+    left: KeyValue[Comparable, Value]
+    middle: KeyValue[Comparable, Value]
+    right: KeyValue[Comparable, Value]
+
+
+@dataclass
+class TwoThreeNode(
+    Generic[Comparable, Value, NodeWithParentType],
+    AbstractNode[
+        Comparable,
+        Value,
+        NodeWithParentType,
+        Sentinel[Comparable],
+    ],
+    SupportsParent[NodeWithParentType, Sentinel[Comparable]],
+):
+
+    # def __init__(
+    #     self,
+    #     data: Union[
+    #         tuple[KeyValue[Comparable, Value], KeyValue[Comparable, Value]],
+    #         KeyValue[Comparable, Value],
+    #     ],
+    #     parent: Optional[
+    #         Union[TwoThreeNodeInternalNode[Comparable, Value], Sentinel[Comparable]]
+    #     ] = None,
+    #     children: Optional[
+    #         list[
+    #             Union[TwoThreeNodeInternalNode[Comparable, Value], Sentinel[Comparable]]
+    #         ]
+    #     ] = None,
+    # ):
+    #     self.data = data
+    #     self.parent = parent or self.sentinel()
+    #     self.children = children or []
+
+
+
+
 
     @property
     def isfull(self):
         return len(self.data) >= 3
 
-    def __le__(self, other):
-        return self.data[KEY] <= other.data[KEY]
-
-    def __eq__(self, other):
-        return self.data[KEY] == other.data[KEY]
-
-    def __ge__(self, other):
-        return self.data[KEY] >= other.data[KEY]
-
-    def __lt__(self, other):
-        return self.data[KEY] < other.data[KEY]
-
-    def __gt__(self, other):
-        return self.data[KEY] > other.data[KEY]
-
     @property
     def isleaf(self):
         return len(self.children) == 0
-
-    def __repr__(self):
-        return f"{self.__class__.__qualname__}({repr(self.data)})"
-
-    @property
-    def height(self):
-        if self is None:
-            return -1
-        if self.isleaf:
-            return 0
-        else:
-            return max(node.compute_height for node in self.children) + 1
-
-    @property
-    def size(self):
-        if self is None:
-            return 0
-        if self.isleaf:
-            return len(self.data)
-        else:
-            return sum(node.size_ for node in self.children) + len(self.data)
-
-    def is_balanced(self):
-        if self.isleaf:
-            return True
-        else:
-            if len(self.data) == 1:
-                assert self.children[LEFT] <= self.data[0][0] <= self.children[MIDDLE]
-            if len(self.data) == 2:
-                assert (
-                    self.data[0][0] >= self.children[LEFT]
-                    and self.data[0][0]
-                    >= self.children[MIDDLE]
-                    <= self.data[0][1]
-                    <= self.children[RIGHT]
-                )
-
-    def height_is_equal(self):
-        if self.isleaf:
-            return 0
-        h = self.children[0].compute_height
-        if len(self.children) == 1:
-            return h + 1
-        heights = [
-            self.children[i].compute_height for i in range(1, len(self.children))
-        ]
-        assert all(h == hn for hn in heights)
-        return h + 1
-
-    def minimum(self):
-        if self.isleaf:
-            return self.data[LEFT]
-        return self.children[LEFT].minimum()
-
-    def maximum(self):
-        if self.isleaf:
-            return self.data[-1]
-        else:
-            return self.children[-1].maximum()
 
     def successor(self, key):
         x, j = None, None
@@ -125,11 +110,64 @@ class Node:
         return None
 
 
-class Tree:
-    def __init__(self):
-        self.root = None
-        self.size = 0
+@dataclass
+class TwoNode(
+    TwoThreeNode[
+        Comparable,
+        Value,
+        "TwoNode[Comparable, Value]",
+    ],
+    AbstractBinarySearchTreeInternalNodeWithParent[
+        Comparable, Value, "TwoNode[Comparable, Value]", Sentinel[Comparable]
+    ],
+    SupportsParent["TwoNode[Comparable, Value]", Sentinel[Comparable]],
+):
+    pass
 
+
+@dataclass
+class ThreeNode(
+    TwoThreeNode[
+        Comparable,
+        Value,
+        "ThreeNode[Comparable, Value]",
+    ]
+):
+    key_a: Comparable
+    key_b: Comparable
+    value_a: Value
+    value_b: Value
+
+    left: Union[ThreeNode[Comparable, Value], Sentinel[Comparable]]
+    middle: Union[ThreeNode[Comparable, Value], Sentinel[Comparable]]
+    right: Union[ThreeNode[Comparable, Value], Sentinel[Comparable]]
+
+    def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
+        yield f"{indent}{prefix}----{self}\n"
+        indent += "     " if prefix == "R" else "|    "
+        yield from self.left.yield_line(indent, 'L')
+        yield from self.middle.yield_line(indent, 'M')
+        yield from self.right.yield_line(indent, 'R')
+
+    def minimum(self):
+        if self.is_sentinel(self.left):
+            return self
+        return self.left.minimum()
+
+    def maximum(self):
+        if self.is_sentinel(self.right):
+            return self
+        return self.right.maximum()
+
+
+class TwoThreeTree(
+    AbstractTree[
+        Comparable,
+        Value,
+        TwoThreeNode[Comparable, Value, "TwoThreeNode[Comparable, Value, TwoThreeNode]"],
+        Sentinel[Comparable],
+    ]
+):
     @property
     def isempty(self):
         return self.root is None
@@ -173,7 +211,7 @@ class Tree:
 
     def _insert(self, key, val=None):
         if self.isempty:
-            self.root = Node(key, val)
+            self.root = TwoThreeNodeInternalNode(data=(key, val))
             self.size += 1
             return
 
@@ -191,18 +229,20 @@ class Tree:
             self.split(curr)
         self.size += 1
 
-    def split(self, node: Node):
+    def split(self, node: TwoThreeNodeInternalNode[Comparable, Value]):
         # when dealing with a leaf node
         p = node.parent
         # promote the middle node
         mid = node.data.pop(MIDDLE)
         if p is None:
-            self.root = p = Node(*mid)
+            self.root = p = TwoThreeNodeInternalNode(mid)
         else:
             p.children.remove(node)
             insort(p.data, mid)
 
-        new_nodes = [Node(k, v, p) for k, v in node.data]
+        new_nodes = [
+            TwoThreeNodeInternalNode(data=(k, v), parent=p) for k, v in node.data
+        ]
         p.children.extend(new_nodes)
         p.children.sort()
         for child in new_nodes:
@@ -281,7 +321,7 @@ class Tree:
                     pass
 
     @staticmethod
-    def __rotate(y: Node, direction: int):
+    def __rotate(y: TwoThreeNodeInternalNode, direction: int):
         if y is None:
             raise ValueError("can't rotate null value")
 
@@ -289,7 +329,7 @@ class Tree:
         target = y.children[direction]
         sibling = y.children[not direction]
         yy = sibling.data.pop(direction)
-        new_node = Node(*yy, y.parent)
+        new_node = TwoNode(yy, parent=y.parent)
 
         beta = sibling.children[LEFT] if direction == LEFT else sibling.children[-1]
         y.children = target.children
@@ -343,38 +383,6 @@ class Tree:
         node.children.sort()
         self.absorb(node)
 
-    def __repr__(self):
-        return repr(self.root)
-
-    def __str__(self):
-        if self.root is None:
-            return str(None)
-        else:
-            self.__print_helper(self.root, "", True)
-            return ""
-
-    def __print_helper(self, node, indent, last, pos="R"):
-        """Simple recursive tree printer"""
-        if node is not None:
-            print(indent, end="")
-            if last:
-                print("R----", end="")
-                indent += "     "
-            else:
-                print(f"{pos}----", end="")
-                indent += "|    "
-            print(*node.data)
-            if len(node.children) > 0:
-                self.__print_helper(node.children[LEFT], indent, False, "L")
-                if len(node.children) == 2:
-                    self.__print_helper(node.children[MIDDLE], indent, True)
-                else:
-                    self.__print_helper(node.children[MIDDLE], indent, False, "M")
-                    self.__print_helper(node.children[RIGHT], indent, True)
-
-    def __len__(self):
-        return self.size
-
 
 if __name__ == "__main__":
     from random import randint
@@ -385,6 +393,6 @@ if __name__ == "__main__":
     values = [7, 17, 18, 0, 10, 14, 17, 10, 12, 12, 7, 14, 8, 19, 9, 8, 4]
     print(values)
     print(len(values))
-    st = Tree()
+    st = TwoThreeTree[int, None]()
     st.insert(values)
     print(st.successor(12))

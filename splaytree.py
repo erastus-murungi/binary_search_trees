@@ -50,15 +50,6 @@ class SplayTree(
         Comparable, Value, SplayTreeInternalNode, Sentinel[Comparable]
     ]
 ):
-    root: Union[SplayTreeInternalNode[Comparable, Value], Sentinel[Comparable]]
-
-    def __init__(
-        self,
-        root: Optional[SplayTreeInternalNode[Comparable, Value]] = None,
-        size: int = 0,
-    ):
-        super().__init__(root or Sentinel[Comparable](), size)
-
     def insert(
         self, key: Comparable, value: Value, allow_overwrite: bool = True
     ) -> SplayTreeInternalNode[Comparable, Value]:
@@ -145,9 +136,7 @@ class SplayTree(
         assert self.is_node(y)
         self.transplant(y, self.sentinel())
         y.parent = self.sentinel()
-        return self, SplayTree[Comparable, Value](
-            self.nonnull_root.nonnull_right, len(self.root.right)
-        )
+        return self, SplayTree[Comparable, Value](self.nonnull_root.nonnull_right)
 
     def delete(self, target_key):
         """Deletes a key from the Splay Tree"""

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from abc import ABC
+from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Optional, TypeGuard, Union
 
 from typeguard import typechecked  # type: ignore
@@ -292,29 +292,6 @@ class AbstractBinarySearchTreeIterative(
             else:
                 current = current.nonnull_right
         return current
-
-    def access_ancestry(self, key: Comparable) -> Optional[list[BinaryNodeType]]:
-        ancestry = []
-        current = self.root
-        while self.is_node(current):
-            ancestry.append(current)
-            if current.key == key:
-                return ancestry
-            elif current.key < key:
-                current = current.left
-            else:
-                current = current.right
-        return None
-
-    def set_child(
-        self,
-        ancestry: list[BinaryNodeType],
-        node: BinaryNodeType,
-    ):
-        if ancestry:
-            ancestry[-1].choose_set(node.key, node)
-        else:
-            self.root = node
 
     def minimum(self) -> BinaryNodeType:
         current = self.nonnull_root
@@ -710,10 +687,10 @@ class BinarySearchTreeRecursive(
         Sentinel[Comparable],
     ]
 ):
-    root: Union[
-        BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]
-    ] = field(default_factory=Sentinel[Comparable].default)
-    size: int = 0
+    def __init__(
+        self, root: Optional[BinarySearchTreeInternalNode[Comparable, Value]] = None
+    ):
+        super().__init__(root)
 
     def is_sentinel(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
         return isinstance(node, Sentinel)
@@ -750,16 +727,6 @@ class BinarySearchTreeIterative(
         Sentinel[Comparable],
     ]
 ):
-    def __init__(
-        self,
-        root: Optional[
-            Union[BinarySearchTreeInternalNode[Comparable, Value], Sentinel]
-        ] = None,
-        size=0,
-    ):
-        root = Sentinel.default() if root is None else root
-        super().__init__(root, size)
-
     def is_sentinel(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
         return isinstance(node, Sentinel)
 
@@ -801,15 +768,6 @@ class BinarySearchTreeIterativeWithParent(
         Sentinel[Comparable],
     ],
 ):
-    def __init__(
-        self,
-        root: Optional[
-            BinarySearchTreeInternalNodeWithParent[Comparable, Value]
-        ] = None,
-        size=0,
-    ):
-        super().__init__(Sentinel[Comparable].default() if root is None else root, size)
-
     def is_sentinel(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
         return isinstance(node, Sentinel)
 
@@ -846,23 +804,22 @@ class BinarySearchTreeIterativeWithParent(
 
 
 if __name__ == "__main__":
-    from random import randint
 
-    # for _ in range(10000):
-    #     bst: BinarySearchTreeRecursive[int, None] = BinarySearchTreeRecursive[
-    #         int, None
-    #     ]()
-    #     num_values = 3
-    #     # values = list({randint(0, 100) for _ in range(num_values)})
-    #     # values = [35, 70, 51, 52, 20, 55, 91]
-    #     values = [50, 44, 94]
-    #
-    #     for i, val in enumerate(values):
-    #         bst.insert(val, None, allow_overwrite=True)
-    #         bst.validate(0, 1000)
-    #         assert val in bst
-    #
-    #     for i, val in enumerate(values):
-    #         bst.delete(val)
-    #         print(bst.pretty_str())
-    #         assert val not in bst, values
+    for _ in range(10000):
+        bst: BinarySearchTreeRecursive[int, None] = BinarySearchTreeRecursive[
+            int, None
+        ]()
+        num_values = 3
+        # values = list({randint(0, 100) for _ in range(num_values)})
+        # values = [35, 70, 51, 52, 20, 55, 91]
+        values = [50, 44, 94]
+
+        for i, val in enumerate(values):
+            bst.insert(val, None, allow_overwrite=True)
+            bst.validate(0, 1000)
+            assert val in bst
+
+        for i, val in enumerate(values):
+            bst.delete(val)
+            print(bst.pretty_str())
+            assert val not in bst, values

@@ -10,18 +10,14 @@ from core import (
     Comparable,
     SentinelReferenceError,
     SentinelType,
+    SupportsParent,
     Value,
 )
 
-BinaryNodeType = TypeVar("BinaryNodeType", bound="BinarySearchTreeInternalNodeAbstract")
+BinaryNodeType = TypeVar("BinaryNodeType", bound="AbstractBinarySearchTreeNode")
 BinaryNodeWithParentType = TypeVar(
     "BinaryNodeWithParentType", bound="AbstractBinarySearchTreeInternalNodeWithParent"
 )
-
-
-@dataclass
-class SupportsParent(Generic[BinaryNodeWithParentType, SentinelType], ABC):
-    parent: Union[BinaryNodeWithParentType, SentinelType] = field(repr=False)
 
 
 class Sentinel(AbstractSentinel[Comparable]):
@@ -39,9 +35,11 @@ class AbstractSentinelWithParent(
 
 
 @dataclass
-class BinarySearchTreeInternalNodeAbstract(
+class AbstractBinarySearchTreeNode(
     AbstractNode[Comparable, Value, BinaryNodeType, SentinelType], ABC
 ):
+    key: Comparable
+    value: Value
     left: Union[BinaryNodeType, SentinelType] = field(repr=False)
     right: Union[BinaryNodeType, SentinelType] = field(repr=False)
 
@@ -248,9 +246,13 @@ class BinarySearchTreeInternalNodeAbstract(
         for node in self.inorder():
             yield node.key
 
+    def children(self) -> Iterator[Union[BinaryNodeType, SentinelType]]:
+        yield self.left
+        yield self.right
+
 
 class BinarySearchTreeInternalNode(
-    BinarySearchTreeInternalNodeAbstract[
+    AbstractBinarySearchTreeNode[
         Comparable,
         Value,
         "BinarySearchTreeInternalNode[Comparable, Value]",
@@ -289,7 +291,7 @@ class BinarySearchTreeInternalNode(
 @dataclass
 class AbstractBinarySearchTreeInternalNodeWithParent(
     Generic[Comparable, Value, BinaryNodeWithParentType, SentinelType],
-    BinarySearchTreeInternalNodeAbstract[
+    AbstractBinarySearchTreeNode[
         Comparable,
         Value,
         BinaryNodeWithParentType,

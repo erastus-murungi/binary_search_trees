@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import (
     Any,
     Container,
@@ -15,6 +15,7 @@ from typing import (
     TypeVar,
     Union,
     runtime_checkable,
+    Optional,
 )
 
 
@@ -336,7 +337,7 @@ class NodeConstructorMixin(Generic[NodeType, Comparable, Value], ABC):
         pass
 
 
-@dataclass
+@dataclass(slots=True, kw_only=True)
 class AbstractNode(
     Generic[Comparable, Value, NodeType, SentinelType],
     NodeMutationMixin[Comparable, Value, NodeType, SentinelType],
@@ -353,11 +354,16 @@ class AbstractNode(
 ):
     """Base class for all nodes in a tree."""
 
-    key: Comparable
-    value: Value
+
+NodeWithParentType = TypeVar("NodeWithParentType", bound="SupportsParent")
 
 
 @dataclass
+class SupportsParent(Generic[NodeWithParentType, SentinelType], ABC):
+    parent: Union[NodeWithParentType, SentinelType] = field(repr=False)
+
+
+@dataclass(slots=True)
 class AbstractTree(
     Generic[Comparable, Value, NodeType, SentinelType],
     TreeMutationMixin[Comparable, Value, NodeType],
@@ -376,8 +382,9 @@ class AbstractTree(
     root: Union[NodeType, SentinelType]
     size: int = 0
 
-    def __post_init__(self):
-        assert len(self.root) == self.size
+    def __init__(self, root: Optional[NodeType] = None):
+        self.root = root if root is not None else self.sentinel()
+        self.size = len(self.root)
 
     def clear(self):
         self.root = self.sentinel()
