@@ -233,26 +233,4 @@ class AVLTreeIterative(
 
 
 if __name__ == "__main__":
-    from random import randint
-    from sys import maxsize
-
-    for _ in range(10000):
-        bst: AVLTreeIterative[int, None] = AVLTreeIterative[int, None]()
-        num_values = 7
-        # values = list({randint(0, 100) for _ in range(num_values)})
-        values = [64, 98, 8, 44, 81, 20, 27]
-
-        for val in values:
-            bst.insert(val, None, allow_overwrite=True)
-            # print(bst.pretty_str())
-            bst.validate(-maxsize, maxsize)
-            assert val in bst
-
-        print(bst.pretty_str())
-
-        for val in values:
-            bst.delete(val)
-            print(bst.pretty_str())
-            bst.validate(0, 1000)
-            # print(bst.pretty_str())
-            assert val not in bst, values
+    pass

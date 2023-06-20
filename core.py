@@ -254,7 +254,7 @@ class NodeMutationMixin(Generic[Comparable, Value, NodeType, SentinelType], ABC)
         """
 
     @abstractmethod
-    def _delete(self, key: Comparable) -> Union[NodeType, SentinelType]:
+    def delete_key(self, key: Comparable) -> Union[NodeType, SentinelType]:
         """Delete the node with the specified key from the tree.
 
 
@@ -319,6 +319,10 @@ class TreeIterativeMixin(Generic[NodeType], ABC):
 
     @abstractmethod
     def level_order(self) -> Iterator[NodeType]:
+        pass
+
+    @abstractmethod
+    def yield_edges(self) -> Iterator[tuple[NodeType, NodeType]]:
         pass
 
 

@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
 from abc import ABC
 from dataclasses import dataclass, field
 from typing import Any, Generic, Iterator, TypeGuard, TypeVar, Union, cast
@@ -64,6 +67,9 @@ class AbstractBinarySearchTreeNode(
 
     def pretty_str(self) -> str:
         return "".join(self.yield_line("", "R"))
+
+    def dot(self, output_file_path: str = "tree.pdf"):
+        return draw_tree(self, output_file_path)
 
     def validate(self, lower_limit: Comparable, upper_limit: Comparable) -> bool:
         if not (lower_limit < self.key < upper_limit):
@@ -165,11 +171,11 @@ class AbstractBinarySearchTreeNode(
                 self.right = node
         return cast(BinaryNodeType, self)
 
-    def _delete(self, key: Comparable) -> Union[BinaryNodeType, SentinelType]:
+    def delete_key(self, key: Comparable) -> Union[BinaryNodeType, SentinelType]:
         if key < self.key:
-            self.left = self.nonnull_left._delete(key)
+            self.left = self.nonnull_left.delete_key(key)
         elif key > self.key:
-            self.right = self.nonnull_right._delete(key)
+            self.right = self.nonnull_right.delete_key(key)
         else:
             if not self._is_node(self.left):
                 return self.right
@@ -178,7 +184,7 @@ class AbstractBinarySearchTreeNode(
             else:
                 successor = self.nonnull_right.minimum()
                 self.key, self.value = successor.key, successor.value
-                self.right = self.nonnull_right._delete(successor.key)
+                self.right = self.nonnull_right.delete_key(successor.key)
         return cast(BinaryNodeType, self)
 
     def _extract_min(
@@ -228,6 +234,14 @@ class AbstractBinarySearchTreeNode(
             yield from self.right.inorder()
         yield cast(BinaryNodeType, self)
 
+    def yield_edges(self) -> Iterator[tuple[BinaryNodeType, BinaryNodeType]]:
+        if self._is_node(self.left):
+            yield from self.left.yield_edges()
+            yield cast(BinaryNodeType, self), self.left
+        if self._is_node(self.right):
+            yield from self.right.yield_edges()
+            yield cast(BinaryNodeType, self), self.right
+
     def level_order(self) -> Iterator[BinaryNodeType]:
         raise NotImplementedError
 
@@ -235,7 +249,7 @@ class AbstractBinarySearchTreeNode(
         raise NotImplementedError("Use insert_node instead")
 
     def __delitem__(self, key: Comparable) -> None:
-        self._delete(key)
+        self.delete_key(key)
 
     def __getitem__(self, key: Comparable) -> Value:
         raise NotImplementedError("Use access instead")
@@ -284,6 +298,110 @@ class BinarySearchTreeInternalNodeWithParent(
     ]
 ):
     pass
+
+
+DIR = "./trees/"
+DOT_FILENAME = "tree.dot"
+GRAPH_TYPE = "pdf"
+
+
+def graph_prologue() -> str:
+    return (
+        'digraph G {  graph [fontname = "Courier New", engine="sfdp"];\n'
+        + ' node [fontname = "Courier", style = rounded];\n'
+        + ' edge [fontname = "Courier"];'
+    )
+
+
+def graph_epilogue() -> str:
+    return "}"
+
+
+def escape(s: str) -> str:
+    return (
+        s.replace("\\", "\\\\")
+        .replace("\t", "\\t")
+        .replace("\b", "\\b")
+        .replace("\r", "\\r")
+        .replace("\f", "\\f")
+        .replace("'", "\\'")
+        .replace('"', '\\"')
+        .replace("<", "\\<")
+        .replace(">", "\\>")
+        # .replace("\n", "\\l")
+        .replace("||", "\\|\\|")
+        .replace("[", "\\[")
+        .replace("]", "\\]")
+        .replace("{", "\\{")
+        .replace("}", "\\}")
+    )
+
+
+def create_graph_pdf(
+    graph,
+    output_filename,
+    dot_filename=DOT_FILENAME,
+    output_filetype=GRAPH_TYPE,
+):
+    dot_exec_filepath = (
+        "/usr/local/bin/dot" if sys.platform == "darwin" else "/usr/bin/dot"
+    )
+
+    output_filepath = DIR + output_filename
+    dot_filepath = DIR + dot_filename
+
+    os.makedirs(DIR, exist_ok=True)
+    with open(dot_filepath, "w+") as f:
+        f.write("\n".join(graph))
+
+    args = [
+        dot_exec_filepath,
+        f"-T{output_filetype}",
+        f"-Gdpi={96}",
+        dot_filepath,
+        "-o",
+        output_filepath,
+    ]
+    subprocess.run(args)
+    os.makedirs(output_filetype, exist_ok=True)
+    subprocess.run(["open", output_filepath])
+    # subprocess.run(["rm", output_filepath])
+
+
+def draw_tree(
+    root: Union[AbstractSentinel, AbstractBinarySearchTreeNode],
+    output_filename: str = "tree.pdf",
+):
+    graph = [graph_prologue()]
+    edges = []
+    nodes = []
+
+    if isinstance(root, AbstractSentinel):
+        nodes.append(
+            f"   {id(root)} [shape=record, style=filled, fillcolor=black, "
+            f'fontcolor=white, label="{escape(str(root))}"];'
+        )
+    else:
+        for node in root.inorder():
+            if node.value:
+                s = f"key={node.key}, value={node.value}"
+            else:
+                s = f"key={node.key}"
+            nodes.append(
+                f"   {id(node)} [shape=record, style=filled, fillcolor=black, "
+                f'fontcolor=white, label="{escape(s)}"];'
+            )
+
+        for src, dst in root.yield_edges():
+            edges.append(
+                f"{(id(src))}:from_false -> {(id(dst))}:from_node [arrowhead=vee] "
+            )
+
+    graph.extend(edges)
+    graph.extend(nodes)
+    graph.append(graph_epilogue())
+
+    create_graph_pdf(graph, output_filename=output_filename)
 
 
 if __name__ == "__main__":

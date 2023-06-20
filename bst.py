@@ -13,6 +13,7 @@ from nodes import (
     BinarySearchTreeInternalNode,
     BinarySearchTreeInternalNodeWithParent,
     Sentinel,
+    draw_tree,
 )
 
 
@@ -31,6 +32,9 @@ class AbstractBinarySearchTree(
 
     def pretty_str(self):
         return self.root.pretty_str()
+
+    def dot(self, output_file_path: str = "tree.pdf"):
+        return draw_tree(self.nonnull_root, output_file_path)
 
     def __getitem__(self, key: Comparable) -> Value:
         node = self.access(key)
@@ -71,6 +75,12 @@ class AbstractBinarySearchTree(
     def postorder(self) -> Iterator[BinaryNodeType]:
         try:
             return self.nonnull_root.postorder()
+        except SentinelReferenceError:
+            return iter([])
+
+    def yield_edges(self) -> Iterator[tuple[BinaryNodeType, BinaryNodeType]]:
+        try:
+            return self.nonnull_root.yield_edges()
         except SentinelReferenceError:
             return iter([])
 
@@ -192,7 +202,7 @@ class AbstractBinarySearchTreeRecursive(
 
     def delete(self, key: Comparable) -> BinaryNodeType:
         if node := self.access(key):
-            self.root = self.nonnull_root._delete(key)
+            self.root = self.nonnull_root.delete_key(key)
             self.size -= 1
             return node
         else:
@@ -818,6 +828,8 @@ if __name__ == "__main__":
             bst.insert(val, None, allow_overwrite=True)
             bst.validate(0, 1000)
             assert val in bst
+
+        bst.dot()
 
         for i, val in enumerate(values):
             bst.delete(val)
