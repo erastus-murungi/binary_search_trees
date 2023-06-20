@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Any, Iterator, TypeGuard, TypeVar, Union
 
 from bst import AbstractBinarySearchTreeWithParentIterative, Comparable, Value
-from core import AbstractSentinel, SentinelReached
+from core import AbstractSentinel, SentinelReferenceError
 from nodes import AbstractBinarySearchTreeInternalNodeWithParent
 
 AVLInternalNodeType = TypeVar("AVLInternalNodeType", bound="AVLTreeInternalNode")
@@ -215,7 +215,7 @@ class AVLTreeIterative(
                 self.avl_fixup(successor)
             self.size -= 1
             return node
-        except SentinelReached as e:
+        except SentinelReferenceError as e:
             raise ValueError(f"Key {key} not in tree") from e
 
     def extract_min(self) -> tuple[Comparable, Value]:

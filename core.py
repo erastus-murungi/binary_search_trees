@@ -18,7 +18,7 @@ from typing import (
 )
 
 
-class SentinelReached(ValueError):
+class SentinelReferenceError(ValueError):
     pass
 
 
@@ -87,7 +87,7 @@ class MemberMixin(
     def access_no_throw(self, key: Comparable) -> Union[NodeType, SentinelType]:
         try:
             return self.access(key)
-        except SentinelReached:
+        except SentinelReferenceError:
             return self.sentinel()
 
 
@@ -113,6 +113,18 @@ class AbstractSentinel(
 
     def __bool__(self):
         return False
+
+    def pretty_str(self) -> str:
+        return "∅"
+
+    def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
+        yield f"{indent}{prefix}----'∅'\n"
+
+    def validate(self, *arg, **kwargs) -> bool:
+        return True
+
+    def __len__(self) -> int:
+        return 0
 
 
 class TreeQueryMixin(Generic[Comparable, NodeType, SentinelType], ABC):

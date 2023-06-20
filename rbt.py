@@ -1,14 +1,15 @@
 from __future__ import annotations
 
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Iterator, Optional, Union, Generic, TypeGuard, Any
+from typing import Any, Generic, Iterator, Optional, TypeGuard, Union
 
 from bst import AbstractBinarySearchTreeWithParentIterative, Comparable, Value
 from nodes import (
     AbstractBinarySearchTreeInternalNodeWithParent,
     AbstractSentinel,
+    AbstractSentinelWithParent,
     SupportsParent,
 )
 
@@ -32,7 +33,11 @@ class SupportsColor(ABC):
 @dataclass(slots=True)
 class RBTSentinel(
     Generic[Comparable, Value],
-    AbstractSentinel[Comparable],
+    AbstractSentinelWithParent[
+        Comparable,
+        "RBTInternalNode[Comparable, Value]",
+        "RBTSentinel[Comparable, Value]",
+    ],
     SupportsColor,
     SupportsParent["RBTInternalNode", "RBTSentinel"],
 ):
@@ -58,18 +63,6 @@ class RBTSentinel(
     @classmethod
     def default(cls) -> RBTSentinel[Comparable, Value]:
         return RBTSentinel()
-
-    def pretty_str(self) -> str:
-        return "∅"
-
-    def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
-        yield f"{indent}{prefix}----'∅'\n"
-
-    def validate(self, *arg, **kwargs) -> bool:
-        return True
-
-    def __len__(self) -> int:
-        return 0
 
 
 @dataclass(slots=True)
@@ -350,7 +343,7 @@ class RedBlackTree(
         for node in self.inorder():
             if node.color == Color.RED:
                 if node.left.color == Color.RED or node.right.color == Color.RED:
-                    raise RuntimeError(f"Property 4 violated at {node} {values}")
+                    raise RuntimeError(f"Property 4 violated at {node}")
 
     def check_black_height_invariant(self):
         """Checks whether the black-height is the same for all paths starting at the root"""

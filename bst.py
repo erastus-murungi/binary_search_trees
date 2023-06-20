@@ -6,7 +6,7 @@ from typing import Any, Callable, Iterator, Optional, TypeGuard, Union
 
 from typeguard import typechecked  # type: ignore
 
-from core import AbstractTree, Comparable, SentinelReached, SentinelType, Value
+from core import AbstractTree, Comparable, SentinelReferenceError, SentinelType, Value
 from nodes import (
     BinaryNodeType,
     BinaryNodeWithParentType,
@@ -48,42 +48,42 @@ class AbstractBinarySearchTree(
     def nonnull_root(self) -> BinaryNodeType:
         if self.is_node(self.root):
             return self.root
-        raise SentinelReached(f"Tree is empty")
+        raise SentinelReferenceError(f"Tree is empty")
 
     def level_order(self) -> Iterator[BinaryNodeType]:
         try:
             return self.nonnull_root.level_order()
-        except SentinelReached:
+        except SentinelReferenceError:
             return iter([])
 
     def inorder(self) -> Iterator[BinaryNodeType]:
         try:
             return self.nonnull_root.inorder()
-        except SentinelReached:
+        except SentinelReferenceError:
             return iter([])
 
     def preorder(self) -> Iterator[BinaryNodeType]:
         try:
             return self.nonnull_root.preorder()
-        except SentinelReached:
+        except SentinelReferenceError:
             return iter([])
 
     def postorder(self) -> Iterator[BinaryNodeType]:
         try:
             return self.nonnull_root.postorder()
-        except SentinelReached:
+        except SentinelReferenceError:
             return iter([])
 
     def predecessor(self, key: Comparable) -> BinaryNodeType:
         try:
             return self.nonnull_root.predecessor(key)
-        except SentinelReached as e:
+        except SentinelReferenceError as e:
             raise KeyError(f"No predecessor found, {key} is minimum key in tree") from e
 
     def successor(self, key: Comparable) -> BinaryNodeType:
         try:
             return self.nonnull_root.successor(key)
-        except SentinelReached as e:
+        except SentinelReferenceError as e:
             raise KeyError(f"No successor found, {key} is maximum key in tree") from e
 
     def access(self, key: Comparable) -> BinaryNodeType:
@@ -396,7 +396,7 @@ class AbstractBinarySearchTreeIterative(
                 successor.left = target_node.left
             self.size -= 1
             return target_node
-        except SentinelReached as e:
+        except SentinelReferenceError as e:
             raise ValueError(f"Key {key} not in tree") from e
 
     def extract_min(self) -> tuple[Comparable, Value]:
@@ -484,7 +484,7 @@ class AbstractBinarySearchTreeIterative(
             if candidate is None:
                 raise KeyError(f"Key {key} has no successor")
             return candidate
-        except SentinelReached as e:
+        except SentinelReferenceError as e:
             raise ValueError(f"Key {key} not found") from e
 
     def predecessor(self, key: Comparable) -> BinaryNodeType:
@@ -504,7 +504,7 @@ class AbstractBinarySearchTreeIterative(
             if candidate is None:
                 raise KeyError(f"Key {key} has no predecessor")
             return candidate
-        except SentinelReached as e:
+        except SentinelReferenceError as e:
             raise ValueError(f"Key {key} not found") from e
 
     def right_rotate(
@@ -623,7 +623,7 @@ class AbstractBinarySearchTreeWithParentIterative(
                 successor.left.parent = successor
             self.size -= 1
             return node
-        except SentinelReached as e:
+        except SentinelReferenceError as e:
             raise ValueError(f"Key {key} not in tree") from e
 
     def left_rotate(

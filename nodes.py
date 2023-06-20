@@ -2,16 +2,26 @@ from __future__ import annotations
 
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Any, Iterator, TypeGuard, TypeVar, Union, cast, Generic
+from typing import Any, Generic, Iterator, TypeGuard, TypeVar, Union, cast
 
 from core import (
     AbstractNode,
     AbstractSentinel,
     Comparable,
-    SentinelReached,
+    SentinelReferenceError,
     SentinelType,
     Value,
 )
+
+BinaryNodeType = TypeVar("BinaryNodeType", bound="BinarySearchTreeInternalNodeAbstract")
+BinaryNodeWithParentType = TypeVar(
+    "BinaryNodeWithParentType", bound="AbstractBinarySearchTreeInternalNodeWithParent"
+)
+
+
+@dataclass
+class SupportsParent(Generic[BinaryNodeWithParentType, SentinelType], ABC):
+    parent: Union[BinaryNodeWithParentType, SentinelType] = field(repr=False)
 
 
 class Sentinel(AbstractSentinel[Comparable]):
@@ -19,23 +29,13 @@ class Sentinel(AbstractSentinel[Comparable]):
     def default(cls) -> Sentinel[Comparable]:
         return Sentinel()
 
-    def pretty_str(self) -> str:
-        return "∅"
 
-    def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
-        yield f"{indent}{prefix}----'∅'\n"
-
-    def validate(self, *arg, **kwargs) -> bool:
-        return True
-
-    def __len__(self) -> int:
-        return 0
-
-
-BinaryNodeType = TypeVar("BinaryNodeType", bound="BinarySearchTreeInternalNodeAbstract")
-BinaryNodeWithParentType = TypeVar(
-    "BinaryNodeWithParentType", bound="AbstractBinarySearchTreeInternalNodeWithParent"
-)
+class AbstractSentinelWithParent(
+    AbstractSentinel[Comparable],
+    SupportsParent[BinaryNodeWithParentType, SentinelType],
+    ABC,
+):
+    pass
 
 
 @dataclass
@@ -90,11 +90,15 @@ class BinarySearchTreeInternalNodeAbstract(
         elif key < self.key:
             if self.is_node(self.left):
                 return self.left.access(key)
-            raise SentinelReached(f"Key {key} not found, Sentinel {self.left} reached")
+            raise SentinelReferenceError(
+                f"Key {key} not found, Sentinel {self.left} reached"
+            )
         else:
             if self.is_node(self.right):
                 return self.right.access(key)
-            raise SentinelReached(f"Key {key} not found, Sentinel {self.right} reached")
+            raise SentinelReferenceError(
+                f"Key {key} not found, Sentinel {self.right} reached"
+            )
 
     def minimum(self) -> BinaryNodeType:
         if self.is_sentinel(self.left):
@@ -112,13 +116,13 @@ class BinarySearchTreeInternalNodeAbstract(
     def nonnull_right(self) -> BinaryNodeType:
         if self.is_node(self.right):
             return self.right
-        raise SentinelReached(f"Node {self.right} is not a BinarySearchTreeNode")
+        raise SentinelReferenceError(f"Node {self.right} is not a BinarySearchTreeNode")
 
     @property
     def nonnull_left(self) -> BinaryNodeType:
         if self.is_node(self.left):
             return self.left
-        raise SentinelReached(f"Node {self.left} is not a BinarySearchTreeNode")
+        raise SentinelReferenceError(f"Node {self.left} is not a BinarySearchTreeNode")
 
     def successor(self, key: Comparable) -> BinaryNodeType:
         if key > self.key:
@@ -184,7 +188,7 @@ class BinarySearchTreeInternalNodeAbstract(
         try:
             keyval, self.left = self.nonnull_left._extract_min()
             return keyval, cast(BinaryNodeType, self)
-        except SentinelReached:
+        except SentinelReferenceError:
             keyval = (self.key, self.value)
             if self.is_node(self.right):
                 return keyval, self.right
@@ -197,7 +201,7 @@ class BinarySearchTreeInternalNodeAbstract(
         try:
             keyval, self.right = self.nonnull_right._extract_max()
             return keyval, cast(BinaryNodeType, self)
-        except SentinelReached:
+        except SentinelReferenceError:
             keyval = (self.key, self.value)
             if self.is_node(self.left):
                 return keyval, self.left
@@ -280,11 +284,6 @@ class BinarySearchTreeInternalNode(
 
     def is_sentinel(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
         return isinstance(node, Sentinel)
-
-
-@dataclass
-class SupportsParent(Generic[BinaryNodeWithParentType, SentinelType], ABC):
-    parent: Union[BinaryNodeWithParentType, SentinelType] = field(repr=False)
 
 
 @dataclass

@@ -12,6 +12,7 @@ from bst import (
     BinarySearchTreeRecursive,
 )
 from rbt import RedBlackTree
+from splaytree import SplayTree
 
 
 @pytest.mark.parametrize(
@@ -22,6 +23,7 @@ from rbt import RedBlackTree
         BinarySearchTreeIterativeWithParent,
         AVLTreeIterative,
         RedBlackTree,
+        SplayTree,
     ],
 )
 def test_insertion(bst_class: Type[AbstractBinarySearchTree]):
@@ -50,6 +52,7 @@ def test_insertion(bst_class: Type[AbstractBinarySearchTree]):
         BinarySearchTreeIterativeWithParent,
         AVLTreeIterative,
         RedBlackTree,
+        SplayTree,
     ],
 )
 def test_sorted(bst_class: Type[AbstractBinarySearchTree]):
@@ -70,6 +73,7 @@ def test_sorted(bst_class: Type[AbstractBinarySearchTree]):
         BinarySearchTreeIterativeWithParent,
         AVLTreeIterative,
         RedBlackTree,
+        SplayTree,
     ],
 )
 def test_successor(bst_class: Type[AbstractBinarySearchTree]):
@@ -95,6 +99,7 @@ def test_successor(bst_class: Type[AbstractBinarySearchTree]):
         BinarySearchTreeIterativeWithParent,
         AVLTreeIterative,
         RedBlackTree,
+        SplayTree,
     ],
 )
 def test_predecessor(bst_class: Type[AbstractBinarySearchTree]):
@@ -122,6 +127,7 @@ def test_predecessor(bst_class: Type[AbstractBinarySearchTree]):
         BinarySearchTreeIterativeWithParent,
         AVLTreeIterative,
         RedBlackTree,
+        SplayTree,
     ],
 )
 def test_minimum(bst_class: Type[AbstractBinarySearchTree]):
@@ -146,6 +152,7 @@ def test_minimum(bst_class: Type[AbstractBinarySearchTree]):
         BinarySearchTreeIterativeWithParent,
         AVLTreeIterative,
         RedBlackTree,
+        SplayTree,
     ],
 )
 def test_maximum(bst_class: Type[AbstractBinarySearchTree]):
@@ -170,6 +177,7 @@ def test_maximum(bst_class: Type[AbstractBinarySearchTree]):
         BinarySearchTreeIterativeWithParent,
         AVLTreeIterative,
         RedBlackTree,
+        SplayTree,
     ],
 )
 def test_extract_min(bst_class: Type[AbstractBinarySearchTree]):
@@ -197,6 +205,7 @@ def test_extract_min(bst_class: Type[AbstractBinarySearchTree]):
         BinarySearchTreeIterativeWithParent,
         AVLTreeIterative,
         RedBlackTree,
+        SplayTree,
     ],
 )
 def test_extract_max(bst_class: Type[AbstractBinarySearchTree]):
