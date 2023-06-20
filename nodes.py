@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Any, Iterator, TypeGuard, TypeVar, Union, cast
+from typing import Any, Iterator, TypeGuard, TypeVar, Union, cast, Generic
 
 from core import (
     AbstractNode,
@@ -34,7 +34,7 @@ class Sentinel(AbstractSentinel[Comparable]):
 
 BinaryNodeType = TypeVar("BinaryNodeType", bound="BinarySearchTreeInternalNodeAbstract")
 BinaryNodeWithParentType = TypeVar(
-    "BinaryNodeWithParentType", bound="BinarySearchTreeInternalNodeWithParentAbstract"
+    "BinaryNodeWithParentType", bound="AbstractBinarySearchTreeInternalNodeWithParent"
 )
 
 
@@ -283,21 +283,27 @@ class BinarySearchTreeInternalNode(
 
 
 @dataclass
-class BinarySearchTreeInternalNodeWithParentAbstract(
+class SupportsParent(Generic[BinaryNodeWithParentType, SentinelType], ABC):
+    parent: Union[BinaryNodeWithParentType, SentinelType] = field(repr=False)
+
+
+@dataclass
+class AbstractBinarySearchTreeInternalNodeWithParent(
+    Generic[Comparable, Value, BinaryNodeWithParentType, SentinelType],
     BinarySearchTreeInternalNodeAbstract[
         Comparable,
         Value,
         BinaryNodeWithParentType,
         SentinelType,
     ],
+    SupportsParent[BinaryNodeWithParentType, SentinelType],
     ABC,
 ):
-    parent: Union[BinaryNodeWithParentType, SentinelType] = field(repr=False)
     pass
 
 
 class BinarySearchTreeInternalNodeWithParent(
-    BinarySearchTreeInternalNodeWithParentAbstract[
+    AbstractBinarySearchTreeInternalNodeWithParent[
         Comparable,
         Value,
         "BinarySearchTreeInternalNodeWithParent",
@@ -334,7 +340,9 @@ class BinarySearchTreeInternalNodeWithParent(
         *args,
         **kwargs,
     ) -> BinarySearchTreeInternalNodeWithParent[Comparable, Value]:
-        return BinarySearchTreeInternalNodeWithParent(key, value, left, right, parent)
+        return BinarySearchTreeInternalNodeWithParent(
+            key=key, value=value, left=left, right=right, parent=parent
+        )
 
 
 if __name__ == "__main__":

@@ -588,6 +588,23 @@ class AbstractBinarySearchTreeWithParentIterative(
         self.size += 1
         return z
 
+    def transplant(
+        self,
+        u: BinaryNodeWithParentType,
+        v: Union[BinaryNodeWithParentType, SentinelType],
+        _: Optional[Union[BinaryNodeWithParentType, SentinelType]] = None,
+    ) -> None:
+        if self.is_sentinel(u.parent):
+            self.root = v
+        else:
+            assert self.is_node(u.parent)
+            if u is u.parent.left:
+                u.parent.left = v
+            else:
+                u.parent.right = v
+        if self.is_node(v):
+            v.parent = u.parent
+
     def delete(self, key: Comparable) -> BinaryNodeWithParentType:
         try:
             node = self.access(key)
@@ -823,7 +840,9 @@ class BinarySearchTreeIterativeWithParent(
         *args,
         **kwargs,
     ) -> BinarySearchTreeInternalNodeWithParent[Comparable, Value]:
-        return BinarySearchTreeInternalNodeWithParent(key, value, left, right, parent)
+        return BinarySearchTreeInternalNodeWithParent(
+            key=key, value=value, left=left, right=right, parent=parent
+        )
 
 
 if __name__ == "__main__":

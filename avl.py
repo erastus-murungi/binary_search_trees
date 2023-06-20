@@ -6,7 +6,7 @@ from typing import Any, Iterator, TypeGuard, TypeVar, Union
 
 from bst import AbstractBinarySearchTreeWithParentIterative, Comparable, Value
 from core import AbstractSentinel, SentinelReached
-from nodes import BinarySearchTreeInternalNodeWithParentAbstract
+from nodes import AbstractBinarySearchTreeInternalNodeWithParent
 
 AVLInternalNodeType = TypeVar("AVLInternalNodeType", bound="AVLTreeInternalNode")
 AVLSentinelType = TypeVar("AVLSentinelType", bound="AVLSentinel")
@@ -42,7 +42,7 @@ class AVLSentinel(AbstractSentinel[Comparable], AVLTreeNodeTraits):
 
 @dataclass(slots=True)
 class AVLTreeInternalNode(
-    BinarySearchTreeInternalNodeWithParentAbstract[
+    AbstractBinarySearchTreeInternalNodeWithParent[
         Comparable,
         Value,
         "AVLTreeInternalNode[Comparable, Value]",
@@ -189,42 +189,26 @@ class AVLTreeIterative(
         self.avl_fixup(node.parent)
         return node
 
-    def transplant_(
-        self,
-        u: AVLTreeInternalNode[Comparable, Value],
-        v: Union[AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]],
-    ) -> None:
-        if self.is_sentinel(u.parent):
-            self.root = v
-        else:
-            assert self.is_node(u.parent)
-            if u is u.parent.left:
-                u.parent.left = v
-            else:
-                u.parent.right = v
-        if self.is_node(v):
-            v.parent = u.parent
-
     def delete(self, key: Comparable) -> AVLTreeInternalNode[Comparable, Value]:
         try:
             node = self.access(key)
             if self.is_sentinel(node.left):
-                self.transplant_(node, node.right)
+                self.transplant(node, node.right)
                 self.avl_fixup(node.parent)
             elif self.is_sentinel(node.right):
-                self.transplant_(node, node.left)
+                self.transplant(node, node.left)
                 self.avl_fixup(node.parent)
             else:
                 successor = node.nonnull_right.minimum()
                 if successor is not node.right:
                     assert self.is_sentinel(successor.left)
                     assert self.is_node(node.right)
-                    self.transplant_(successor, successor.right)
+                    self.transplant(successor, successor.right)
                     self.avl_fixup(successor.parent)
                     successor.right = node.right
                     successor.right.parent = successor
 
-                self.transplant_(node, successor)
+                self.transplant(node, successor)
                 successor.left = node.left
                 if self.is_node(successor.left):
                     successor.left.parent = successor
@@ -237,7 +221,7 @@ class AVLTreeIterative(
     def extract_min(self) -> tuple[Comparable, Value]:
         root = self.minimum()
         keyval = (root.key, root.value)
-        self.transplant_(root, root.right)
+        self.transplant(root, root.right)
         self.avl_fixup(root.parent)
         self.size -= 1
         return keyval
@@ -245,7 +229,7 @@ class AVLTreeIterative(
     def extract_max(self) -> tuple[Comparable, Value]:
         root = self.maximum()
         keyval = (root.key, root.value)
-        self.transplant_(root, root.left)
+        self.transplant(root, root.left)
         self.avl_fixup(root.parent)
         self.size -= 1
         return keyval

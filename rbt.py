@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from abc import abstractmethod, ABC
+from dataclasses import dataclass
 from enum import IntEnum
-from typing import Iterator, Optional, Union
+from typing import Iterator, Optional, Union, Generic, TypeGuard, Any
 
-from typeguard import typechecked
-
-from bst import BinarySearchTreeIterative, Comparable, Internal, Leaf, Value
+from bst import AbstractBinarySearchTreeWithParentIterative, Comparable, Value
+from nodes import (
+    AbstractBinarySearchTreeInternalNodeWithParent,
+    AbstractSentinel,
+    SupportsParent,
+)
 
 
 class Color(IntEnum):
@@ -15,60 +19,116 @@ class Color(IntEnum):
 
 
 @dataclass(slots=True)
-class RBTAuxiliaryData:
+class SupportsColor(ABC):
     """Auxiliary data for a node in a red-black tree"""
 
+    color: Color
+
+    @abstractmethod
+    def black_height(self) -> int:
+        pass
+
+
+@dataclass(slots=True)
+class RBTSentinel(
+    Generic[Comparable, Value],
+    AbstractSentinel[Comparable],
+    SupportsColor,
+    SupportsParent["RBTInternalNode", "RBTSentinel"],
+):
+    """Sentinel node in a red-black tree"""
+
+    parent: Union[RBTSentinel[Comparable, Value], RBTInternalNode[Comparable, Value]]
     color: Color = Color.BLACK
-    parent: Node = field(default_factory=Leaf, repr=False, compare=False)
 
-
-InternalNode = Internal[Comparable, Value, RBTAuxiliaryData]
-Node = Union[InternalNode, Leaf]
-
-
-def get_color(node: Node) -> Color:
-    """Returns the color of a node"""
-    return node.aux.color if isinstance(node, Internal) else Color.BLACK
-
-
-leaf_parents = {}
-
-
-def get_parent(node: Node) -> Node:
-    """Returns the parent of a node"""
-    return (
-        node.aux.parent if isinstance(node, Internal) else leaf_parents.get(node, node)
-    )
-
-
-def set_parent(node: InternalNode, parent: InternalNode):
-    """Sets the parent of a node"""
-    if isinstance(node, Internal):
-        node.aux.parent = parent
-    else:
-        leaf_parents[node] = parent
-
-
-@typechecked
-def set_color(node: Node, color: Color):
-    """Sets the color of a node"""
-    if isinstance(node, Internal):
-        node.aux.color = color
-    else:
-        assert color == Color.BLACK
-
-
-def black_height(node: Node) -> int:
-    if isinstance(node, Internal):
-        if get_color(node) == Color.BLACK:
-            return 1 + black_height(node.right)
+    def __init__(
+        self,
+        parent: Optional[RBTInternalNode[Comparable, Value]] = None,
+        color: Color = Color.BLACK,
+    ):
+        if parent is None:
+            self.parent = self
         else:
-            return black_height(node.right)
-    else:
+            self.parent = parent
+        self.color = color
+
+    def black_height(self) -> int:
+        return 0
+
+    @classmethod
+    def default(cls) -> RBTSentinel[Comparable, Value]:
+        return RBTSentinel()
+
+    def pretty_str(self) -> str:
+        return "∅"
+
+    def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
+        yield f"{indent}{prefix}----'∅'\n"
+
+    def validate(self, *arg, **kwargs) -> bool:
+        return True
+
+    def __len__(self) -> int:
         return 0
 
 
-class RedBlackTree(BinarySearchTreeIterative[Comparable, Value, RBTAuxiliaryData]):
+@dataclass(slots=True)
+class RBTInternalNode(
+    AbstractBinarySearchTreeInternalNodeWithParent[
+        Comparable,
+        Value,
+        "RBTInternalNode[Comparable, Value]",
+        RBTSentinel[Comparable, Value],
+    ],
+    SupportsColor,
+):
+    """Internal node in a red-black tree"""
+
+    def black_height(self) -> int:
+        if self.color == Color.BLACK:
+            return 1 + self.right.black_height()
+        else:
+            return self.right.black_height()
+
+    def is_node(self, item: Any) -> TypeGuard[RBTInternalNode[Comparable, Value]]:
+        return isinstance(item, RBTInternalNode)
+
+    def is_sentinel(self, item: Any) -> TypeGuard[RBTSentinel[Comparable, Value]]:
+        return isinstance(item, RBTSentinel)
+
+    def node(
+        self,
+        key: Comparable,
+        value: Value,
+        left: Union[
+            RBTInternalNode[Comparable, Value], RBTSentinel[Comparable, Value]
+        ] = RBTSentinel.default(),
+        right: Union[
+            RBTInternalNode[Comparable, Value], RBTSentinel[Comparable, Value]
+        ] = RBTSentinel.default(),
+        parent: Union[
+            RBTInternalNode[Comparable, Value], RBTSentinel[Comparable, Value]
+        ] = RBTSentinel.default(),
+        color=Color.RED,
+        *args,
+        **kwargs,
+    ) -> RBTInternalNode[Comparable, Value]:
+        return RBTInternalNode(
+            key=key, value=value, left=left, right=right, parent=parent, color=color
+        )
+
+    def sentinel(self, *args, **kwards) -> RBTSentinel[Comparable, Value]:
+        return RBTSentinel()
+
+
+class RedBlackTree(
+    AbstractBinarySearchTreeWithParentIterative[
+        Comparable,
+        Value,
+        RBTInternalNode[Comparable, Value],
+        RBTSentinel[Comparable, Value],
+    ]
+):
     """
     A Red-Black tree is a height-balanced binary search tree which supports queries and updates in O(log n) time.
     Red-Black Trees provide faster insertion and removal operations than AVL trees because they need fewer rotations.
@@ -84,303 +144,315 @@ class RedBlackTree(BinarySearchTreeIterative[Comparable, Value, RBTAuxiliaryData
         See CLRS pg. 309 for the proof of this lemma.
     """
 
-    def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
-        raise NotImplementedError()
+    def __init__(
+        self, root: Optional[RBTInternalNode[Comparable, Value]] = None, size: int = 0
+    ):
+        super().__init__(root or RBTSentinel[Comparable, Value].default(), size)
 
-    def parent(self, node: InternalNode) -> Node:
-        return node.aux.parent
-
-    def insert_impl(
-        self, key: Comparable, value: Value, aux: Optional[RBTAuxiliaryData] = None
-    ) -> InternalNode:
-        parent, child = self.insert_parent(key, value, RBTAuxiliaryData())
-        set_parent(child, parent)
-        set_color(child, Color.RED)
+    def insert(
+        self, key: Comparable, value: Value, allow_overwrite: bool = True
+    ) -> RBTInternalNode[Comparable, Value]:
+        child = super().insert(key, value, allow_overwrite)
+        child.color = Color.RED
         self.rbt_insert_fixup(child)
         return child
 
-    def check_invariants(self, lower_limit: Comparable, upper_limit: Comparable):
-        super().check_invariants(lower_limit, upper_limit)
+    def validate(self, lower_limit: Comparable, upper_limit: Comparable):
+        super().validate(lower_limit, upper_limit)
         self.check_black_height_invariant()
         self.check_property_4()
 
     def rbt_insert_fixup(self, z):
-        while get_color(get_parent(z)) == Color.RED:
+        while z.parent.color == Color.RED:
             # let a = x's parent
-            z_p = get_parent(z)
+            z_p = z.parent
             # if z's parent is a left child, the uncle will be z's grandparent right child
-            z_pp = get_parent(z_p)
-            if isinstance(z_pp, Leaf):
+            z_pp = z_p.parent
+            if self.is_sentinel(z_pp):
                 break
             if z_p == z_pp.left:
                 y = z_pp.right
                 # if z's uncle is Color.RED (and z's parent is Color.RED), then we are in case 1
-                if get_color(y) == Color.RED:
-                    set_color(z_p, Color.BLACK)
-                    set_color(y, Color.BLACK)
-                    set_color(z_pp, Color.RED)
-                    z = get_parent(get_parent(z))
+                if y.color == Color.RED:
+                    z_p.color = Color.BLACK
+                    y.color = Color.BLACK
+                    z_pp.color = Color.RED
+                    z = z.parent.parent
                 # z's uncle is Color.BLACK (z's parent is Color.RED), we check for case 2 first
                 else:
                     # if z is a right child (and remember z's parent is a left child), we left-rotate z.p
                     if z_p.right == z:
                         z = z_p
-                        self.left_rotate_with_parent(z)
-                    set_color(get_parent(z), Color.BLACK)
-                    set_color(get_parent(get_parent(z)), Color.RED)
-                    self.right_rotate_with_parent(get_parent(get_parent(z)))
+                        self.left_rotate(z)
+                    z.parent.color = Color.BLACK
+                    z.parent.parent.color = Color.RED
+                    self.right_rotate(z.parent.parent)
 
             else:
                 # z's parent is a right child, z's uncle is the left child of z's grandparent
                 y = z_pp.left
                 # check for case 1
-                if get_color(y) == Color.RED:
-                    set_color(z_p, Color.BLACK)
-                    set_color(y, Color.BLACK)
-                    set_color(z_pp, Color.RED)
-                    z = get_parent(get_parent(z))
+                if y.color == Color.RED:
+                    z_p.color = Color.BLACK
+                    y.color = Color.BLACK
+                    z_pp.color = Color.RED
+                    z = z.parent.parent
                 else:
                     # z's parent is already a right child, so check if z is a left child and rotate
                     if z_p.left == z:
                         z = z_p
-                        self.right_rotate_with_parent(z)
-                    set_color(get_parent(z), Color.BLACK)
-                    set_color(get_parent(get_parent(z)), Color.RED)
-                    self.left_rotate_with_parent(get_parent(get_parent(z)))
+                        self.right_rotate(z)
+                    z.parent.color = Color.BLACK
+                    z.parent.parent.color = Color.RED
+                    self.left_rotate(z.parent.parent)
 
         # make the root black
-        set_color(self.root, Color.BLACK)
+        self.root.color = Color.BLACK
+
+    def transplant(
+        self,
+        u: RBTInternalNode[Comparable, Value],
+        v: Union[RBTInternalNode[Comparable, Value], RBTSentinel[Comparable, Value]],
+        _: Optional[
+            Union[RBTInternalNode[Comparable, Value], RBTSentinel[Comparable, Value]]
+        ] = None,
+    ) -> None:
+        if self.is_sentinel(u.parent):
+            self.root = v
+        else:
+            assert self.is_node(u.parent)
+            if u is u.parent.left:
+                u.parent.left = v
+            else:
+                u.parent.right = v
+        v.parent = u.parent
 
     def delete(self, target_key: Comparable):
         z = self.access(target_key)
-        if isinstance(z, Internal):
+        if self.is_node(z):
             # y identifies the node to be deleted
             # We maintain node y as the node either removed from the tree or moved within the tree
             y = z
-            y_original_color = get_color(y)
-            if isinstance(z.left, Leaf):
+            y_original_color = y.color
+            if self.is_sentinel(z.left):
                 # if z.right is also null, then z => nil, the null node will also have a parent pointer
                 x = z.right
-                # replace the node with its right child
                 self.transplant(z, z.right)
-            elif isinstance(z.right, Leaf):
+            elif self.is_sentinel(z.right):
                 x = z.left
                 self.transplant(z, z.left)
             else:
-                y = z.right.minimum()  # find z's successor
-                y_original_color = get_color(y)
+                y = z.nonnull_right.minimum()  # find z's successor
+                y_original_color = y.color
                 x = y.right
-                if y != z.right:
+                if y is not z.right:
                     self.transplant(y, y.right)
                     y.right = z.right
-                    set_parent(y.right, y)
+                    y.right.parent = y
                 else:
-                    set_parent(x, y)
+                    x.parent = y
                 self.transplant(z, y)
                 y.left = z.left
-                set_parent(y.left, y)
-                set_color(y, get_color(z))
+                y.left.parent = y
+                y.color = z.color
             if y_original_color == Color.BLACK:
                 # the x might be a null pointer
-                self.delete_fixup(x)
+                self.rbt_delete_fixup(x)
             self.size -= 1
+            return z
         else:
-            raise ValueError(f"key={target_key} not in tree {values}")
+            raise ValueError(f"key={target_key} not in tree")
 
-    def transplant(self, u: Node, v: Node):
-        # u is the initial node and v is the node to transplant u
-        if isinstance(get_parent(u), Internal):
-            #                g        g
-            #                |        |
-            #                u   =>   v
-            #               / \      / \
-            #             u.a  u.ß  v.a v.ß
-            if u == get_parent(u).left:
-                get_parent(u).left = v
-            else:
-                get_parent(u).right = v
-        else:
-            self.root = v
-
-        set_parent(v, get_parent(u))
-
-    def delete_fixup(self, x: Node):
-        while x != self.root and get_color(x) == Color.BLACK:
-            x_p = get_parent(x)
-            if isinstance(x_p, Leaf):
+    def rbt_delete_fixup(
+        self,
+        x: Union[RBTInternalNode[Comparable, Value], RBTSentinel[Comparable, Value]],
+    ):
+        while x != self.root and x.color == Color.BLACK:
+            x_p = x.parent
+            if self.is_sentinel(x_p):
                 break
+            assert self.is_node(x_p)
             if x == x_p.left:
                 w = x_p.right  # w is the sibling of x
+
+                assert self.is_node(w)
                 # case 1: w is red
                 # Since w must have black children, we can switch the
                 # colors of w and x: p and then perform a left-rotation on x: p without violating any
                 # of the red-black properties. The new sibling of x, which is one of w’s children
                 # prior to the rotation, is now black
-                if get_color(w) == Color.RED:
-                    set_color(w, Color.BLACK)
-                    set_color(x_p, Color.RED)
-                    self.left_rotate_with_parent(get_parent(x))
-                    w = get_parent(x).right
 
+                if w.color == Color.RED:
+                    w.color = Color.BLACK
+                    x_p.color = Color.RED
+                    self.left_rotate(x_p)
+                    w = x_p.right
+
+                assert self.is_node(w)
                 # case 2: x’s sibling w is black, and both of w’s children are black
                 # the color of w is black, so we take of one black from both and add it to x.parent
-                if (
-                    get_color(w.left) == Color.BLACK
-                    and get_color(w.right) == Color.BLACK
-                ):
-                    set_color(w, Color.RED)
-                    x = get_parent(x)
+                if w.left.color == Color.BLACK and w.right.color == Color.BLACK:
+                    w.color = Color.RED
+                    x = x_p
                     # if x was black, then the loop terminates, and x is colored black
                 else:
                     # case 3: x’s sibling w is black, w’s left child is red, and w’s right child is black
                     # We can switch the colors of w and its left
                     # child w: left and then perform a right rotation on w without violating any of the
                     # red-black properties.
-
-                    if get_color(w.right) == Color.BLACK:
-                        set_color(w.left, Color.BLACK)
-                        set_color(w, Color.RED)
-                        self.right_rotate_with_parent(w)
-                        w = get_parent(x).right
+                    if w.right.color == Color.BLACK:
+                        w.left.color = Color.BLACK
+                        w.color = Color.RED
+                        self.right_rotate(w)
+                        w = x_p.right
 
                     # case 4: x’s sibling w is black, and w’s right child is red
                     # By making some color changes and performing a left rotation
                     # on x: p, we can remove the extra black on x, making it singly black, without
                     # violating any of the red-black properties. Setting x to be the root causes the while
                     # loop to terminate when it tests the loop condition
-                    set_color(w, get_color(x_p))
-                    set_color(get_parent(x), Color.BLACK)
-                    set_color(w.right, Color.BLACK)
-                    self.left_rotate_with_parent(get_parent(x))
-                    x = self.root
+                    assert self.is_node(w)
+                    w.color = x_p.color
+                    x_p.color = Color.BLACK
+                    w.right.color = Color.BLACK
+                    self.left_rotate(x_p)
+                    x = self.nonnull_root
             else:
                 # symmetric to the cases 1 to case 4
                 w = x_p.left
-                if get_color(w) == Color.RED:
-                    set_color(w, Color.BLACK)
-                    set_color(x_p, Color.RED)
-                    self.right_rotate_with_parent(x_p)
-                    assert get_parent(x) == x_p
+                assert self.is_node(w)
+                if w.color == Color.RED:
+                    w.color = Color.BLACK
+                    x_p.color = Color.RED
+                    self.right_rotate(x_p)
                     w = x_p.left
-                if (
-                    get_color(w.left) == Color.BLACK
-                    and get_color(w.right) == Color.BLACK
-                ):
-                    set_color(w, Color.RED)
-                    x = get_parent(x)
+
+                assert self.is_node(w)
+                if w.right.color == Color.BLACK and w.left.color == Color.BLACK:
+                    w.color = Color.RED
+                    x = x_p
                 else:
-                    if get_color(w.left) == Color.BLACK:
-                        set_color(w.right, Color.BLACK)
-                        set_color(w, Color.RED)
-                        self.left_rotate_with_parent(w)
-                        w = get_parent(x).left
-                    assert get_parent(x) == x_p
-                    set_color(w, get_color(x_p))
-                    set_color(x_p, Color.BLACK)
-                    set_color(w.left, Color.BLACK)
-                    self.right_rotate_with_parent(x_p)
-                    x = self.root
-        set_color(x, Color.BLACK)
+                    if w.left.color == Color.BLACK:
+                        w.right.color = Color.BLACK
+                        w.color = Color.RED
+                        self.left_rotate(w)
+                        w = x_p.left
+
+                    assert self.is_node(w)
+                    w.color = x_p.color
+                    x_p.color = Color.BLACK
+                    w.left.color = Color.BLACK
+                    self.right_rotate(x_p)
+                    x = self.nonnull_root
+        x.color = Color.BLACK
 
     def check_property_4(self):
         for node in self.inorder():
-            if get_color(node) == Color.RED:
-                if (
-                    get_color(node.left) == Color.RED
-                    or get_color(node.right) == Color.RED
-                ):
+            if node.color == Color.RED:
+                if node.left.color == Color.RED or node.right.color == Color.RED:
                     raise RuntimeError(f"Property 4 violated at {node} {values}")
 
     def check_black_height_invariant(self):
         """Checks whether the black-height is the same for all paths starting at the root"""
 
-        def recurse(node: Node):
+        def recurse(
+            node: Union[
+                RBTSentinel[Comparable, Value], RBTInternalNode[Comparable, Value]
+            ]
+        ) -> int:
             """Checks whether the black-height is the same for all paths starting at the root"""
-            if isinstance(node, Leaf):
+            if self.is_sentinel(node):
+                assert node.color == Color.BLACK
                 return 0
             else:
-                assert isinstance(node, Internal)
+                assert self.is_node(node)
                 if (bh_right := recurse(node.right)) != recurse(node.left):
                     raise RuntimeError(f"Black height invariant violated at {node}")
-                if get_color(node) == Color.BLACK:
+                if node.color == Color.BLACK:
                     return 1 + bh_right
                 else:
                     return bh_right
 
         recurse(self.root)
 
-    def left_rotate_with_parent(self, node: InternalNode):
-        parent = get_parent(node)
-        right_child = node.right
+    def is_node(self, item: Any) -> TypeGuard[RBTInternalNode[Comparable, Value]]:
+        return isinstance(item, RBTInternalNode)
 
-        node.right = right_child.left
-        if isinstance(right_child.left, Internal):
-            set_parent(right_child.left, node)
+    def is_sentinel(self, item: Any) -> TypeGuard[RBTSentinel[Comparable, Value]]:
+        return isinstance(item, RBTSentinel)
 
-        set_parent(right_child, parent)
-        if isinstance(parent, Leaf):
-            self.root = right_child
-        elif node is parent.left:
-            parent.left = right_child
+    def node(
+        self,
+        key: Comparable,
+        value: Value,
+        left: Union[
+            RBTInternalNode[Comparable, Value], RBTSentinel[Comparable, Value]
+        ] = RBTSentinel.default(),
+        right: Union[
+            RBTInternalNode[Comparable, Value], RBTSentinel[Comparable, Value]
+        ] = RBTSentinel.default(),
+        parent: Union[
+            RBTInternalNode[Comparable, Value], RBTSentinel[Comparable, Value]
+        ] = RBTSentinel.default(),
+        color=Color.RED,
+        *args,
+        **kwargs,
+    ) -> RBTInternalNode[Comparable, Value]:
+        return RBTInternalNode(
+            key=key, value=value, left=left, right=right, parent=parent, color=color
+        )
+
+    def sentinel(self, *args, **kwards) -> RBTSentinel[Comparable, Value]:
+        return RBTSentinel()
+
+    def extract_min(self) -> tuple[Comparable, Value]:
+        z = self.minimum()
+        y = z
+        y_original_color = y.color
+        if self.is_sentinel(z.right):
+            x = z.left
+            self.transplant(z, z.left)
         else:
-            parent.right = right_child
+            assert self.is_node(z.right)
+            y = z.right.minimum()
+            y_original_color = y.color
+            x = y.right
+            self.transplant(y, y.right)
+            y.right = z.right
+            y.right.parent = y
+            self.transplant(z, y)
+            y.left = z.left
+            y.left.parent = y
+            y.color = z.color
+        if y_original_color == Color.BLACK:
+            self.rbt_delete_fixup(x)
+        self.size -= 1
+        return z.key, z.value
 
-        right_child.left = node
-        set_parent(node, right_child)
-
-    def right_rotate_with_parent(self, node: InternalNode):
-        parent = get_parent(node)
-        left_child = node.left
-
-        node.left = left_child.right
-        if isinstance(left_child.right, Internal):
-            set_parent(left_child.right, node)
-
-        set_parent(left_child, parent)
-        if isinstance(parent, Leaf):
-            self.root = left_child
-        elif node is parent.left:
-            parent.left = left_child
+    def extract_max(self) -> tuple[Comparable, Value]:
+        z = self.maximum()
+        y = z
+        y_original_color = y.color
+        if self.is_sentinel(z.left):
+            x = z.right
+            self.transplant(z, z.right)
         else:
-            parent.right = left_child
-
-        left_child.right = node
-        set_parent(node, left_child)
-
-    def extract_min(self) -> tuple[tuple[Comparable, Value] :, Node]:
-        min_node = self.minimum()
-        keyval = (min_node.key, min_node.value)
-        self.delete(min_node.key)
-        return keyval, self.root
-
-    def extract_max(self) -> tuple[tuple[Comparable, Value] :, Node]:
-        max_node = self.maximum()
-        keyval = (max_node.key, max_node.value)
-        self.delete(max_node.key)
-        return keyval, self.root
+            assert self.is_node(z.left)
+            y = z.left.maximum()
+            y_original_color = y.color
+            x = y.left
+            self.transplant(y, y.left)
+            y.left = z.left
+            y.left.parent = y
+            self.transplant(z, y)
+            y.right = z.right
+            y.right.parent = y
+            y.color = z.color
+        if y_original_color == Color.BLACK:
+            self.rbt_delete_fixup(x)
+        self.size -= 1
+        return z.key, z.value
 
 
 if __name__ == "__main__":
-
-    # #
-    # # # values = [3, 52, 31, 55, 93, 60, 81, 93, 46, 37, 47, 67, 34, 95, 10, 23, 90, 14, 13, 88, 88]
-    # #
-    from random import randint
-
-    num_nodes = 2
-    for _ in range(1000):
-        # values = list({randint(0, 100) for _ in range(num_nodes)})
-        values = [96, 36]
-        rb = RedBlackTree()
-        for k in values:
-            rb.insert(k, None)
-            rb.check_invariants(-1, 100000)
-            assert k in rb
-
-        for k in values:
-            rb.delete(k)
-            rb.check_invariants(-1, 100000)
-            assert k not in rb, values
-
-        assert not rb
-        assert isinstance(rb.root, Leaf)
+    pass
