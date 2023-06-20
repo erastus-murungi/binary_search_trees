@@ -1,20 +1,21 @@
 from __future__ import annotations
+
 from bisect import insort
-from typing import Union, Optional, Generic, Iterator, Self
 from dataclasses import dataclass
+from typing import Generic, Iterator, Optional, Self, Union
 
 from core import (
     AbstractNode,
     AbstractTree,
     Comparable,
-    Value,
     NodeType,
     NodeWithParentType,
+    Value,
 )
 from nodes import (
-    SupportsParent,
-    Sentinel,
     AbstractBinarySearchTreeInternalNodeWithParent,
+    Sentinel,
+    SupportsParent,
 )
 
 # LEFT, MIDDLE, RIGHT = 0, 1, 2
@@ -64,10 +65,6 @@ class TwoThreeNode(
     #     self.data = data
     #     self.parent = parent or self.sentinel()
     #     self.children = children or []
-
-
-
-
 
     @property
     def isfull(self):
@@ -145,9 +142,9 @@ class ThreeNode(
     def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
         yield f"{indent}{prefix}----{self}\n"
         indent += "     " if prefix == "R" else "|    "
-        yield from self.left.yield_line(indent, 'L')
-        yield from self.middle.yield_line(indent, 'M')
-        yield from self.right.yield_line(indent, 'R')
+        yield from self.left.yield_line(indent, "L")
+        yield from self.middle.yield_line(indent, "M")
+        yield from self.right.yield_line(indent, "R")
 
     def minimum(self):
         if self.is_sentinel(self.left):
@@ -164,7 +161,9 @@ class TwoThreeTree(
     AbstractTree[
         Comparable,
         Value,
-        TwoThreeNode[Comparable, Value, "TwoThreeNode[Comparable, Value, TwoThreeNode]"],
+        TwoThreeNode[
+            Comparable, Value, "TwoThreeNode[Comparable, Value, TwoThreeNode]"
+        ],
         Sentinel[Comparable],
     ]
 ):

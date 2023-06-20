@@ -8,6 +8,7 @@ from typing import (
     Generic,
     Iterator,
     MutableMapping,
+    Optional,
     Protocol,
     Self,
     Sized,
@@ -15,7 +16,6 @@ from typing import (
     TypeVar,
     Union,
     runtime_checkable,
-    Optional,
 )
 
 
@@ -73,9 +73,8 @@ class SentinelConstructorMixin(Generic[SentinelType], ABC):
 
 
 class MemberMixin(
-    Generic[Comparable, NodeType, SentinelType],
+    Generic[Comparable, NodeType],
     Container[Comparable],
-    SentinelConstructorMixin[SentinelType],
 ):
     @abstractmethod
     def __contains__(self, key: Any) -> bool:
@@ -85,11 +84,11 @@ class MemberMixin(
     def access(self, key: Comparable) -> NodeType:
         pass
 
-    def access_no_throw(self, key: Comparable) -> Union[NodeType, SentinelType]:
+    def access_no_throw(self, key: Comparable) -> Optional[NodeType]:
         try:
             return self.access(key)
         except SentinelReferenceError:
-            return self.sentinel()
+            return None
 
 
 @dataclass(slots=True)
@@ -229,9 +228,7 @@ class TreeMutationMixin(Generic[Comparable, Value, NodeType], ABC):
 
 class NodeMutationMixin(Generic[Comparable, Value, NodeType, SentinelType], ABC):
     @abstractmethod
-    def _insert(
-        self, key: Comparable, value: Value, allow_overwrite: bool = True
-    ) -> NodeType:
+    def insert_node(self, node: NodeType, allow_overwrite: bool = True) -> NodeType:
         """Insert a new node with the specified key and value into the tree.
 
         If allow_overwrite is True, then the value associated with the key will be
@@ -239,10 +236,8 @@ class NodeMutationMixin(Generic[Comparable, Value, NodeType, SentinelType], ABC)
 
         Parameters
         ----------
-        key : Comparable
-            The key to insert into the tree.
-        value : Value
-            The value to associate with the key.
+        node: NodeType
+            The node to insert into the tree.
         allow_overwrite : bool
             Whether to overwrite the value associated with the key if the key already
             exists in the tree.
@@ -341,11 +336,10 @@ class NodeConstructorMixin(Generic[NodeType, Comparable, Value], ABC):
 class AbstractNode(
     Generic[Comparable, Value, NodeType, SentinelType],
     NodeMutationMixin[Comparable, Value, NodeType, SentinelType],
-    NodeConstructorMixin[NodeType, Comparable, Value],
     MutableMapping[Comparable, Value],
     TreeQueryMixin[Comparable, NodeType, SentinelType],
     TreeIterativeMixin[NodeType],
-    MemberMixin[Comparable, NodeType, SentinelType],
+    MemberMixin[Comparable, NodeType],
     PrettyLineYieldMixin,
     PrettyStrMixin,
     ValidatorMixin,
@@ -371,7 +365,8 @@ class AbstractTree(
     MutableMapping[Comparable, Value],
     TreeQueryMixin[Comparable, NodeType, SentinelType],
     TreeIterativeMixin[NodeType],
-    MemberMixin[Comparable, NodeType, SentinelType],
+    MemberMixin[Comparable, NodeType],
+    SentinelConstructorMixin[SentinelType],
     PrettyStrMixin,
     ValidatorMixin,
     Sized,

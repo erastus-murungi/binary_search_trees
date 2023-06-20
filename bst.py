@@ -185,7 +185,7 @@ class AbstractBinarySearchTreeRecursive(
             else:
                 raise KeyError(f"Key {key} already exists")
         else:
-            node = self.nonnull_root._insert(key, value, allow_overwrite)
+            node = self.nonnull_root.insert_node(self.node(key, value), allow_overwrite)
             self.root = node
         self.size += 1
         return node

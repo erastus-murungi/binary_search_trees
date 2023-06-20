@@ -3,12 +3,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Any, Generic, Iterator, Optional, TypeGuard, Union
+from typing import Any, Generic, Optional, TypeGuard, Union
 
 from bst import AbstractBinarySearchTreeWithParentIterative, Comparable, Value
 from nodes import (
     AbstractBinarySearchTreeInternalNodeWithParent,
-    AbstractSentinel,
     AbstractSentinelWithParent,
     SupportsParent,
 )
@@ -82,36 +81,6 @@ class RBTInternalNode(
             return 1 + self.right.black_height()
         else:
             return self.right.black_height()
-
-    def is_node(self, item: Any) -> TypeGuard[RBTInternalNode[Comparable, Value]]:
-        return isinstance(item, RBTInternalNode)
-
-    def is_sentinel(self, item: Any) -> TypeGuard[RBTSentinel[Comparable, Value]]:
-        return isinstance(item, RBTSentinel)
-
-    def node(
-        self,
-        key: Comparable,
-        value: Value,
-        left: Union[
-            RBTInternalNode[Comparable, Value], RBTSentinel[Comparable, Value]
-        ] = RBTSentinel.default(),
-        right: Union[
-            RBTInternalNode[Comparable, Value], RBTSentinel[Comparable, Value]
-        ] = RBTSentinel.default(),
-        parent: Union[
-            RBTInternalNode[Comparable, Value], RBTSentinel[Comparable, Value]
-        ] = RBTSentinel.default(),
-        color=Color.RED,
-        *args,
-        **kwargs,
-    ) -> RBTInternalNode[Comparable, Value]:
-        return RBTInternalNode(
-            key=key, value=value, left=left, right=right, parent=parent, color=color
-        )
-
-    def sentinel(self, *args, **kwards) -> RBTSentinel[Comparable, Value]:
-        return RBTSentinel()
 
 
 class RedBlackTree(

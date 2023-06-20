@@ -54,56 +54,11 @@ class AVLTreeInternalNode(
     balance_factor: int
 
     def update_height_and_balance_factor(self) -> bool:
-        self.update_height()
+        self.height = max(self.left.height, self.right.height) + 1
         new_bf = self.right.height - self.left.height
         old_bf = self.balance_factor
         self.balance_factor = new_bf
         return old_bf != new_bf
-
-    def update_height(self):
-        self.height = max(self.left.height, self.right.height) + 1
-
-    def is_node(
-        self,
-        node: Any,
-    ) -> TypeGuard[AVLTreeInternalNode[Comparable, Value]]:
-        return isinstance(node, AVLTreeInternalNode)
-
-    def node(
-        self,
-        key: Comparable,
-        value: Value,
-        left: Union[
-            AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]
-        ] = AVLSentinel[Comparable].default(),
-        right: Union[
-            AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]
-        ] = AVLSentinel[Comparable].default(),
-        parent: Union[
-            AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]
-        ] = AVLSentinel[Comparable].default(),
-        height: int = 0,
-        *args,
-        **kwargs,
-    ) -> AVLTreeInternalNode[Comparable, Value]:
-        return AVLTreeInternalNode(
-            key=key,
-            value=value,
-            left=left,
-            right=right,
-            parent=parent,
-            height=height,
-            balance_factor=0,
-        )
-
-    def is_sentinel(
-        self,
-        node: Any,
-    ) -> TypeGuard[AVLSentinel[Comparable]]:
-        return isinstance(node, AVLSentinel)
-
-    def sentinel(self, *args, **kwargs):
-        return AVLSentinel[Comparable].default()
 
 
 def update_balance_factor_and_height(
@@ -112,7 +67,6 @@ def update_balance_factor_and_height(
     if isinstance(node, AVLSentinel):
         return
     node.update_height_and_balance_factor()
-    node.update_height()
 
 
 class AVLTreeIterative(

@@ -1,69 +1,30 @@
 from __future__ import annotations
 
-from typing import Any, Optional, TypeGuard, Union
+from typing import Any, TypeGuard, Union
 
 from bst import AbstractBinarySearchTreeWithParentIterative, Comparable
 from core import Value
-from nodes import AbstractBinarySearchTreeInternalNodeWithParent, Sentinel
-
-
-class SplayTreeInternalNode(
-    AbstractBinarySearchTreeInternalNodeWithParent[
-        Comparable,
-        Value,
-        "SplayTreeInternalNode[Comparable, Value]",
-        Sentinel[Comparable],
-    ]
-):
-    def is_node(self, node: Any) -> TypeGuard[SplayTreeInternalNode[Comparable, Value]]:
-        return isinstance(node, SplayTreeInternalNode)
-
-    def is_sentinel(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
-        return isinstance(node, Sentinel)
-
-    def sentinel(self) -> Sentinel[Comparable]:
-        return Sentinel.default()
-
-    def node(
-        self,
-        key: Comparable,
-        value: Value,
-        left: Union[
-            SplayTreeInternalNode[Comparable, Value], Sentinel[Comparable]
-        ] = Sentinel.default(),
-        right: Union[
-            SplayTreeInternalNode[Comparable, Value], Sentinel[Comparable]
-        ] = Sentinel.default(),
-        parent: Union[
-            SplayTreeInternalNode[Comparable, Value], Sentinel[Comparable]
-        ] = Sentinel.default(),
-        *args,
-        **kwargs,
-    ) -> SplayTreeInternalNode[Comparable, Value]:
-        return SplayTreeInternalNode(
-            key=key, value=value, left=left, right=right, parent=parent
-        )
+from nodes import BinarySearchTreeInternalNodeWithParent, Sentinel
 
 
 class SplayTree(
     AbstractBinarySearchTreeWithParentIterative[
-        Comparable, Value, SplayTreeInternalNode, Sentinel[Comparable]
+        Comparable,
+        Value,
+        BinarySearchTreeInternalNodeWithParent[Comparable, Value],
+        Sentinel[Comparable],
     ]
 ):
     def insert(
         self, key: Comparable, value: Value, allow_overwrite: bool = True
-    ) -> SplayTreeInternalNode[Comparable, Value]:
+    ) -> BinarySearchTreeInternalNodeWithParent[Comparable, Value]:
         node = super().insert(key, value, allow_overwrite)
         self.splay(node)
         return node
 
-    # @property
-    # def nonnull_root(self) -> SplayTreeInternalNode[Comparable, Value]:
-    #     if self.is_sentinel(self.root):
-    #         raise SentinelReferenceError("Root is sentinel")
-    #     return self.root
-
-    def access(self, key: Any) -> SplayTreeInternalNode[Comparable, Value]:
+    def access(
+        self, key: Any
+    ) -> BinarySearchTreeInternalNodeWithParent[Comparable, Value]:
         if self.is_sentinel(self.root):
             raise KeyError(f"Key {key} not found; tree is empty")
 
@@ -82,7 +43,7 @@ class SplayTree(
             self.splay(x)
             return x
 
-    def splay(self, x: SplayTreeInternalNode[Comparable, Value]):
+    def splay(self, x: BinarySearchTreeInternalNodeWithParent[Comparable, Value]):
         while self.is_node(x.parent):
             x_p = x.parent
             x_pp = x_p.parent
@@ -164,8 +125,10 @@ class SplayTree(
         else:
             raise KeyError(f"Key = {target_key} not found {values}")
 
-    def is_node(self, node: Any) -> TypeGuard[SplayTreeInternalNode[Comparable, Value]]:
-        return isinstance(node, SplayTreeInternalNode)
+    def is_node(
+        self, node: Any
+    ) -> TypeGuard[BinarySearchTreeInternalNodeWithParent[Comparable, Value]]:
+        return isinstance(node, BinarySearchTreeInternalNodeWithParent)
 
     def is_sentinel(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
         return isinstance(node, Sentinel)
@@ -178,18 +141,21 @@ class SplayTree(
         key: Comparable,
         value: Value,
         left: Union[
-            SplayTreeInternalNode[Comparable, Value], Sentinel[Comparable]
+            BinarySearchTreeInternalNodeWithParent[Comparable, Value],
+            Sentinel[Comparable],
         ] = Sentinel.default(),
         right: Union[
-            SplayTreeInternalNode[Comparable, Value], Sentinel[Comparable]
+            BinarySearchTreeInternalNodeWithParent[Comparable, Value],
+            Sentinel[Comparable],
         ] = Sentinel.default(),
         parent: Union[
-            SplayTreeInternalNode[Comparable, Value], Sentinel[Comparable]
+            BinarySearchTreeInternalNodeWithParent[Comparable, Value],
+            Sentinel[Comparable],
         ] = Sentinel.default(),
         *args,
         **kwargs,
-    ) -> SplayTreeInternalNode[Comparable, Value]:
-        return SplayTreeInternalNode(
+    ) -> BinarySearchTreeInternalNodeWithParent[Comparable, Value]:
+        return BinarySearchTreeInternalNodeWithParent(
             key=key, value=value, left=left, right=right, parent=parent
         )
 
