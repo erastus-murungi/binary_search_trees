@@ -192,7 +192,7 @@ class AbstractBinarySearchTreeRecursive(
 
     def delete(self, key: Comparable) -> BinaryNodeType:
         if node := self.access(key):
-            self.root = self.root._delete(key)
+            self.root = self.nonnull_root._delete(key)
             self.size -= 1
             return node
         else:
@@ -538,6 +538,7 @@ class AbstractBinarySearchTreeIterative(
         node: BinaryNodeType,
         update: Optional[Callable[[Union[BinaryNodeType, SentinelType]], None]] = None,
     ) -> BinaryNodeType:
+
         assert self.is_node(node)
         assert self.is_node(node.right)
 
@@ -694,7 +695,7 @@ class BinarySearchTreeRecursive(
 ):
     root: Union[
         BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]
-    ] = field(default=Sentinel[Comparable].default())
+    ] = field(default_factory=Sentinel[Comparable].default)
     size: int = 0
 
     def is_sentinel(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
@@ -828,21 +829,21 @@ class BinarySearchTreeIterativeWithParent(
 if __name__ == "__main__":
     from random import randint
 
-    for _ in range(10000):
-        bst: BinarySearchTreeRecursive[int, None] = BinarySearchTreeRecursive[
-            int, None
-        ]()
-        num_values = 3
-        # values = list({randint(0, 100) for _ in range(num_values)})
-        # values = [35, 70, 51, 52, 20, 55, 91]
-        values = [50, 44, 94]
-
-        for i, val in enumerate(values):
-            bst.insert(val, None, allow_overwrite=True)
-            bst.validate(0, 1000)
-            assert val in bst
-
-        for i, val in enumerate(values):
-            bst.delete(val)
-            print(bst.pretty_str())
-            assert val not in bst, values
+    # for _ in range(10000):
+    #     bst: BinarySearchTreeRecursive[int, None] = BinarySearchTreeRecursive[
+    #         int, None
+    #     ]()
+    #     num_values = 3
+    #     # values = list({randint(0, 100) for _ in range(num_values)})
+    #     # values = [35, 70, 51, 52, 20, 55, 91]
+    #     values = [50, 44, 94]
+    #
+    #     for i, val in enumerate(values):
+    #         bst.insert(val, None, allow_overwrite=True)
+    #         bst.validate(0, 1000)
+    #         assert val in bst
+    #
+    #     for i, val in enumerate(values):
+    #         bst.delete(val)
+    #         print(bst.pretty_str())
+    #         assert val not in bst, values

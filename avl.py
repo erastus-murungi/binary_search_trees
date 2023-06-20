@@ -53,21 +53,15 @@ class AVLTreeInternalNode(
     height: int
     balance_factor: int
 
-    def update_balance_factor(self) -> int:
+    def update_height_and_balance_factor(self) -> bool:
+        self.update_height()
         new_bf = self.right.height - self.left.height
         old_bf = self.balance_factor
         self.balance_factor = new_bf
         return old_bf != new_bf
 
-    def update_height(self) -> bool:
-        """
-        Updates the height of the node.
-
-        Returns True if the height of the node has changed.
-        """
-        old_height = self.height
+    def update_height(self):
         self.height = max(self.left.height, self.right.height) + 1
-        return old_height != self.height
 
     def is_node(
         self,
@@ -112,6 +106,15 @@ class AVLTreeInternalNode(
         return AVLSentinel[Comparable].default()
 
 
+def update_balance_factor_and_height(
+    node: Union[AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]]
+) -> None:
+    if isinstance(node, AVLSentinel):
+        return
+    node.update_height_and_balance_factor()
+    node.update_height()
+
+
 class AVLTreeIterative(
     AbstractBinarySearchTreeWithParentIterative[
         Comparable,
@@ -129,28 +132,19 @@ class AVLTreeIterative(
     ):
         super().__init__(root, size)
 
-    def re_balance(
-        self, node: AVLTreeInternalNode[Comparable, Value]
-    ) -> Union[AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]]:
-        def update_height(
-            node_: Union[
-                AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]
-            ]
-        ):
-            if self.is_node(node_):
-                node_.update_height()
-                node_.update_balance_factor()
-
-        bf = node.balance_factor
-        if bf < -1:
+    def re_balance(self, node: AVLTreeInternalNode[Comparable, Value]) -> None:
+        if node.balance_factor < -1:
             if node.left.balance_factor > 0:
-                node.left = self.left_rotate(node.nonnull_left, update=update_height)
-            return self.right_rotate(node, update=update_height)
-        if bf > 1:
+                node.left = self.left_rotate(
+                    node.nonnull_left, update=update_balance_factor_and_height
+                )
+            self.right_rotate(node, update=update_balance_factor_and_height)
+        if node.balance_factor > 1:
             if node.right.balance_factor < 0:
-                node.right = self.right_rotate(node.nonnull_right, update=update_height)
-            return self.left_rotate(node, update=update_height)
-        return self.sentinel()
+                node.right = self.right_rotate(
+                    node.nonnull_right, update=update_balance_factor_and_height
+                )
+            self.left_rotate(node, update=update_balance_factor_and_height)
 
     def validate(self, lower_limit: Comparable, upper_limit: Comparable):
         super().validate(lower_limit, upper_limit)
@@ -159,6 +153,33 @@ class AVLTreeIterative(
                 raise RuntimeError(
                     f"Invalid AVL Tree, balance factor = {node.balance_factor} not in [-1, 0, 1] {values}"
                 )
+
+        def visit(
+            node: Union[
+                AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]
+            ],
+        ) -> int:
+            if isinstance(node, AVLSentinel):
+                if node.height != -1:
+                    raise RuntimeError(
+                        f"Invalid AVL Tree, height = {node.height} != -1"
+                    )
+                if node.balance_factor != 0:
+                    raise RuntimeError(
+                        f"Invalid AVL Tree, balance factor = {node.balance_factor} != 0"
+                    )
+                return -1
+            h = max(visit(node.left), visit(node.right)) + 1
+            if node.height != h:
+                raise RuntimeError(f"Invalid AVL Tree, height = {node.height} != {h}")
+            bf = node.right.height - node.left.height
+            if node.balance_factor != bf:
+                raise RuntimeError(
+                    f"Invalid AVL Tree, balance factor = {node.balance_factor} != {bf}"
+                )
+            return h
+
+        visit(self.root)
 
     def insert(
         self, key: Comparable, value: Value, allow_overwrite: bool = False
@@ -187,38 +208,56 @@ class AVLTreeIterative(
     def delete(self, key: Comparable) -> AVLTreeInternalNode[Comparable, Value]:
         try:
             node = self.access(key)
-            p = node.parent
             if self.is_sentinel(node.left):
                 self.transplant_(node, node.right)
-                self.avl_fixup(p)
+                self.avl_fixup(node.parent)
             elif self.is_sentinel(node.right):
                 self.transplant_(node, node.left)
-                self.avl_fixup(p)
+                self.avl_fixup(node.parent)
             else:
                 successor = node.nonnull_right.minimum()
                 if successor is not node.right:
-                    # delete the successor
                     assert self.is_sentinel(successor.left)
+                    assert self.is_node(node.right)
                     self.transplant_(successor, successor.right)
+                    self.avl_fixup(successor.parent)
                     successor.right = node.right
                     successor.right.parent = successor
-                    self.avl_fixup(successor.right)
+
                 self.transplant_(node, successor)
                 successor.left = node.left
-                successor.left.parent = successor
+                if self.is_node(successor.left):
+                    successor.left.parent = successor
                 self.avl_fixup(successor)
             self.size -= 1
             return node
         except SentinelReached as e:
             raise ValueError(f"Key {key} not in tree") from e
 
+    def extract_min(self) -> tuple[Comparable, Value]:
+        root = self.minimum()
+        keyval = (root.key, root.value)
+        self.transplant_(root, root.right)
+        self.avl_fixup(root.parent)
+        self.size -= 1
+        return keyval
+
+    def extract_max(self) -> tuple[Comparable, Value]:
+        root = self.maximum()
+        keyval = (root.key, root.value)
+        self.transplant_(root, root.left)
+        self.avl_fixup(root.parent)
+        self.size -= 1
+        return keyval
+
     def avl_fixup(
         self,
         node: Union[AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]],
     ):
-        while self.is_node(node) and node.update_balance_factor():
+        while self.is_node(node) and node.update_height_and_balance_factor():
+            parent = node.parent
             self.re_balance(node)
-            node = node.parent
+            node = parent
 
     def is_node(
         self,
@@ -265,20 +304,22 @@ class AVLTreeIterative(
 
 
 if __name__ == "__main__":
+    from random import randint
+    from sys import maxsize
 
     for _ in range(10000):
         bst: AVLTreeIterative[int, None] = AVLTreeIterative[int, None]()
-        num_values = 4
+        num_values = 7
         # values = list({randint(0, 100) for _ in range(num_values)})
-        values = [40, 9, 12, 7]
+        values = [64, 98, 8, 44, 81, 20, 27]
 
         for val in values:
             bst.insert(val, None, allow_overwrite=True)
-            print(bst.pretty_str())
-            bst.validate(0, 1000)
+            # print(bst.pretty_str())
+            bst.validate(-maxsize, maxsize)
             assert val in bst
 
-        # print(bst.pretty_str())
+        print(bst.pretty_str())
 
         for val in values:
             bst.delete(val)

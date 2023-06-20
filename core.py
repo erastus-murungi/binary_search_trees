@@ -30,6 +30,7 @@ class SupportsLessThan(Protocol):
 
 Comparable = TypeVar("Comparable", bound=SupportsLessThan)
 Value = TypeVar("Value")
+VisitorReturnType = TypeVar("VisitorReturnType")
 
 
 class PrettyStrMixin(ABC):
@@ -52,6 +53,12 @@ class ValidatorMixin(ABC):
 
 SentinelType = TypeVar("SentinelType", bound="AbstractSentinel")
 NodeType = TypeVar("NodeType", bound="AbstractNode")
+
+
+class Visitor(Generic[NodeType, SentinelType, VisitorReturnType], ABC):
+    @abstractmethod
+    def visit(self, node: Union[NodeType, SentinelType]) -> VisitorReturnType:
+        pass
 
 
 class SentinelConstructorMixin(Generic[SentinelType], ABC):
@@ -84,14 +91,15 @@ class MemberMixin(
             return self.sentinel()
 
 
+@dataclass(slots=True)
 class AbstractSentinel(
     Generic[Comparable],
+    Container[Comparable],
     PrettyStrMixin,
     PrettyLineYieldMixin,
     ValidatorMixin,
     Sized,
     ABC,
-    Container[Comparable],
 ):
     """Base class for all leaves in a tree."""
 
