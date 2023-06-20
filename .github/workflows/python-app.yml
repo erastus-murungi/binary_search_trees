@@ -37,3 +37,7 @@ jobs:
     - name: Test with pytest
       run: |
         pytest
+
+    - name: Check mypy compliance
+      run: |
+        mypy .

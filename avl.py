@@ -96,7 +96,7 @@ class AVLTreeIterative(
         for node in self.inorder():
             if abs(node.balance_factor) not in (-1, 0, 1):
                 raise RuntimeError(
-                    f"Invalid AVL Tree, balance factor = {node.balance_factor} not in [-1, 0, 1] {values}"
+                    f"Invalid AVL Tree, balance factor = {node.balance_factor} not in [-1, 0, 1]"
                 )
 
         def visit(
