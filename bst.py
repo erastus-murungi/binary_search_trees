@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC
+from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Optional, TypeGuard, Union
 
@@ -202,9 +203,10 @@ class AbstractBinarySearchTreeRecursive(
 
     def delete(self, key: Comparable) -> BinaryNodeType:
         if node := self.access(key):
+            node_copy = deepcopy(node)
             self.root = self.nonnull_root.delete_key(key)
             self.size -= 1
-            return node
+            return node_copy
         else:
             raise KeyError(f"Key {key} not found")
 
@@ -824,14 +826,15 @@ if __name__ == "__main__":
         # values = [35, 70, 51, 52, 20, 55, 91]
         values = [50, 44, 94]
 
-        for i, val in enumerate(values):
-            bst.insert(val, None, allow_overwrite=True)
+        for k in values:
+            bst.insert(k, None, allow_overwrite=True)
             bst.validate(0, 1000)
-            assert val in bst
+            assert k in bst
 
-        bst.dot()
+        # bst.dot()
 
-        for i, val in enumerate(values):
-            bst.delete(val)
+        for k in values:
+            deleted = bst.delete(k)
+            assert deleted.key == k, (k, deleted.key)
             print(bst.pretty_str())
-            assert val not in bst, values
+            assert k not in bst, values

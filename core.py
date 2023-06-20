@@ -336,7 +336,7 @@ class NodeConstructorMixin(Generic[NodeType, Comparable, Value], ABC):
         pass
 
 
-@dataclass(slots=True, kw_only=True)
+@dataclass(slots=True)
 class AbstractNode(
     Generic[Comparable, Value, NodeType, SentinelType],
     NodeMutationMixin[Comparable, Value, NodeType, SentinelType],

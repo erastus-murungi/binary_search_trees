@@ -43,8 +43,8 @@ class AbstractBinarySearchTreeNode(
 ):
     key: Comparable
     value: Value
-    left: Union[BinaryNodeType, SentinelType] = field(repr=False)
-    right: Union[BinaryNodeType, SentinelType] = field(repr=False)
+    left: Union[BinaryNodeType, SentinelType]
+    right: Union[BinaryNodeType, SentinelType]
 
     def _is_node(self, node: Any) -> TypeGuard[BinaryNodeType]:
         return isinstance(node, type(self))

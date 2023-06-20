@@ -122,6 +122,7 @@ class SplayTree(
                     self.root = right
                 right.parent = m
             self.size -= 1
+            return z
         else:
             raise KeyError(f"Key = {target_key} not found {values}")
 
