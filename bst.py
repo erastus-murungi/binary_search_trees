@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Iterator, Optional, TypeGuard, Union, Callable
+from typing import Any, Callable, Iterator, Optional, TypeGuard, Union
 
 from typeguard import typechecked  # type: ignore
 
@@ -48,7 +48,7 @@ class AbstractBinarySearchTree(
     def nonnull_root(self) -> BinaryNodeType:
         if self.is_node(self.root):
             return self.root
-        raise SentinelReached("Tree is empty")
+        raise SentinelReached(f"Tree is empty")
 
     def level_order(self) -> Iterator[BinaryNodeType]:
         try:
@@ -89,21 +89,84 @@ class AbstractBinarySearchTree(
     def access(self, key: Comparable) -> BinaryNodeType:
         return self.nonnull_root.access(key)
 
-    @abstractmethod
+
+class AbstractBinarySearchTreeWithParent(
+    AbstractBinarySearchTree[Comparable, Value, BinaryNodeWithParentType, SentinelType],
+    ABC,
+):
     def left_rotate(
         self,
-        node: BinaryNodeType,
-        update: Optional[Callable[[Union[BinaryNodeType, SentinelType]], None]] = None,
-    ) -> BinaryNodeType:
-        pass
+        node: BinaryNodeWithParentType,
+        update: Optional[
+            Callable[[Union[BinaryNodeWithParentType, SentinelType]], None]
+        ] = None,
+    ) -> BinaryNodeWithParentType:
 
-    @abstractmethod
+        assert self.is_node(node)
+        assert self.is_node(node.right)
+
+        right_child = node.right
+        node.right = right_child.left
+
+        if self.is_node(right_child.left):
+            right_child.left.parent = node
+
+        right_child.parent = node.parent
+
+        if self.is_sentinel(node.parent):
+            self.root = right_child
+
+        elif node is node.parent.left:
+            node.parent.left = right_child
+
+        else:
+            node.parent.right = right_child
+
+        right_child.left = node
+        node.parent = right_child
+
+        if update:
+            update(node)
+            update(right_child)
+
+        return right_child
+
     def right_rotate(
         self,
-        node: BinaryNodeType,
-        update: Optional[Callable[[Union[BinaryNodeType, SentinelType]], None]] = None,
-    ) -> BinaryNodeType:
-        pass
+        node: BinaryNodeWithParentType,
+        update: Optional[
+            Callable[[Union[BinaryNodeWithParentType, SentinelType]], None]
+        ] = None,
+    ) -> BinaryNodeWithParentType:
+
+        assert self.is_node(node)
+        assert self.is_node(node.left)
+
+        left_child = node.left
+        node.left = left_child.right
+
+        if self.is_node(left_child.right):
+            left_child.right.parent = node
+
+        left_child.parent = node.parent
+
+        if self.is_sentinel(node.parent):
+            self.root = left_child
+
+        elif node is node.parent.right:
+            node.parent.right = left_child
+
+        else:
+            node.parent.left = left_child
+
+        left_child.right = node
+        node.parent = left_child
+
+        if update:
+            update(node)
+            update(left_child)
+
+        return left_child
 
 
 class AbstractBinarySearchTreeRecursive(
@@ -122,32 +185,32 @@ class AbstractBinarySearchTreeRecursive(
             else:
                 raise KeyError(f"Key {key} already exists")
         else:
-            node = self.nonnull_root.insert(key, value, allow_overwrite)
+            node = self.nonnull_root._insert(key, value, allow_overwrite)
             self.root = node
         self.size += 1
         return node
 
-    def delete(self, key: Comparable) -> Union[BinaryNodeType, SentinelType]:
-        if key not in self.root:
-            raise ValueError(f"Key {key} not found")
-        else:
-            self.root = self.nonnull_root.delete(key)
+    def delete(self, key: Comparable) -> BinaryNodeType:
+        if node := self.access(key):
+            self.root = self.root._delete(key)
             self.size -= 1
-            return self.root
+            return node
+        else:
+            raise KeyError(f"Key {key} not found")
 
     def extract_min(
         self,
-    ) -> tuple[tuple[Comparable, Value], Union[BinaryNodeType, SentinelType]]:
-        keyval, self.root = self.nonnull_root.extract_min()
+    ) -> tuple[Comparable, Value]:
+        keyval, self.root = self.nonnull_root._extract_min()
         self.size -= 1
-        return keyval, self.root
+        return keyval
 
     def extract_max(
         self,
-    ) -> tuple[tuple[Comparable, Value], Union[BinaryNodeType, SentinelType]]:
-        keyval, self.root = self.nonnull_root.extract_max()
+    ) -> tuple[Comparable, Value]:
+        keyval, self.root = self.nonnull_root._extract_max()
         self.size -= 1
-        return keyval, self.root
+        return keyval
 
     def minimum(self) -> BinaryNodeType:
         return self.nonnull_root.minimum()
@@ -207,76 +270,7 @@ class AbstractBinarySearchTreeWithParentRecursive(
     ],
     ABC,
 ):
-    def left_rotate(self, x):
-        y = x.right
-        x.right = y.left
-        if self.is_node(y.left):
-            y.left.parent = x
-        y.parent = x.parent
-        if self.is_sentinel(x.parent):
-            self.root = y
-        elif x is x.parent.left:
-            x.parent.left = y
-        else:
-            x.parent.right = y
-        y.left = x
-        x.parent = y
-
-    def right_rotate(self, x):
-        y = x.left
-        x.left = y.right
-        if self.is_node(y.right):
-            y.right.parent = x
-        y.parent = x.parent
-        if self.is_sentinel(x.parent):
-            self.root = y
-        elif x is x.parent.right:
-            x.parent.right = y
-        else:
-            x.parent.left = y
-        y.right = x
-        x.parent = y
-
-
-@dataclass
-class BinarySearchTree(
-    AbstractBinarySearchTreeRecursive[
-        Comparable,
-        Value,
-        BinarySearchTreeInternalNode[Comparable, Value],
-        Sentinel[Comparable],
-    ]
-):
-    root: Union[
-        BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]
-    ] = field(default=Sentinel[Comparable].default())
-    size: int = 0
-
-    def is_sentinel(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
-        return isinstance(node, Sentinel)
-
-    def sentinel(self, *args, **kwargs) -> Sentinel[Comparable]:
-        return Sentinel()
-
-    def is_node(
-        self, node: Any
-    ) -> TypeGuard[BinarySearchTreeInternalNode[Comparable, Value]]:
-        return isinstance(node, BinarySearchTreeInternalNode)
-
-    def node(
-        self,
-        key: Comparable,
-        value: Value,
-        left: Union[
-            BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]
-        ] = Sentinel.default(),
-        right: Union[
-            BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]
-        ] = Sentinel.default(),
-        *args,
-        **kwargs,
-    ) -> BinarySearchTreeInternalNode[Comparable, Value]:
-        return BinarySearchTreeInternalNode(key, value, left, right)
+    pass
 
 
 class AbstractBinarySearchTreeIterative(
@@ -386,7 +380,7 @@ class AbstractBinarySearchTreeIterative(
         else:
             self.root = replacement
 
-    def delete(self, key: Comparable) -> Union[BinaryNodeType, SentinelType]:
+    def delete(self, key: Comparable) -> BinaryNodeType:
         try:
             target_node = self.access(key)
             if self.is_sentinel(target_node.left):
@@ -401,13 +395,11 @@ class AbstractBinarySearchTreeIterative(
                 self.transplant(target_node, successor)
                 successor.left = target_node.left
             self.size -= 1
-            return self.root
+            return target_node
         except SentinelReached as e:
             raise ValueError(f"Key {key} not in tree") from e
 
-    def extract_min(
-        self,
-    ) -> tuple[tuple[Comparable, Value], Union[BinaryNodeType, SentinelType]]:
+    def extract_min(self) -> tuple[Comparable, Value]:
         root = self.nonnull_root
         prev: Union[BinaryNodeType, SentinelType] = self.sentinel()
 
@@ -418,11 +410,9 @@ class AbstractBinarySearchTreeIterative(
         keyval = (root.key, root.value)
         self.transplant(root, root.right, prev)
         self.size -= 1
-        return keyval, self.root
+        return keyval
 
-    def extract_max(
-        self,
-    ) -> tuple[tuple[Comparable, Value], Union[BinaryNodeType, SentinelType]]:
+    def extract_max(self) -> tuple[Comparable, Value]:
         root = self.nonnull_root
         prev: Union[BinaryNodeType, SentinelType] = self.sentinel()
 
@@ -433,7 +423,7 @@ class AbstractBinarySearchTreeIterative(
         keyval = (root.key, root.value)
         self.transplant(root, root.left, prev)
         self.size -= 1
-        return keyval, self.root
+        return keyval
 
     def inorder(self) -> Iterator[BinaryNodeType]:
         if self.is_node(self.root):
@@ -563,7 +553,7 @@ class AbstractBinarySearchTreeIterative(
         return right_child
 
 
-class AbstractBinarySearchTreeIterativeWithParent(
+class AbstractBinarySearchTreeWithParentIterative(
     AbstractBinarySearchTreeIterative[
         Comparable, Value, BinaryNodeWithParentType, SentinelType
     ],
@@ -621,8 +611,11 @@ class AbstractBinarySearchTreeIterativeWithParent(
     def left_rotate(
         self,
         node: BinaryNodeWithParentType,
-        update: Optional[Callable[[Union[BinaryNodeType, SentinelType]], None]] = None,
+        update: Optional[
+            Callable[[Union[BinaryNodeWithParentType, SentinelType]], None]
+        ] = None,
     ) -> BinaryNodeWithParentType:
+
         assert self.is_node(node)
         assert self.is_node(node.right)
 
@@ -655,7 +648,9 @@ class AbstractBinarySearchTreeIterativeWithParent(
     def right_rotate(
         self,
         node: BinaryNodeWithParentType,
-        update: Optional[Callable[[Union[BinaryNodeType, SentinelType]], None]] = None,
+        update: Optional[
+            Callable[[Union[BinaryNodeWithParentType, SentinelType]], None]
+        ] = None,
     ) -> BinaryNodeWithParentType:
 
         assert self.is_node(node)
@@ -686,6 +681,47 @@ class AbstractBinarySearchTreeIterativeWithParent(
             update(left_child)
 
         return left_child
+
+
+@dataclass
+class BinarySearchTreeRecursive(
+    AbstractBinarySearchTreeRecursive[
+        Comparable,
+        Value,
+        BinarySearchTreeInternalNode[Comparable, Value],
+        Sentinel[Comparable],
+    ]
+):
+    root: Union[
+        BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]
+    ] = field(default=Sentinel[Comparable].default())
+    size: int = 0
+
+    def is_sentinel(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
+        return isinstance(node, Sentinel)
+
+    def sentinel(self, *args, **kwargs) -> Sentinel[Comparable]:
+        return Sentinel()
+
+    def is_node(
+        self, node: Any
+    ) -> TypeGuard[BinarySearchTreeInternalNode[Comparable, Value]]:
+        return isinstance(node, BinarySearchTreeInternalNode)
+
+    def node(
+        self,
+        key: Comparable,
+        value: Value,
+        left: Union[
+            BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]
+        ] = Sentinel.default(),
+        right: Union[
+            BinarySearchTreeInternalNode[Comparable, Value], Sentinel[Comparable]
+        ] = Sentinel.default(),
+        *args,
+        **kwargs,
+    ) -> BinarySearchTreeInternalNode[Comparable, Value]:
+        return BinarySearchTreeInternalNode(key, value, left, right)
 
 
 class BinarySearchTreeIterative(
@@ -734,12 +770,18 @@ class BinarySearchTreeIterative(
 
 
 class BinarySearchTreeIterativeWithParent(
-    AbstractBinarySearchTreeIterativeWithParent[
+    AbstractBinarySearchTreeWithParent[
         Comparable,
         Value,
         BinarySearchTreeInternalNodeWithParent[Comparable, Value],
         Sentinel[Comparable],
-    ]
+    ],
+    AbstractBinarySearchTreeIterative[
+        Comparable,
+        Value,
+        BinarySearchTreeInternalNodeWithParent[Comparable, Value],
+        Sentinel[Comparable],
+    ],
 ):
     def __init__(
         self,
@@ -787,21 +829,20 @@ if __name__ == "__main__":
     from random import randint
 
     for _ in range(10000):
-        bst: BinarySearchTree[int, None] = BinarySearchTree[int, None]()
+        bst: BinarySearchTreeRecursive[int, None] = BinarySearchTreeRecursive[
+            int, None
+        ]()
         num_values = 3
-        values = list({randint(0, 100) for _ in range(num_values)})
+        # values = list({randint(0, 100) for _ in range(num_values)})
         # values = [35, 70, 51, 52, 20, 55, 91]
-        values = [9, 84, 14]
+        values = [50, 44, 94]
 
         for i, val in enumerate(values):
             bst.insert(val, None, allow_overwrite=True)
             bst.validate(0, 1000)
             assert val in bst
 
-        # for i, val in enumerate(values):
-        #     bst.delete(val)
-        #     assert val not in bst, values
-
-        assert bst.maximum().key == max(values), values
-
-        # print(bst.pretty_str())
+        for i, val in enumerate(values):
+            bst.delete(val)
+            print(bst.pretty_str())
+            assert val not in bst, values

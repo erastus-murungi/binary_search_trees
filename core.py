@@ -125,26 +125,167 @@ class TreeQueryMixin(Generic[Comparable, NodeType, SentinelType], ABC):
         pass
 
 
-class TreeMutationMixin(Generic[Comparable, Value, NodeType, SentinelType], ABC):
+class TreeMutationMixin(Generic[Comparable, Value, NodeType], ABC):
     @abstractmethod
-    def insert(self, key: Comparable, value: Value, allow_overwrite: bool) -> NodeType:
-        pass
+    def insert(
+        self, key: Comparable, value: Value, allow_overwrite: bool = True
+    ) -> NodeType:
+        """Insert a new node with the specified key and value into the tree.
+
+        If allow_overwrite is True, then the value associated with the key will be
+        overwritten if the key already exists in the tree.
+
+        Parameters
+        ----------
+        key : Comparable
+            The key to insert into the tree.
+        value : Value
+            The value to associate with the key.
+        allow_overwrite : bool
+            Whether to overwrite the value associated with the key if the key already
+            exists in the tree.
+
+        Returns
+        -------
+        node : NodeType
+            The newly inserted node.
+
+        Raises
+        ------
+        ValueError
+            If allow_overwrite is False and the key already exists in the tree.
+        """
 
     @abstractmethod
-    def delete(self, key: Comparable) -> Union[NodeType, SentinelType]:
-        pass
+    def delete(self, key: Comparable) -> NodeType:
+        """Delete the node with the specified key from the tree.
+
+
+        Parameters
+        ----------
+        key : Comparable
+            The key to delete from the tree.
+
+        Returns
+        -------
+        node : NodeType
+            The deleted node.
+
+        Raises
+        ------
+        KeyError
+            If the key does not exist in the tree.
+        """
 
     @abstractmethod
     def extract_min(
         self,
-    ) -> tuple[tuple[Comparable, Value], Union[NodeType, SentinelType]]:
-        pass
+    ) -> tuple[Comparable, Value]:
+        """
+        Extract the minimum node from the tree.
+
+        Returns
+        -------
+        tuple[Comparable, Value]
+            The key value tuple representing the minimum
+
+        """
 
     @abstractmethod
     def extract_max(
         self,
+    ) -> tuple[Comparable, Value]:
+        """
+        Extract the maximum node from the tree.
+
+        Returns
+        -------
+        tuple[Comparable, Value]
+            The key value tuple representing the maximum
+
+        """
+
+
+class NodeMutationMixin(Generic[Comparable, Value, NodeType, SentinelType], ABC):
+    @abstractmethod
+    def _insert(
+        self, key: Comparable, value: Value, allow_overwrite: bool = True
+    ) -> NodeType:
+        """Insert a new node with the specified key and value into the tree.
+
+        If allow_overwrite is True, then the value associated with the key will be
+        overwritten if the key already exists in the tree.
+
+        Parameters
+        ----------
+        key : Comparable
+            The key to insert into the tree.
+        value : Value
+            The value to associate with the key.
+        allow_overwrite : bool
+            Whether to overwrite the value associated with the key if the key already
+            exists in the tree.
+
+        Returns
+        -------
+        node : NodeType
+            The new root of the tree
+
+        Raises
+        ------
+        ValueError
+            If allow_overwrite is False and the key already exists in the tree.
+        """
+
+    @abstractmethod
+    def _delete(self, key: Comparable) -> Union[NodeType, SentinelType]:
+        """Delete the node with the specified key from the tree.
+
+
+        Parameters
+        ----------
+        key : Comparable
+            The key to delete from the tree.
+
+        Returns
+        -------
+        node : NodeType
+            The root of the tree
+
+        Raises
+        ------
+        KeyError
+            If the key does not exist in the tree.
+        """
+
+    @abstractmethod
+    def _extract_min(
+        self,
     ) -> tuple[tuple[Comparable, Value], Union[NodeType, SentinelType]]:
-        pass
+        """
+        Extract the minimum node from the tree.
+
+        Returns
+        -------
+        tuple[tuple[Comparable, Value], Union[NodeType, SentinelType]]
+            The key value tuple representing the minimum
+            and the new root of the tree
+
+        """
+
+    @abstractmethod
+    def _extract_max(
+        self,
+    ) -> tuple[tuple[Comparable, Value], Union[NodeType, SentinelType]]:
+        """
+        Extract the maximum node from the tree.
+
+        Returns
+        -------
+        tuple[tuple[Comparable, Value], Union[NodeType, SentinelType]]
+            The key value tuple representing the maximum
+            and the new root of the tree
+        """
 
 
 class TreeIterativeMixin(Generic[NodeType], ABC):
@@ -178,7 +319,7 @@ class NodeConstructorMixin(Generic[NodeType, Comparable, Value], ABC):
 @dataclass
 class AbstractNode(
     Generic[Comparable, Value, NodeType, SentinelType],
-    TreeMutationMixin[Comparable, Value, NodeType, SentinelType],
+    NodeMutationMixin[Comparable, Value, NodeType, SentinelType],
     NodeConstructorMixin[NodeType, Comparable, Value],
     MutableMapping[Comparable, Value],
     TreeQueryMixin[Comparable, NodeType, SentinelType],
@@ -195,15 +336,11 @@ class AbstractNode(
     key: Comparable
     value: Value
 
-    @abstractmethod
-    def swap(self, node: NodeType):
-        pass
-
 
 @dataclass
 class AbstractTree(
     Generic[Comparable, Value, NodeType, SentinelType],
-    TreeMutationMixin[Comparable, Value, NodeType, SentinelType],
+    TreeMutationMixin[Comparable, Value, NodeType],
     NodeConstructorMixin[NodeType, Comparable, Value],
     MutableMapping[Comparable, Value],
     TreeQueryMixin[Comparable, NodeType, SentinelType],

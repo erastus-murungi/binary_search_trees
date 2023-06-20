@@ -53,7 +53,7 @@ class BinarySearchTreeInternalNodeAbstract(
         else:
             raise ValueError(f"Key {key} already exists in tree")
 
-    def choose_set(self, key: Comparable, node: BinaryNodeType):
+    def choose_set(self, key: Comparable, node: BinaryNodeType) -> None:
         if key > self.key:
             self.right = node
         elif key < self.key:
@@ -142,7 +142,7 @@ class BinarySearchTreeInternalNodeAbstract(
         else:
             return self.nonnull_left.maximum()
 
-    def insert(
+    def _insert(
         self, key: Comparable, value: Value, allow_overwrite: bool = False
     ) -> BinaryNodeType:
         if self.key == key:
@@ -152,21 +152,21 @@ class BinarySearchTreeInternalNodeAbstract(
                 raise ValueError(f"Overwrites of {key} not allowed")
         elif key < self.key:
             if self.is_node(self.left):
-                self.left = self.left.insert(key, value, allow_overwrite)
+                self.left = self.left._insert(key, value, allow_overwrite)
             else:
                 self.left = self.node(key, value)
         else:
             if self.is_node(self.right):
-                self.right = self.right.insert(key, value, allow_overwrite)
+                self.right = self.right._insert(key, value, allow_overwrite)
             else:
                 self.right = self.node(key, value)
         return cast(BinaryNodeType, self)
 
-    def delete(self, key: Comparable) -> Union[BinaryNodeType, SentinelType]:
+    def _delete(self, key: Comparable) -> Union[BinaryNodeType, SentinelType]:
         if key < self.key:
-            self.left = self.nonnull_left.delete(key)
+            self.left = self.nonnull_left._delete(key)
         elif key > self.key:
-            self.right = self.nonnull_right.delete(key)
+            self.right = self.nonnull_right._delete(key)
         else:
             if self.is_sentinel(self.left):
                 return self.right
@@ -175,14 +175,14 @@ class BinarySearchTreeInternalNodeAbstract(
             else:
                 successor = self.nonnull_right.minimum()
                 self.key, self.value = successor.key, successor.value
-                self.right = self.nonnull_right.delete(successor.key)
+                self.right = self.nonnull_right._delete(successor.key)
         return cast(BinaryNodeType, self)
 
-    def extract_min(
+    def _extract_min(
         self,
     ) -> tuple[tuple[Comparable, Value], Union[BinaryNodeType, SentinelType]]:
         try:
-            keyval, self.left = self.nonnull_left.extract_min()
+            keyval, self.left = self.nonnull_left._extract_min()
             return keyval, cast(BinaryNodeType, self)
         except SentinelReached:
             keyval = (self.key, self.value)
@@ -191,11 +191,11 @@ class BinarySearchTreeInternalNodeAbstract(
             else:
                 return keyval, self.sentinel()
 
-    def extract_max(
+    def _extract_max(
         self,
     ) -> tuple[tuple[Comparable, Value], Union[BinaryNodeType, SentinelType]]:
         try:
-            keyval, self.right = self.nonnull_right.extract_max()
+            keyval, self.right = self.nonnull_right._extract_max()
             return keyval, cast(BinaryNodeType, self)
         except SentinelReached:
             keyval = (self.key, self.value)
@@ -228,17 +228,11 @@ class BinarySearchTreeInternalNodeAbstract(
     def level_order(self) -> Iterator[BinaryNodeType]:
         raise NotImplementedError
 
-    def swap(self, other: BinaryNodeType) -> None:
-        self.key = other.key
-        self.value = other.value
-        self.left = other.left
-        self.right = other.right
-
     def __setitem__(self, key: Comparable, value: Value) -> None:
-        self.insert(key, value, allow_overwrite=True)
+        self._insert(key, value, allow_overwrite=True)
 
     def __delitem__(self, key: Comparable) -> None:
-        self.delete(key)
+        self._delete(key)
 
     def __getitem__(self, key: Comparable) -> Value:
         node = self.access(key)
