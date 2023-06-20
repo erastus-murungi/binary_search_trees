@@ -1,13 +1,12 @@
 from __future__ import annotations
-from abc import ABC
-from collections import Counter
+
 from dataclasses import dataclass, field
-from random import randint, random
-from typing import Generic, Union, TypeGuard
+from random import random
+from typing import TypeGuard, Union
 
 from bst import AbstractBinarySearchTreeIterative
+from core import Comparable, Value
 from nodes import AbstractBinarySearchTreeNode, Sentinel
-from core import Comparable, Value, SentinelReferenceError, SentinelType, NodeType
 
 
 @dataclass(slots=True)
@@ -60,8 +59,9 @@ class ZipTree(
         """
         rank = random_rank()
         node = self.node(key=key, value=value, rank=rank)
-        current = self.root
-        prev = self.sentinel()
+        current: Union[ZipNode[Comparable, Value], Sentinel[Comparable]] = self.root
+        prev: Union[ZipNode[Comparable, Value], Sentinel[Comparable]] = self.sentinel()
+
         while self.is_node(current) and (
             node.rank < current.rank or rank == current.rank and node.key > current.key
         ):
@@ -70,6 +70,7 @@ class ZipTree(
                 current = current.left
             else:
                 current = current.right
+
         if current is self.root:
             self.root = node
         else:
@@ -99,18 +100,25 @@ class ZipTree(
         prev = node
 
         while self.is_node(current):
+            assert self.is_node(prev)
             fix = prev
             if current.key < key:
                 while True:
                     prev = current
                     current = current.right
-                    if self.is_sentinel(current) or current.key > key:
+                    if self.is_sentinel(current):
+                        break
+                    assert self.is_node(current)
+                    if current.key > key:
                         break
             else:
                 while True:
                     prev = current
                     current = current.left
-                    if self.is_sentinel(current) or current.key < key:
+                    if self.is_sentinel(current):
+                        break
+                    assert self.is_node(current)
+                    if current.key < key:
                         break
             if fix.key > key or (fix == node and prev.key > key):
                 fix.left = current
@@ -119,54 +127,63 @@ class ZipTree(
         self.size += 1
         return node
 
-    def delete(self, x: Comparable):
+    def delete(self, target_key: Comparable):
         prev: Union[ZipNode[Comparable, Value], Sentinel[Comparable]] = self.sentinel()
-        current: Union[
-            ZipNode[Comparable, Value], Sentinel[Comparable]
-        ] = self.nonnull_root
-        while self.is_node(current) and x != current.key:  # find the x in the tree
-            prev = current
-            if x < current.key:
-                current = current.nonnull_left
+        target_node: ZipNode[Comparable, Value] = self.nonnull_root
+        while target_key != target_node.key:  # find the x in the tree
+            prev = target_node
+            if target_key < target_node.key:
+                target_node = target_node.nonnull_left
             else:
-                current = current.nonnull_right
-        left = current.left  # get the left and right subtree of x
-        right = current.right
-        y = current
+                target_node = target_node.nonnull_right
+
+        current: Union[ZipNode[Comparable, Value] | Sentinel[Comparable]]
+
+        left, right = target_node.left, target_node.right
         if self.is_sentinel(left):
             current = right
         elif self.is_sentinel(right):
             current = left
-        elif left.rank >= right.rank:
-            current = left
         else:
-            current = right
-
-        if self.root.key == x:
+            assert self.is_node(left) and self.is_node(right)
+            if left.rank >= right.rank:
+                current = left
+            else:
+                current = right
+        if self.is_node(prev):
+            if target_key < prev.key:
+                prev.left = current
+            else:
+                prev.right = current
+        else:
+            assert self.nonnull_root.key == target_key
             self.root = current
-        elif x < prev.key:
-            prev.left = current
-        else:
-            prev.right = current
 
         while self.is_node(left) and self.is_node(right):
             if left.rank >= right.rank:
                 while True:
                     prev = left
                     left = left.right
-                    if self.is_sentinel(left) or left.rank < right.rank:
+                    if self.is_sentinel(left):
+                        break
+                    assert self.is_node(left)
+                    if left.rank < right.rank:
                         break
                 prev.right = right
             else:
                 while True:
                     prev = right
                     right = right.left
-                    if self.is_sentinel(right) or left.rank >= right.rank:
+                    if self.is_sentinel(right):
                         break
+                    assert self.is_node(right)
+                    if left.rank >= right.rank:
+                        break
+
                 prev.left = left
 
         self.size -= 1
-        return y
+        return target_node
 
     def is_node(
         self, node: Union[ZipNode[Comparable, Value], Sentinel[Comparable]]
