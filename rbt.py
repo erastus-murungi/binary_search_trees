@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import Any, Generic, Optional, TypeGuard, Union
 
-from bst import AbstractBSTWithParentIterative, Comparable, Value
+from bst import AbstractBSTWithParentIterative, Key, Value
 from nodes import AbstractBSTNodeWithParent, AbstractSentinelWithParent, SupportsParent
 
 
@@ -27,23 +27,22 @@ class SupportsColor(ABC):
 
 @dataclass(slots=True)
 class RBTSentinel(
-    Generic[Comparable, Value],
+    Generic[Key, Value],
     AbstractSentinelWithParent[
-        Comparable,
-        "RBTNode[Comparable, Value]",
-        "RBTSentinel[Comparable, Value]",
+        "RBTNode[Key, Value]",
+        "RBTSentinel[Key, Value]",
     ],
     SupportsColor,
     SupportsParent["RBTNode", "RBTSentinel"],
 ):
     """Sentinel node in a red-black tree"""
 
-    parent: Union[RBTSentinel[Comparable, Value], RBTNode[Comparable, Value]]
+    parent: Union[RBTSentinel[Key, Value], RBTNode[Key, Value]]
     color: Color = Color.BLACK
 
     def __init__(
         self,
-        parent: Optional[RBTNode[Comparable, Value]] = None,
+        parent: Optional[RBTNode[Key, Value]] = None,
         color: Color = Color.BLACK,
     ):
         if parent is None:
@@ -56,17 +55,17 @@ class RBTSentinel(
         return 0
 
     @classmethod
-    def default(cls) -> RBTSentinel[Comparable, Value]:
+    def default(cls) -> RBTSentinel[Key, Value]:
         return RBTSentinel()
 
 
 @dataclass(slots=True)
 class RBTNode(
     AbstractBSTNodeWithParent[
-        Comparable,
+        Key,
         Value,
-        "RBTNode[Comparable, Value]",
-        RBTSentinel[Comparable, Value],
+        "RBTNode[Key, Value]",
+        RBTSentinel[Key, Value],
     ],
     SupportsColor,
 ):
@@ -81,10 +80,10 @@ class RBTNode(
 
 class RedBlackTree(
     AbstractBSTWithParentIterative[
-        Comparable,
+        Key,
         Value,
-        RBTNode[Comparable, Value],
-        RBTSentinel[Comparable, Value],
+        RBTNode[Key, Value],
+        RBTSentinel[Key, Value],
     ]
 ):
     """
@@ -103,14 +102,14 @@ class RedBlackTree(
     """
 
     def insert(
-        self, key: Comparable, value: Value, allow_overwrite: bool = True
-    ) -> RBTNode[Comparable, Value]:
+        self, key: Key, value: Value, allow_overwrite: bool = True
+    ) -> RBTNode[Key, Value]:
         child = super().insert(key, value, allow_overwrite)
         child.color = Color.RED
         self.rbt_insert_fixup(child)
         return child
 
-    def validate(self, lower_limit: Comparable, upper_limit: Comparable):
+    def validate(self, lower_limit: Key, upper_limit: Key):
         super().validate(lower_limit, upper_limit)
         self.check_black_height_invariant()
         self.check_property_4()
@@ -164,11 +163,9 @@ class RedBlackTree(
 
     def transplant(
         self,
-        u: RBTNode[Comparable, Value],
-        v: Union[RBTNode[Comparable, Value], RBTSentinel[Comparable, Value]],
-        _: Optional[
-            Union[RBTNode[Comparable, Value], RBTSentinel[Comparable, Value]]
-        ] = None,
+        u: RBTNode[Key, Value],
+        v: Union[RBTNode[Key, Value], RBTSentinel[Key, Value]],
+        _: Optional[Union[RBTNode[Key, Value], RBTSentinel[Key, Value]]] = None,
     ) -> None:
         if self.is_sentinel(u.parent):
             self.root = v
@@ -180,7 +177,7 @@ class RedBlackTree(
                 u.parent.right = v
         v.parent = u.parent
 
-    def delete(self, target_key: Comparable):
+    def delete(self, target_key: Key):
         z = self.access(target_key)
         if self.is_node(z):
             # y identifies the node to be deleted
@@ -218,7 +215,7 @@ class RedBlackTree(
 
     def rbt_delete_fixup(
         self,
-        x: Union[RBTNode[Comparable, Value], RBTSentinel[Comparable, Value]],
+        x: Union[RBTNode[Key, Value], RBTSentinel[Key, Value]],
     ):
         while x != self.root and x.color == Color.BLACK:
             x_p = x.parent
@@ -308,9 +305,7 @@ class RedBlackTree(
     def check_black_height_invariant(self):
         """Checks whether the black-height is the same for all paths starting at the root"""
 
-        def recurse(
-            node: Union[RBTSentinel[Comparable, Value], RBTNode[Comparable, Value]]
-        ) -> int:
+        def recurse(node: Union[RBTSentinel[Key, Value], RBTNode[Key, Value]]) -> int:
             """Checks whether the black-height is the same for all paths starting at the root"""
             if self.is_sentinel(node):
                 assert node.color == Color.BLACK
@@ -326,37 +321,37 @@ class RedBlackTree(
 
         recurse(self.root)
 
-    def is_node(self, item: Any) -> TypeGuard[RBTNode[Comparable, Value]]:
+    def is_node(self, item: Any) -> TypeGuard[RBTNode[Key, Value]]:
         return isinstance(item, RBTNode)
 
-    def is_sentinel(self, item: Any) -> TypeGuard[RBTSentinel[Comparable, Value]]:
+    def is_sentinel(self, item: Any) -> TypeGuard[RBTSentinel[Key, Value]]:
         return isinstance(item, RBTSentinel)
 
     def node(
         self,
-        key: Comparable,
+        key: Key,
         value: Value,
         left: Union[
-            RBTNode[Comparable, Value], RBTSentinel[Comparable, Value]
+            RBTNode[Key, Value], RBTSentinel[Key, Value]
         ] = RBTSentinel.default(),
         right: Union[
-            RBTNode[Comparable, Value], RBTSentinel[Comparable, Value]
+            RBTNode[Key, Value], RBTSentinel[Key, Value]
         ] = RBTSentinel.default(),
         parent: Union[
-            RBTNode[Comparable, Value], RBTSentinel[Comparable, Value]
+            RBTNode[Key, Value], RBTSentinel[Key, Value]
         ] = RBTSentinel.default(),
         color=Color.RED,
         *args,
         **kwargs,
-    ) -> RBTNode[Comparable, Value]:
+    ) -> RBTNode[Key, Value]:
         return RBTNode(
             key=key, value=value, left=left, right=right, parent=parent, color=color
         )
 
-    def sentinel(self, *args, **kwards) -> RBTSentinel[Comparable, Value]:
+    def sentinel(self, *args, **kwards) -> RBTSentinel[Key, Value]:
         return RBTSentinel()
 
-    def extract_min(self) -> tuple[Comparable, Value]:
+    def extract_min(self) -> tuple[Key, Value]:
         z = self.minimum()
         y = z
         y_original_color = y.color
@@ -380,7 +375,7 @@ class RedBlackTree(
         self.size -= 1
         return z.key, z.value
 
-    def extract_max(self) -> tuple[Comparable, Value]:
+    def extract_max(self) -> tuple[Key, Value]:
         z = self.maximum()
         y = z
         y_original_color = y.color

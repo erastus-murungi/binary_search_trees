@@ -10,7 +10,6 @@ from typing import (
     MutableMapping,
     Optional,
     Protocol,
-    Self,
     Sized,
     TypeGuard,
     TypeVar,
@@ -25,11 +24,11 @@ class SentinelReferenceError(ValueError):
 
 @runtime_checkable
 class SupportsLessThan(Protocol):
-    def __lt__(self: Comparable, other: Comparable) -> bool:
+    def __lt__(self: Key, other: Key) -> bool:
         pass
 
 
-Comparable = TypeVar("Comparable", bound=SupportsLessThan)
+Key = TypeVar("Key", bound=SupportsLessThan)
 Value = TypeVar("Value")
 VisitorReturnType = TypeVar("VisitorReturnType")
 
@@ -73,18 +72,18 @@ class SentinelConstructorMixin(Generic[SentinelType], ABC):
 
 
 class MemberMixin(
-    Generic[Comparable, NodeType],
-    Container[Comparable],
+    Generic[Key, NodeType],
+    Container[Key],
 ):
     @abstractmethod
     def __contains__(self, key: Any) -> bool:
         pass
 
     @abstractmethod
-    def access(self, key: Comparable) -> NodeType:
+    def access(self, key: Key) -> NodeType:
         pass
 
-    def access_no_throw(self, key: Comparable) -> Optional[NodeType]:
+    def access_no_throw(self, key: Key) -> Optional[NodeType]:
         try:
             return self.access(key)
         except SentinelReferenceError:
@@ -93,8 +92,7 @@ class MemberMixin(
 
 @dataclass(slots=True)
 class AbstractSentinel(
-    Generic[Comparable],
-    Container[Comparable],
+    Container,
     PrettyStrMixin,
     PrettyLineYieldMixin,
     ValidatorMixin,
@@ -102,11 +100,6 @@ class AbstractSentinel(
     ABC,
 ):
     """Base class for all leaves in a tree."""
-
-    @classmethod
-    @abstractmethod
-    def default(cls) -> Self:
-        pass
 
     def __contains__(self, key: Any) -> bool:
         return False
@@ -127,7 +120,7 @@ class AbstractSentinel(
         return 0
 
 
-class TreeQueryMixin(Generic[Comparable, NodeType, SentinelType], ABC):
+class TreeQueryMixin(Generic[Key, NodeType, SentinelType], ABC):
     @abstractmethod
     def minimum(self) -> NodeType:
         pass
@@ -137,19 +130,17 @@ class TreeQueryMixin(Generic[Comparable, NodeType, SentinelType], ABC):
         pass
 
     @abstractmethod
-    def successor(self, key: Comparable) -> Union[NodeType, SentinelType]:
+    def successor(self, key: Key) -> Union[NodeType, SentinelType]:
         pass
 
     @abstractmethod
-    def predecessor(self, key: Comparable) -> Union[NodeType, SentinelType]:
+    def predecessor(self, key: Key) -> Union[NodeType, SentinelType]:
         pass
 
 
-class TreeMutationMixin(Generic[Comparable, Value, NodeType], ABC):
+class TreeMutationMixin(Generic[Key, Value, NodeType], ABC):
     @abstractmethod
-    def insert(
-        self, key: Comparable, value: Value, allow_overwrite: bool = True
-    ) -> NodeType:
+    def insert(self, key: Key, value: Value, allow_overwrite: bool = True) -> NodeType:
         """Insert a new node with the specified key and value into the tree.
 
         If allow_overwrite is True, then the value associated with the key will be
@@ -157,7 +148,7 @@ class TreeMutationMixin(Generic[Comparable, Value, NodeType], ABC):
 
         Parameters
         ----------
-        key : Comparable
+        key : Key
             The key to insert into the tree.
         value : Value
             The value to associate with the key.
@@ -177,13 +168,13 @@ class TreeMutationMixin(Generic[Comparable, Value, NodeType], ABC):
         """
 
     @abstractmethod
-    def delete(self, key: Comparable) -> NodeType:
+    def delete(self, key: Key) -> NodeType:
         """Delete the node with the specified key from the tree.
 
 
         Parameters
         ----------
-        key : Comparable
+        key : Key
             The key to delete from the tree.
 
         Returns
@@ -200,13 +191,13 @@ class TreeMutationMixin(Generic[Comparable, Value, NodeType], ABC):
     @abstractmethod
     def extract_min(
         self,
-    ) -> tuple[Comparable, Value]:
+    ) -> tuple[Key, Value]:
         """
         Extract the minimum node from the tree.
 
         Returns
         -------
-        tuple[Comparable, Value]
+        tuple[Key, Value]
             The key value tuple representing the minimum
 
         """
@@ -214,19 +205,19 @@ class TreeMutationMixin(Generic[Comparable, Value, NodeType], ABC):
     @abstractmethod
     def extract_max(
         self,
-    ) -> tuple[Comparable, Value]:
+    ) -> tuple[Key, Value]:
         """
         Extract the maximum node from the tree.
 
         Returns
         -------
-        tuple[Comparable, Value]
+        tuple[Key, Value]
             The key value tuple representing the maximum
 
         """
 
 
-class NodeMutationMixin(Generic[Comparable, Value, NodeType, SentinelType], ABC):
+class NodeMutationMixin(Generic[Key, Value, NodeType, SentinelType], ABC):
     @abstractmethod
     def insert_node(self, node: NodeType, allow_overwrite: bool = True) -> NodeType:
         """Insert a new node with the specified key and value into the tree.
@@ -254,13 +245,13 @@ class NodeMutationMixin(Generic[Comparable, Value, NodeType, SentinelType], ABC)
         """
 
     @abstractmethod
-    def delete_key(self, key: Comparable) -> Union[NodeType, SentinelType]:
+    def delete_key(self, key: Key) -> Union[NodeType, SentinelType]:
         """Delete the node with the specified key from the tree.
 
 
         Parameters
         ----------
-        key : Comparable
+        key : Key
             The key to delete from the tree.
 
         Returns
@@ -277,13 +268,13 @@ class NodeMutationMixin(Generic[Comparable, Value, NodeType, SentinelType], ABC)
     @abstractmethod
     def _extract_min(
         self,
-    ) -> tuple[tuple[Comparable, Value], Union[NodeType, SentinelType]]:
+    ) -> tuple[tuple[Key, Value], Union[NodeType, SentinelType]]:
         """
         Extract the minimum node from the tree.
 
         Returns
         -------
-        tuple[tuple[Comparable, Value], Union[NodeType, SentinelType]]
+        tuple[tuple[Key, Value], Union[NodeType, SentinelType]]
             The key value tuple representing the minimum
             and the new root of the tree
 
@@ -292,13 +283,13 @@ class NodeMutationMixin(Generic[Comparable, Value, NodeType, SentinelType], ABC)
     @abstractmethod
     def _extract_max(
         self,
-    ) -> tuple[tuple[Comparable, Value], Union[NodeType, SentinelType]]:
+    ) -> tuple[tuple[Key, Value], Union[NodeType, SentinelType]]:
         """
         Extract the maximum node from the tree.
 
         Returns
         -------
-        tuple[tuple[Comparable, Value], Union[NodeType, SentinelType]]
+        tuple[tuple[Key, Value], Union[NodeType, SentinelType]]
             The key value tuple representing the maximum
             and the new root of the tree
         """
@@ -326,9 +317,9 @@ class TreeIterativeMixin(Generic[NodeType], ABC):
         pass
 
 
-class NodeConstructorMixin(Generic[NodeType, Comparable, Value], ABC):
+class NodeConstructorMixin(Generic[NodeType, Key, Value], ABC):
     @abstractmethod
-    def node(self, key: Comparable, value: Value, *args, **kwargs) -> NodeType:
+    def node(self, key: Key, value: Value, *args, **kwargs) -> NodeType:
         pass
 
     @abstractmethod
@@ -338,12 +329,12 @@ class NodeConstructorMixin(Generic[NodeType, Comparable, Value], ABC):
 
 @dataclass(slots=True)
 class AbstractNode(
-    Generic[Comparable, Value, NodeType, SentinelType],
-    NodeMutationMixin[Comparable, Value, NodeType, SentinelType],
-    MutableMapping[Comparable, Value],
-    TreeQueryMixin[Comparable, NodeType, SentinelType],
+    Generic[Key, Value, NodeType, SentinelType],
+    NodeMutationMixin[Key, Value, NodeType, SentinelType],
+    MutableMapping[Key, Value],
+    TreeQueryMixin[Key, NodeType, SentinelType],
     TreeIterativeMixin[NodeType],
-    MemberMixin[Comparable, NodeType],
+    MemberMixin[Key, NodeType],
     PrettyLineYieldMixin,
     PrettyStrMixin,
     ValidatorMixin,
@@ -363,13 +354,13 @@ class SupportsParent(Generic[NodeWithParentType, SentinelType], ABC):
 
 @dataclass(slots=True)
 class AbstractTree(
-    Generic[Comparable, Value, NodeType, SentinelType],
-    TreeMutationMixin[Comparable, Value, NodeType],
-    NodeConstructorMixin[NodeType, Comparable, Value],
-    MutableMapping[Comparable, Value],
-    TreeQueryMixin[Comparable, NodeType, SentinelType],
+    Generic[Key, Value, NodeType, SentinelType],
+    TreeMutationMixin[Key, Value, NodeType],
+    NodeConstructorMixin[NodeType, Key, Value],
+    MutableMapping[Key, Value],
+    TreeQueryMixin[Key, NodeType, SentinelType],
     TreeIterativeMixin[NodeType],
-    MemberMixin[Comparable, NodeType],
+    MemberMixin[Key, NodeType],
     SentinelConstructorMixin[SentinelType],
     PrettyStrMixin,
     ValidatorMixin,

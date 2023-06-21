@@ -5,7 +5,7 @@ from math import log
 from typing import Any, Final, TypeGuard, Union
 
 from bst import BSTWithParentIterative
-from core import Comparable, Value
+from core import Key, Value
 from nodes import BSTNodeWithParent, Sentinel
 
 # log (3/2)
@@ -16,28 +16,24 @@ def log3_2(m: float) -> int:
     return math.ceil(log(m) / LOG_1_5)
 
 
-def compute_size(
-    node: Union[BSTNodeWithParent[Comparable, Value], Sentinel[Comparable]]
-) -> int:
+def compute_size(node: Union[BSTNodeWithParent[Key, Value], Sentinel]) -> int:
     if isinstance(node, Sentinel):
         return 0
     return 1 + compute_size(node.left) + compute_size(node.right)
 
 
 @dataclass
-class ScapeGoatTree(BSTWithParentIterative[Comparable, Value]):
+class ScapeGoatTree(BSTWithParentIterative[Key, Value]):
     max_size: int = 0
-    root: Union[BSTNodeWithParent[Comparable, Value], Sentinel[Comparable]] = field(
-        default_factory=Sentinel[Comparable]
+    root: Union[BSTNodeWithParent[Key, Value], Sentinel] = field(
+        default_factory=Sentinel
     )
     size: int = 0
 
     def insert_with_depth(
-        self, node: BSTNodeWithParent[Comparable, Value], allow_overwrite: bool
+        self, node: BSTNodeWithParent[Key, Value], allow_overwrite: bool
     ) -> int:
-        parent: Union[
-            BSTNodeWithParent[Comparable, Value], Sentinel[Comparable]
-        ] = self.sentinel()
+        parent: Union[BSTNodeWithParent[Key, Value], Sentinel] = self.sentinel()
         root = self.root
         depth = 0
         while self.is_node(root):
@@ -70,8 +66,8 @@ class ScapeGoatTree(BSTWithParentIterative[Comparable, Value]):
         return depth
 
     def insert(
-        self, key: Comparable, value: Value, allow_overwrite: bool = False
-    ) -> BSTNodeWithParent[Comparable, Value]:
+        self, key: Key, value: Value, allow_overwrite: bool = False
+    ) -> BSTNodeWithParent[Key, Value]:
         node = self.node(key, value)
         depth = self.insert_with_depth(node, allow_overwrite)
         if depth < 0:
@@ -85,7 +81,7 @@ class ScapeGoatTree(BSTWithParentIterative[Comparable, Value]):
             self.rebuild(w.parent)
         return node
 
-    def rebuild(self, node: BSTNodeWithParent[Comparable, Value]) -> None:
+    def rebuild(self, node: BSTNodeWithParent[Key, Value]) -> None:
         assert self.is_node(node)
         nodes = list(node.inorder())
 
@@ -107,9 +103,9 @@ class ScapeGoatTree(BSTWithParentIterative[Comparable, Value]):
 
     def build_from_sorted_list(
         self,
-        nodes: list[BSTNodeWithParent[Comparable, Value]],
-        parent: Union[Sentinel[Comparable], BSTNodeWithParent[Comparable, Value]],
-    ) -> Union[BSTNodeWithParent[Comparable, Value], Sentinel[Comparable]]:
+        nodes: list[BSTNodeWithParent[Key, Value]],
+        parent: Union[Sentinel, BSTNodeWithParent[Key, Value]],
+    ) -> Union[BSTNodeWithParent[Key, Value], Sentinel]:
         if not nodes:
             return self.sentinel()
         mid = len(nodes) // 2
@@ -119,7 +115,7 @@ class ScapeGoatTree(BSTWithParentIterative[Comparable, Value]):
         node.parent = parent
         return node
 
-    def delete(self, key: Comparable) -> BSTNodeWithParent[Comparable, Value]:
+    def delete(self, key: Key) -> BSTNodeWithParent[Key, Value]:
         node = super().delete(key)
         if 2 * self.size < self.max_size:
             if self.is_node(self.root):

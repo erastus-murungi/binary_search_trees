@@ -4,7 +4,7 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Iterator, TypeGuard, TypeVar, Union
 
-from bst import AbstractBSTWithParentIterative, Comparable, Value
+from bst import AbstractBSTWithParentIterative, Key, Value
 from core import AbstractSentinel, SentinelReferenceError
 from nodes import AbstractBSTNodeWithParent
 
@@ -19,12 +19,12 @@ class AVLTreeNodeTraits(ABC):
 
 
 @dataclass(slots=True)
-class AVLSentinel(AbstractSentinel[Comparable], AVLTreeNodeTraits):
+class AVLSentinel(AbstractSentinel, AVLTreeNodeTraits):
     height: int = -1
     balance_factor: int = 0
 
     @classmethod
-    def default(cls) -> AVLSentinel[Comparable]:
+    def default(cls) -> AVLSentinel:
         return AVLSentinel()
 
     def pretty_str(self) -> str:
@@ -43,10 +43,10 @@ class AVLSentinel(AbstractSentinel[Comparable], AVLTreeNodeTraits):
 @dataclass(slots=True)
 class AVLTreeInternalNode(
     AbstractBSTNodeWithParent[
-        Comparable,
+        Key,
         Value,
-        "AVLTreeInternalNode[Comparable, Value]",
-        AVLSentinel[Comparable],
+        "AVLTreeInternalNode[Key, Value]",
+        AVLSentinel,
     ],
     AVLTreeNodeTraits,
 ):
@@ -62,7 +62,7 @@ class AVLTreeInternalNode(
 
 
 def update_balance_factor_and_height(
-    node: Union[AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]]
+    node: Union[AVLTreeInternalNode[Key, Value], AVLSentinel]
 ) -> None:
     if isinstance(node, AVLSentinel):
         return
@@ -71,13 +71,13 @@ def update_balance_factor_and_height(
 
 class AVLTreeIterative(
     AbstractBSTWithParentIterative[
-        Comparable,
+        Key,
         Value,
-        AVLTreeInternalNode[Comparable, Value],
-        AVLSentinel[Comparable],
+        AVLTreeInternalNode[Key, Value],
+        AVLSentinel,
     ]
 ):
-    def re_balance(self, node: AVLTreeInternalNode[Comparable, Value]) -> None:
+    def re_balance(self, node: AVLTreeInternalNode[Key, Value]) -> None:
         if node.balance_factor < -1:
             if node.left.balance_factor > 0:
                 node.left = self.left_rotate(
@@ -91,7 +91,7 @@ class AVLTreeIterative(
                 )
             self.left_rotate(node, update=update_balance_factor_and_height)
 
-    def validate(self, lower_limit: Comparable, upper_limit: Comparable):
+    def validate(self, lower_limit: Key, upper_limit: Key):
         super().validate(lower_limit, upper_limit)
         for node in self.inorder():
             if abs(node.balance_factor) not in (-1, 0, 1):
@@ -100,9 +100,7 @@ class AVLTreeIterative(
                 )
 
         def visit(
-            node: Union[
-                AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]
-            ],
+            node: Union[AVLTreeInternalNode[Key, Value], AVLSentinel],
         ) -> int:
             if isinstance(node, AVLSentinel):
                 if node.height != -1:
@@ -127,14 +125,14 @@ class AVLTreeIterative(
         visit(self.root)
 
     def insert(
-        self, key: Comparable, value: Value, allow_overwrite: bool = False
-    ) -> AVLTreeInternalNode[Comparable, Value]:
+        self, key: Key, value: Value, allow_overwrite: bool = False
+    ) -> AVLTreeInternalNode[Key, Value]:
         node = super().insert(key, value, allow_overwrite)
         assert self.is_node(node)
         self.avl_fixup(node.parent)
         return node
 
-    def delete(self, key: Comparable) -> AVLTreeInternalNode[Comparable, Value]:
+    def delete(self, key: Key) -> AVLTreeInternalNode[Key, Value]:
         try:
             node = self.access(key)
             if self.is_sentinel(node.left):
@@ -163,7 +161,7 @@ class AVLTreeIterative(
         except SentinelReferenceError as e:
             raise ValueError(f"Key {key} not in tree") from e
 
-    def extract_min(self) -> tuple[Comparable, Value]:
+    def extract_min(self) -> tuple[Key, Value]:
         root = self.minimum()
         keyval = (root.key, root.value)
         self.transplant(root, root.right)
@@ -171,7 +169,7 @@ class AVLTreeIterative(
         self.size -= 1
         return keyval
 
-    def extract_max(self) -> tuple[Comparable, Value]:
+    def extract_max(self) -> tuple[Key, Value]:
         root = self.maximum()
         keyval = (root.key, root.value)
         self.transplant(root, root.left)
@@ -181,7 +179,7 @@ class AVLTreeIterative(
 
     def avl_fixup(
         self,
-        node: Union[AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]],
+        node: Union[AVLTreeInternalNode[Key, Value], AVLSentinel],
     ):
         while self.is_node(node) and node.update_height_and_balance_factor():
             parent = node.parent
@@ -191,27 +189,27 @@ class AVLTreeIterative(
     def is_node(
         self,
         node: Any,
-    ) -> TypeGuard[AVLTreeInternalNode[Comparable, Value]]:
+    ) -> TypeGuard[AVLTreeInternalNode[Key, Value]]:
         return isinstance(node, AVLTreeInternalNode)
 
     def node(
         self,
-        key: Comparable,
+        key: Key,
         value: Value,
         left: Union[
-            AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]
-        ] = AVLSentinel[Comparable].default(),
+            AVLTreeInternalNode[Key, Value], AVLSentinel
+        ] = AVLSentinel.default(),
         right: Union[
-            AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]
-        ] = AVLSentinel[Comparable].default(),
+            AVLTreeInternalNode[Key, Value], AVLSentinel
+        ] = AVLSentinel.default(),
         parent: Union[
-            AVLTreeInternalNode[Comparable, Value], AVLSentinel[Comparable]
-        ] = AVLSentinel[Comparable].default(),
+            AVLTreeInternalNode[Key, Value], AVLSentinel
+        ] = AVLSentinel.default(),
         height: int = 0,
         balance_factor: int = 0,
         *args,
         **kwargs,
-    ) -> AVLTreeInternalNode[Comparable, Value]:
+    ) -> AVLTreeInternalNode[Key, Value]:
         return AVLTreeInternalNode(
             key=key,
             value=value,
@@ -225,11 +223,11 @@ class AVLTreeIterative(
     def is_sentinel(
         self,
         node: Any,
-    ) -> TypeGuard[AVLSentinel[Comparable]]:
+    ) -> TypeGuard[AVLSentinel]:
         return isinstance(node, AVLSentinel)
 
     def sentinel(self, *args, **kwargs):
-        return AVLSentinel[Comparable].default()
+        return AVLSentinel()
 
 
 if __name__ == "__main__":

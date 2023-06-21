@@ -5,23 +5,21 @@ from random import random
 from typing import TypeGuard, Union
 
 from bst import AbstractBSTIterative
-from core import Comparable, Value
+from core import Key, Value
 from nodes import AbstractBSTNode, Sentinel
 
 
 @dataclass(slots=True)
 class ZipNode(
-    AbstractBSTNode[
-        Comparable, Value, "ZipNode[Comparable, Value]", Sentinel[Comparable]
-    ],
+    AbstractBSTNode[Key, Value, "ZipNode[Key, Value]", Sentinel],
 ):
-    key: Comparable
+    key: Key
     value: Value
-    left: Union[ZipNode[Comparable, Value], Sentinel[Comparable]] = field(
-        default_factory=Sentinel[Comparable], repr=False
+    left: Union[ZipNode[Key, Value], Sentinel] = field(
+        default_factory=Sentinel, repr=False
     )
-    right: Union[ZipNode[Comparable, Value], Sentinel[Comparable]] = field(
-        default_factory=Sentinel[Comparable], repr=False
+    right: Union[ZipNode[Key, Value], Sentinel] = field(
+        default_factory=Sentinel, repr=False
     )
     rank: int = field(default_factory=int)
 
@@ -33,12 +31,8 @@ def random_rank():
     return rank
 
 
-class ZipTree(
-    AbstractBSTIterative[
-        Comparable, Value, ZipNode[Comparable, Value], Sentinel[Comparable]
-    ]
-):
-    def insert(self, key: Comparable, value: Value, allow_overwrite: bool = False):
+class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
+    def insert(self, key: Key, value: Value, allow_overwrite: bool = False):
         """
 
         Inserting x into a zip tree works as follows:
@@ -59,8 +53,8 @@ class ZipTree(
         """
         rank = random_rank()
         node = self.node(key=key, value=value, rank=rank)
-        current: Union[ZipNode[Comparable, Value], Sentinel[Comparable]] = self.root
-        prev: Union[ZipNode[Comparable, Value], Sentinel[Comparable]] = self.sentinel()
+        current: Union[ZipNode[Key, Value], Sentinel] = self.root
+        prev: Union[ZipNode[Key, Value], Sentinel] = self.sentinel()
 
         while self.is_node(current) and (
             node.rank < current.rank or rank == current.rank and node.key > current.key
@@ -127,9 +121,9 @@ class ZipTree(
         self.size += 1
         return node
 
-    def delete(self, target_key: Comparable):
-        prev: Union[ZipNode[Comparable, Value], Sentinel[Comparable]] = self.sentinel()
-        target_node: ZipNode[Comparable, Value] = self.nonnull_root
+    def delete(self, target_key: Key):
+        prev: Union[ZipNode[Key, Value], Sentinel] = self.sentinel()
+        target_node: ZipNode[Key, Value] = self.nonnull_root
         while target_key != target_node.key:  # find the x in the tree
             prev = target_node
             if target_key < target_node.key:
@@ -137,7 +131,7 @@ class ZipTree(
             else:
                 target_node = target_node.nonnull_right
 
-        current: Union[ZipNode[Comparable, Value] | Sentinel[Comparable]]
+        current: Union[ZipNode[Key, Value] | Sentinel]
 
         left, right = target_node.left, target_node.right
         if self.is_sentinel(left):
@@ -186,22 +180,20 @@ class ZipTree(
         return target_node
 
     def is_node(
-        self, node: Union[ZipNode[Comparable, Value], Sentinel[Comparable]]
-    ) -> TypeGuard[ZipNode[Comparable, Value]]:
+        self, node: Union[ZipNode[Key, Value], Sentinel]
+    ) -> TypeGuard[ZipNode[Key, Value]]:
         return isinstance(node, ZipNode)
 
     def is_sentinel(
-        self, node: Union[ZipNode[Comparable, Value], Sentinel[Comparable]]
-    ) -> TypeGuard[Sentinel[Comparable]]:
+        self, node: Union[ZipNode[Key, Value], Sentinel]
+    ) -> TypeGuard[Sentinel]:
         return isinstance(node, Sentinel)
 
-    def node(
-        self, key: Comparable, value: Value, *args, **kwargs
-    ) -> ZipNode[Comparable, Value]:
+    def node(self, key: Key, value: Value, *args, **kwargs) -> ZipNode[Key, Value]:
         return ZipNode(key=key, value=value)
 
-    def sentinel(self) -> Sentinel[Comparable]:
-        return Sentinel[Comparable]()
+    def sentinel(self) -> Sentinel:
+        return Sentinel()
 
 
 if __name__ == "__main__":

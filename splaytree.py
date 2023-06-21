@@ -2,27 +2,27 @@ from __future__ import annotations
 
 from typing import Any, TypeGuard, Union
 
-from bst import AbstractBSTWithParentIterative, Comparable
+from bst import AbstractBSTWithParentIterative, Key
 from core import Value
 from nodes import BSTNodeWithParent, Sentinel
 
 
 class SplayTree(
     AbstractBSTWithParentIterative[
-        Comparable,
+        Key,
         Value,
-        BSTNodeWithParent[Comparable, Value],
-        Sentinel[Comparable],
+        BSTNodeWithParent[Key, Value],
+        Sentinel,
     ]
 ):
     def insert(
-        self, key: Comparable, value: Value, allow_overwrite: bool = True
-    ) -> BSTNodeWithParent[Comparable, Value]:
+        self, key: Key, value: Value, allow_overwrite: bool = True
+    ) -> BSTNodeWithParent[Key, Value]:
         node = super().insert(key, value, allow_overwrite)
         self.splay(node)
         return node
 
-    def access(self, key: Any) -> BSTNodeWithParent[Comparable, Value]:
+    def access(self, key: Any) -> BSTNodeWithParent[Key, Value]:
         if self.is_sentinel(self.root):
             raise KeyError(f"Key {key} not found; tree is empty")
 
@@ -41,7 +41,7 @@ class SplayTree(
             self.splay(x)
             return x
 
-    def splay(self, x: BSTNodeWithParent[Comparable, Value]):
+    def splay(self, x: BSTNodeWithParent[Key, Value]):
         while self.is_node(x.parent):
             x_p = x.parent
             x_pp = x_p.parent
@@ -81,9 +81,7 @@ class SplayTree(
 
         return self
 
-    def split(
-        self, i: Comparable
-    ) -> tuple[SplayTree[Comparable, Value], SplayTree[Comparable, Value]]:
+    def split(self, i: Key) -> tuple[SplayTree[Key, Value], SplayTree[Key, Value]]:
         """Construct and return two trees t1 and t2, where t1 contains all items
         in t less than or equal to i, and t2 contains all items in t greater than
         i. This operation destroys t."""
@@ -95,7 +93,7 @@ class SplayTree(
         assert self.is_node(y)
         self.transplant(y, self.sentinel())
         y.parent = self.sentinel()
-        return self, SplayTree[Comparable, Value](self.nonnull_root.nonnull_right)
+        return self, SplayTree[Key, Value](self.nonnull_root.nonnull_right)
 
     def delete(self, target_key):
         """Deletes a key from the Splay Tree"""
@@ -124,34 +122,34 @@ class SplayTree(
         else:
             raise KeyError(f"Key = {target_key} not found {values}")
 
-    def is_node(self, node: Any) -> TypeGuard[BSTNodeWithParent[Comparable, Value]]:
+    def is_node(self, node: Any) -> TypeGuard[BSTNodeWithParent[Key, Value]]:
         return isinstance(node, BSTNodeWithParent)
 
-    def is_sentinel(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
+    def is_sentinel(self, node: Any) -> TypeGuard[Sentinel]:
         return isinstance(node, Sentinel)
 
-    def sentinel(self) -> Sentinel[Comparable]:
-        return Sentinel.default()
+    def sentinel(self) -> Sentinel:
+        return Sentinel()
 
     def node(
         self,
-        key: Comparable,
+        key: Key,
         value: Value,
         left: Union[
-            BSTNodeWithParent[Comparable, Value],
-            Sentinel[Comparable],
-        ] = Sentinel.default(),
+            BSTNodeWithParent[Key, Value],
+            Sentinel,
+        ] = Sentinel(),
         right: Union[
-            BSTNodeWithParent[Comparable, Value],
-            Sentinel[Comparable],
-        ] = Sentinel.default(),
+            BSTNodeWithParent[Key, Value],
+            Sentinel,
+        ] = Sentinel(),
         parent: Union[
-            BSTNodeWithParent[Comparable, Value],
-            Sentinel[Comparable],
-        ] = Sentinel.default(),
+            BSTNodeWithParent[Key, Value],
+            Sentinel,
+        ] = Sentinel(),
         *args,
         **kwargs,
-    ) -> BSTNodeWithParent[Comparable, Value]:
+    ) -> BSTNodeWithParent[Key, Value]:
         return BSTNodeWithParent(
             key=key, value=value, left=left, right=right, parent=parent
         )

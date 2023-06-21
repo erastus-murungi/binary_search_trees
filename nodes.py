@@ -10,7 +10,7 @@ from typing import Any, Generic, Hashable, Iterator, TypeGuard, TypeVar, Union, 
 from core import (
     AbstractNode,
     AbstractSentinel,
-    Comparable,
+    Key,
     SentinelReferenceError,
     SentinelType,
     SupportsParent,
@@ -23,17 +23,13 @@ BinaryNodeWithParentType = TypeVar(
 )
 
 
-class Sentinel(AbstractSentinel[Comparable], Hashable):
-    @classmethod
-    def default(cls) -> Sentinel[Comparable]:
-        return Sentinel()
-
+class Sentinel(AbstractSentinel, Hashable):
     def __hash__(self):
         return hash("Sentinel")
 
 
 class AbstractSentinelWithParent(
-    AbstractSentinel[Comparable],
+    AbstractSentinel,
     SupportsParent[BinaryNodeWithParentType, SentinelType],
     ABC,
 ):
@@ -42,9 +38,9 @@ class AbstractSentinelWithParent(
 
 @dataclass
 class AbstractBSTNode(
-    AbstractNode[Comparable, Value, BinaryNodeType, SentinelType], Hashable, ABC
+    AbstractNode[Key, Value, BinaryNodeType, SentinelType], Hashable, ABC
 ):
-    key: Comparable
+    key: Key
     value: Value
     left: Union[BinaryNodeType, SentinelType] = field(repr=False)
     right: Union[BinaryNodeType, SentinelType] = field(repr=False)
@@ -55,7 +51,7 @@ class AbstractBSTNode(
     def _is_node(self, node: Any) -> TypeGuard[BinaryNodeType]:
         return isinstance(node, type(self))
 
-    def choose(self, key: Comparable) -> Union[BinaryNodeType, SentinelType]:
+    def choose(self, key: Key) -> Union[BinaryNodeType, SentinelType]:
         if key > self.key:
             return self.right
         elif key < self.key:
@@ -63,7 +59,7 @@ class AbstractBSTNode(
         else:
             raise ValueError(f"Key {key} already exists in tree")
 
-    def choose_set(self, key: Comparable, node: BinaryNodeType) -> None:
+    def choose_set(self, key: Key, node: BinaryNodeType) -> None:
         if key > self.key:
             self.right = node
         elif key < self.key:
@@ -77,7 +73,7 @@ class AbstractBSTNode(
     def dot(self, output_file_path: str = "tree.pdf"):
         return draw_tree(self, output_file_path)
 
-    def validate(self, lower_limit: Comparable, upper_limit: Comparable) -> bool:
+    def validate(self, lower_limit: Key, upper_limit: Key) -> bool:
         if not (lower_limit < self.key < upper_limit):
             return False
         return self.left.validate(lower_limit, self.key) and self.right.validate(
@@ -94,10 +90,10 @@ class AbstractBSTNode(
         yield from self.right.yield_line(indent, "R")
 
     def __contains__(self, key: Any) -> bool:
-        node = self.access_no_throw(cast(Comparable, key))
+        node = self.access_no_throw(cast(Key, key))
         return isinstance(node, type(self)) and node.key == key
 
-    def access(self, key: Comparable) -> BinaryNodeType:
+    def access(self, key: Key) -> BinaryNodeType:
         if self.key == key:
             return cast(BinaryNodeType, self)
         elif key < self.key:
@@ -135,7 +131,7 @@ class AbstractBSTNode(
             return self.left
         raise SentinelReferenceError(f"Node {self.left} is not a BinarySearchTreeNode")
 
-    def successor(self, key: Comparable) -> BinaryNodeType:
+    def successor(self, key: Key) -> BinaryNodeType:
         if key > self.key:
             return self.nonnull_right.successor(key)
         elif key < self.key:
@@ -146,7 +142,7 @@ class AbstractBSTNode(
         else:
             return self.nonnull_right.minimum()
 
-    def predecessor(self, key: Comparable) -> BinaryNodeType:
+    def predecessor(self, key: Key) -> BinaryNodeType:
         if key < self.key:
             return self.nonnull_left.predecessor(key)
         elif key > self.key:
@@ -177,7 +173,7 @@ class AbstractBSTNode(
                 self.right = node
         return cast(BinaryNodeType, self)
 
-    def delete_key(self, key: Comparable) -> Union[BinaryNodeType, SentinelType]:
+    def delete_key(self, key: Key) -> Union[BinaryNodeType, SentinelType]:
         if key < self.key:
             self.left = self.nonnull_left.delete_key(key)
         elif key > self.key:
@@ -195,7 +191,7 @@ class AbstractBSTNode(
 
     def _extract_min(
         self,
-    ) -> tuple[tuple[Comparable, Value], Union[BinaryNodeType, SentinelType]]:
+    ) -> tuple[tuple[Key, Value], Union[BinaryNodeType, SentinelType]]:
         try:
             keyval, self.left = self.nonnull_left._extract_min()
             return keyval, cast(BinaryNodeType, self)
@@ -208,7 +204,7 @@ class AbstractBSTNode(
 
     def _extract_max(
         self,
-    ) -> tuple[tuple[Comparable, Value], Union[BinaryNodeType, SentinelType]]:
+    ) -> tuple[tuple[Key, Value], Union[BinaryNodeType, SentinelType]]:
         try:
             keyval, self.right = self.nonnull_right._extract_max()
             return keyval, cast(BinaryNodeType, self)
@@ -251,16 +247,16 @@ class AbstractBSTNode(
     def level_order(self) -> Iterator[BinaryNodeType]:
         raise NotImplementedError
 
-    def __setitem__(self, key: Comparable, value: Value) -> None:
+    def __setitem__(self, key: Key, value: Value) -> None:
         raise NotImplementedError("Use insert_node instead")
 
-    def __delitem__(self, key: Comparable) -> None:
+    def __delitem__(self, key: Key) -> None:
         self.delete_key(key)
 
-    def __getitem__(self, key: Comparable) -> Value:
+    def __getitem__(self, key: Key) -> Value:
         raise NotImplementedError("Use access instead")
 
-    def __iter__(self) -> Iterator[Comparable]:
+    def __iter__(self) -> Iterator[Key]:
         for node in self.inorder():
             yield node.key
 
@@ -271,10 +267,10 @@ class AbstractBSTNode(
 
 class BSTNode(
     AbstractBSTNode[
-        Comparable,
+        Key,
         Value,
-        "BSTNode[Comparable, Value]",
-        Sentinel[Comparable],
+        "BSTNode[Key, Value]",
+        Sentinel,
     ]
 ):
     pass
@@ -282,9 +278,9 @@ class BSTNode(
 
 @dataclass
 class AbstractBSTNodeWithParent(
-    Generic[Comparable, Value, BinaryNodeWithParentType, SentinelType],
+    Generic[Key, Value, BinaryNodeWithParentType, SentinelType],
     AbstractBSTNode[
-        Comparable,
+        Key,
         Value,
         BinaryNodeWithParentType,
         SentinelType,
@@ -297,10 +293,10 @@ class AbstractBSTNodeWithParent(
 
 class BSTNodeWithParent(
     AbstractBSTNodeWithParent[
-        Comparable,
+        Key,
         Value,
-        "BSTNodeWithParent[Comparable, Value]",
-        Sentinel[Comparable],
+        "BSTNodeWithParent[Key, Value]",
+        Sentinel,
     ]
 ):
     def __hash__(self):
@@ -412,4 +408,4 @@ def draw_tree(
 
 
 if __name__ == "__main__":
-    _ = BSTNode(0, None, Sentinel[int].default(), Sentinel[int].default())
+    _ = BSTNode(0, None, Sentinel(), Sentinel())
