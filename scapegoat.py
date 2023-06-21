@@ -2,13 +2,12 @@ import math
 from dataclasses import dataclass, field
 from functools import cache
 from math import log
-from typing import Any, Final, TypeGuard, Union
+from typing import Final, Union
 
 from bst import BSTWithParentIterative
 from core import Key, Value
 from nodes import BSTNodeWithParent, Sentinel
 
-# log (3/2)
 LOG_1_5: Final[float] = 0.4054651081081644
 
 
@@ -122,27 +121,3 @@ class ScapeGoatTree(BSTWithParentIterative[Key, Value]):
                 self.rebuild(self.nonnull_root)
             self.max_size = self.size
         return node
-
-
-if __name__ == "__main__":
-    from random import randint
-
-    for _ in range(1000):
-        bst: ScapeGoatTree[int, None] = ScapeGoatTree[int, None]()
-        num_values = 5
-        # values = list({randint(0, 100000) for _ in range(num_values)})
-        # values = [35, 70, 51, 52, 20, 55, 91]
-        # values = [50, 44, 94]
-        values = [59630, 8240, 5365, 19574, 59542]
-        for k in values:
-            bst.insert(k, None, allow_overwrite=True)
-            assert compute_size(bst.root) == len(bst)
-            bst.validate(0, 1000)
-            assert k in bst
-            assert bst.max_size == len(bst)
-
-        # bst.dot()
-        for k in values:
-            deleted = bst.delete(k)
-            assert deleted.key == k, (k, deleted.key)
-            assert k not in bst, values

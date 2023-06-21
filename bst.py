@@ -5,7 +5,6 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Optional, TypeGuard, Union
 
-from typeguard import typechecked  # type: ignore
 
 from core import AbstractTree, Key, SentinelReferenceError, SentinelType, Value
 from nodes import (
@@ -53,7 +52,7 @@ class AbstractBinarySearchTree(
     def nonnull_root(self) -> BinaryNodeType:
         if self.is_node(self.root):
             return self.root
-        raise SentinelReferenceError(f"Tree is empty")
+        raise SentinelReferenceError("Tree is empty")
 
     def level_order(self) -> Iterator[BinaryNodeType]:
         try:
