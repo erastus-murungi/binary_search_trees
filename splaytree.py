@@ -2,29 +2,27 @@ from __future__ import annotations
 
 from typing import Any, TypeGuard, Union
 
-from bst import AbstractBinarySearchTreeWithParentIterative, Comparable
+from bst import AbstractBSTWithParentIterative, Comparable
 from core import Value
-from nodes import BinarySearchTreeInternalNodeWithParent, Sentinel
+from nodes import BSTNodeWithParent, Sentinel
 
 
 class SplayTree(
-    AbstractBinarySearchTreeWithParentIterative[
+    AbstractBSTWithParentIterative[
         Comparable,
         Value,
-        BinarySearchTreeInternalNodeWithParent[Comparable, Value],
+        BSTNodeWithParent[Comparable, Value],
         Sentinel[Comparable],
     ]
 ):
     def insert(
         self, key: Comparable, value: Value, allow_overwrite: bool = True
-    ) -> BinarySearchTreeInternalNodeWithParent[Comparable, Value]:
+    ) -> BSTNodeWithParent[Comparable, Value]:
         node = super().insert(key, value, allow_overwrite)
         self.splay(node)
         return node
 
-    def access(
-        self, key: Any
-    ) -> BinarySearchTreeInternalNodeWithParent[Comparable, Value]:
+    def access(self, key: Any) -> BSTNodeWithParent[Comparable, Value]:
         if self.is_sentinel(self.root):
             raise KeyError(f"Key {key} not found; tree is empty")
 
@@ -43,7 +41,7 @@ class SplayTree(
             self.splay(x)
             return x
 
-    def splay(self, x: BinarySearchTreeInternalNodeWithParent[Comparable, Value]):
+    def splay(self, x: BSTNodeWithParent[Comparable, Value]):
         while self.is_node(x.parent):
             x_p = x.parent
             x_pp = x_p.parent
@@ -126,10 +124,8 @@ class SplayTree(
         else:
             raise KeyError(f"Key = {target_key} not found {values}")
 
-    def is_node(
-        self, node: Any
-    ) -> TypeGuard[BinarySearchTreeInternalNodeWithParent[Comparable, Value]]:
-        return isinstance(node, BinarySearchTreeInternalNodeWithParent)
+    def is_node(self, node: Any) -> TypeGuard[BSTNodeWithParent[Comparable, Value]]:
+        return isinstance(node, BSTNodeWithParent)
 
     def is_sentinel(self, node: Any) -> TypeGuard[Sentinel[Comparable]]:
         return isinstance(node, Sentinel)
@@ -142,21 +138,21 @@ class SplayTree(
         key: Comparable,
         value: Value,
         left: Union[
-            BinarySearchTreeInternalNodeWithParent[Comparable, Value],
+            BSTNodeWithParent[Comparable, Value],
             Sentinel[Comparable],
         ] = Sentinel.default(),
         right: Union[
-            BinarySearchTreeInternalNodeWithParent[Comparable, Value],
+            BSTNodeWithParent[Comparable, Value],
             Sentinel[Comparable],
         ] = Sentinel.default(),
         parent: Union[
-            BinarySearchTreeInternalNodeWithParent[Comparable, Value],
+            BSTNodeWithParent[Comparable, Value],
             Sentinel[Comparable],
         ] = Sentinel.default(),
         *args,
         **kwargs,
-    ) -> BinarySearchTreeInternalNodeWithParent[Comparable, Value]:
-        return BinarySearchTreeInternalNodeWithParent(
+    ) -> BSTNodeWithParent[Comparable, Value]:
+        return BSTNodeWithParent(
             key=key, value=value, left=left, right=right, parent=parent
         )
 

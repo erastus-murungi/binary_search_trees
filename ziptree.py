@@ -4,14 +4,14 @@ from dataclasses import dataclass, field
 from random import random
 from typing import TypeGuard, Union
 
-from bst import AbstractBinarySearchTreeIterative
+from bst import AbstractBSTIterative
 from core import Comparable, Value
-from nodes import AbstractBinarySearchTreeNode, Sentinel
+from nodes import AbstractBSTNode, Sentinel
 
 
 @dataclass(slots=True)
 class ZipNode(
-    AbstractBinarySearchTreeNode[
+    AbstractBSTNode[
         Comparable, Value, "ZipNode[Comparable, Value]", Sentinel[Comparable]
     ],
 ):
@@ -34,7 +34,7 @@ def random_rank():
 
 
 class ZipTree(
-    AbstractBinarySearchTreeIterative[
+    AbstractBSTIterative[
         Comparable, Value, ZipNode[Comparable, Value], Sentinel[Comparable]
     ]
 ):

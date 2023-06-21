@@ -4,9 +4,9 @@ from abc import ABC
 from dataclasses import dataclass
 from typing import Any, Iterator, TypeGuard, TypeVar, Union
 
-from bst import AbstractBinarySearchTreeWithParentIterative, Comparable, Value
+from bst import AbstractBSTWithParentIterative, Comparable, Value
 from core import AbstractSentinel, SentinelReferenceError
-from nodes import AbstractBinarySearchTreeInternalNodeWithParent
+from nodes import AbstractBSTNodeWithParent
 
 AVLInternalNodeType = TypeVar("AVLInternalNodeType", bound="AVLTreeInternalNode")
 AVLSentinelType = TypeVar("AVLSentinelType", bound="AVLSentinel")
@@ -42,7 +42,7 @@ class AVLSentinel(AbstractSentinel[Comparable], AVLTreeNodeTraits):
 
 @dataclass(slots=True)
 class AVLTreeInternalNode(
-    AbstractBinarySearchTreeInternalNodeWithParent[
+    AbstractBSTNodeWithParent[
         Comparable,
         Value,
         "AVLTreeInternalNode[Comparable, Value]",
@@ -70,7 +70,7 @@ def update_balance_factor_and_height(
 
 
 class AVLTreeIterative(
-    AbstractBinarySearchTreeWithParentIterative[
+    AbstractBSTWithParentIterative[
         Comparable,
         Value,
         AVLTreeInternalNode[Comparable, Value],

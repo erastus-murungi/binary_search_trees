@@ -5,7 +5,7 @@ import subprocess
 import sys
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Any, Generic, Iterator, TypeGuard, TypeVar, Union, cast
+from typing import Any, Generic, Hashable, Iterator, TypeGuard, TypeVar, Union, cast
 
 from core import (
     AbstractNode,
@@ -17,16 +17,19 @@ from core import (
     Value,
 )
 
-BinaryNodeType = TypeVar("BinaryNodeType", bound="AbstractBinarySearchTreeNode")
+BinaryNodeType = TypeVar("BinaryNodeType", bound="AbstractBSTNode")
 BinaryNodeWithParentType = TypeVar(
-    "BinaryNodeWithParentType", bound="AbstractBinarySearchTreeInternalNodeWithParent"
+    "BinaryNodeWithParentType", bound="AbstractBSTNodeWithParent"
 )
 
 
-class Sentinel(AbstractSentinel[Comparable]):
+class Sentinel(AbstractSentinel[Comparable], Hashable):
     @classmethod
     def default(cls) -> Sentinel[Comparable]:
         return Sentinel()
+
+    def __hash__(self):
+        return hash("Sentinel")
 
 
 class AbstractSentinelWithParent(
@@ -38,13 +41,16 @@ class AbstractSentinelWithParent(
 
 
 @dataclass
-class AbstractBinarySearchTreeNode(
-    AbstractNode[Comparable, Value, BinaryNodeType, SentinelType], ABC
+class AbstractBSTNode(
+    AbstractNode[Comparable, Value, BinaryNodeType, SentinelType], Hashable, ABC
 ):
     key: Comparable
     value: Value
-    left: Union[BinaryNodeType, SentinelType]
-    right: Union[BinaryNodeType, SentinelType]
+    left: Union[BinaryNodeType, SentinelType] = field(repr=False)
+    right: Union[BinaryNodeType, SentinelType] = field(repr=False)
+
+    def __hash__(self):
+        return hash(self.key)
 
     def _is_node(self, node: Any) -> TypeGuard[BinaryNodeType]:
         return isinstance(node, type(self))
@@ -263,11 +269,11 @@ class AbstractBinarySearchTreeNode(
         yield self.right
 
 
-class BinarySearchTreeInternalNode(
-    AbstractBinarySearchTreeNode[
+class BSTNode(
+    AbstractBSTNode[
         Comparable,
         Value,
-        "BinarySearchTreeInternalNode[Comparable, Value]",
+        "BSTNode[Comparable, Value]",
         Sentinel[Comparable],
     ]
 ):
@@ -275,9 +281,9 @@ class BinarySearchTreeInternalNode(
 
 
 @dataclass
-class AbstractBinarySearchTreeInternalNodeWithParent(
+class AbstractBSTNodeWithParent(
     Generic[Comparable, Value, BinaryNodeWithParentType, SentinelType],
-    AbstractBinarySearchTreeNode[
+    AbstractBSTNode[
         Comparable,
         Value,
         BinaryNodeWithParentType,
@@ -289,15 +295,16 @@ class AbstractBinarySearchTreeInternalNodeWithParent(
     pass
 
 
-class BinarySearchTreeInternalNodeWithParent(
-    AbstractBinarySearchTreeInternalNodeWithParent[
+class BSTNodeWithParent(
+    AbstractBSTNodeWithParent[
         Comparable,
         Value,
-        "BinarySearchTreeInternalNodeWithParent[Comparable, Value]",
+        "BSTNodeWithParent[Comparable, Value]",
         Sentinel[Comparable],
     ]
 ):
-    pass
+    def __hash__(self):
+        return hash(self.key)
 
 
 DIR = "./trees/"
@@ -369,7 +376,7 @@ def create_graph_pdf(
 
 
 def draw_tree(
-    root: Union[AbstractSentinel, AbstractBinarySearchTreeNode],
+    root: Union[AbstractSentinel, AbstractBSTNode],
     output_filename: str = "tree.pdf",
 ):
     graph = [graph_prologue()]
@@ -405,6 +412,4 @@ def draw_tree(
 
 
 if __name__ == "__main__":
-    _ = BinarySearchTreeInternalNode(
-        0, None, Sentinel[int].default(), Sentinel[int].default()
-    )
+    _ = BSTNode(0, None, Sentinel[int].default(), Sentinel[int].default())

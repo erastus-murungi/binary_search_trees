@@ -8,10 +8,11 @@ from avl import AVLTreeIterative
 from bst import (
     AbstractBinarySearchTree,
     BinarySearchTreeIterative,
-    BinarySearchTreeIterativeWithParent,
     BinarySearchTreeRecursive,
+    BSTWithParentIterative,
 )
 from rbt import RedBlackTree
+from scapegoat import ScapeGoatTree
 from splaytree import SplayTree
 from ziptree import ZipTree
 
@@ -21,11 +22,12 @@ from ziptree import ZipTree
     [
         BinarySearchTreeRecursive,
         BinarySearchTreeIterative,
-        BinarySearchTreeIterativeWithParent,
+        BSTWithParentIterative,
         AVLTreeIterative,
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ScapeGoatTree,
     ],
 )
 def test_insertion(bst_class: Type[AbstractBinarySearchTree]):
@@ -52,11 +54,12 @@ def test_insertion(bst_class: Type[AbstractBinarySearchTree]):
     [
         BinarySearchTreeRecursive,
         BinarySearchTreeIterative,
-        BinarySearchTreeIterativeWithParent,
+        BSTWithParentIterative,
         AVLTreeIterative,
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ScapeGoatTree,
     ],
 )
 def test_sorted(bst_class: Type[AbstractBinarySearchTree]):
@@ -74,11 +77,12 @@ def test_sorted(bst_class: Type[AbstractBinarySearchTree]):
     [
         BinarySearchTreeRecursive,
         BinarySearchTreeIterative,
-        BinarySearchTreeIterativeWithParent,
+        BSTWithParentIterative,
         AVLTreeIterative,
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ScapeGoatTree,
     ],
 )
 def test_successor(bst_class: Type[AbstractBinarySearchTree]):
@@ -101,11 +105,12 @@ def test_successor(bst_class: Type[AbstractBinarySearchTree]):
     [
         BinarySearchTreeRecursive,
         BinarySearchTreeIterative,
-        BinarySearchTreeIterativeWithParent,
+        BSTWithParentIterative,
         AVLTreeIterative,
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ScapeGoatTree,
     ],
 )
 def test_predecessor(bst_class: Type[AbstractBinarySearchTree]):
@@ -130,11 +135,12 @@ def test_predecessor(bst_class: Type[AbstractBinarySearchTree]):
     [
         BinarySearchTreeRecursive,
         BinarySearchTreeIterative,
-        BinarySearchTreeIterativeWithParent,
+        BSTWithParentIterative,
         AVLTreeIterative,
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ScapeGoatTree,
     ],
 )
 def test_minimum(bst_class: Type[AbstractBinarySearchTree]):
@@ -156,11 +162,12 @@ def test_minimum(bst_class: Type[AbstractBinarySearchTree]):
     [
         BinarySearchTreeRecursive,
         BinarySearchTreeIterative,
-        BinarySearchTreeIterativeWithParent,
+        BSTWithParentIterative,
         AVLTreeIterative,
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ScapeGoatTree,
     ],
 )
 def test_maximum(bst_class: Type[AbstractBinarySearchTree]):
@@ -182,11 +189,12 @@ def test_maximum(bst_class: Type[AbstractBinarySearchTree]):
     [
         BinarySearchTreeRecursive,
         BinarySearchTreeIterative,
-        BinarySearchTreeIterativeWithParent,
+        BSTWithParentIterative,
         AVLTreeIterative,
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ScapeGoatTree,
     ],
 )
 def test_extract_min(bst_class: Type[AbstractBinarySearchTree]):
@@ -211,11 +219,12 @@ def test_extract_min(bst_class: Type[AbstractBinarySearchTree]):
     [
         BinarySearchTreeRecursive,
         BinarySearchTreeIterative,
-        BinarySearchTreeIterativeWithParent,
+        BSTWithParentIterative,
         AVLTreeIterative,
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ScapeGoatTree,
     ],
 )
 def test_extract_max(bst_class: Type[AbstractBinarySearchTree]):
