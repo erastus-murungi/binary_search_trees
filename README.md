@@ -8,7 +8,10 @@ Currently added:
  - Unbalanced Binary Search Trees
     - Recursive
     - Iterative
+    - Iterative with Parent
  - Red Black Tree
  - AVL Tree
  - Splay Tree
+ - Scapegoat Tree
+ - Zip tree
 
