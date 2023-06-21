@@ -5,17 +5,11 @@ import subprocess
 import sys
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Any, Generic, Hashable, Iterator, TypeGuard, TypeVar, Union, cast
+from typing import (Any, Generic, Hashable, Iterator, TypeGuard, TypeVar,
+                    Union, cast)
 
-from core import (
-    AbstractNode,
-    AbstractSentinel,
-    Key,
-    SentinelReferenceError,
-    SentinelType,
-    SupportsParent,
-    Value,
-)
+from core import (AbstractNode, AbstractSentinel, Key, SentinelReferenceError,
+                  SentinelType, SupportsParent, Value)
 
 BinaryNodeType = TypeVar("BinaryNodeType", bound="AbstractBSTNode")
 BinaryNodeWithParentType = TypeVar(

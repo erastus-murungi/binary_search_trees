@@ -122,11 +122,12 @@ class SplayTree(
         else:
             raise KeyError(f"Key = {target_key} not found {values}")
 
-    def is_node(self, node: Any) -> TypeGuard[BSTNodeWithParent[Key, Value]]:
+    @staticmethod
+    def is_node(node: Any) -> TypeGuard[BSTNodeWithParent[Key, Value]]:
         return isinstance(node, BSTNodeWithParent)
 
+    @staticmethod
     def node(
-        self,
         key: Key,
         value: Value,
         left: Union[

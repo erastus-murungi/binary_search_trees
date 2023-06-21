@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from random import random
-from typing import TypeGuard, Union
+from typing import Any, TypeGuard, Union
 
 from bst import AbstractBSTIterative
 from core import Key, Value
@@ -179,12 +179,12 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
         self.size -= 1
         return target_node
 
-    def is_node(
-        self, node: Union[ZipNode[Key, Value], Sentinel]
-    ) -> TypeGuard[ZipNode[Key, Value]]:
+    @staticmethod
+    def is_node(node: Any) -> TypeGuard[ZipNode[Key, Value]]:
         return isinstance(node, ZipNode)
 
-    def node(self, key: Key, value: Value, *args, **kwargs) -> ZipNode[Key, Value]:
+    @staticmethod
+    def node(key: Key, value: Value, *args, **kwargs) -> ZipNode[Key, Value]:
         return ZipNode(key=key, value=value)
 
     @classmethod

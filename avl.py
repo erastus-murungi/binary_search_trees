@@ -23,10 +23,6 @@ class AVLSentinel(AbstractSentinel, AVLTreeNodeTraits):
     height: int = -1
     balance_factor: int = 0
 
-    @classmethod
-    def default(cls) -> AVLSentinel:
-        return AVLSentinel()
-
     def pretty_str(self) -> str:
         return "∅"
 
@@ -186,25 +182,17 @@ class AVLTreeIterative(
             self.re_balance(node)
             node = parent
 
-    def is_node(
-        self,
-        node: Any,
-    ) -> TypeGuard[AVLTreeInternalNode[Key, Value]]:
+    @staticmethod
+    def is_node(node: Any) -> TypeGuard[AVLTreeInternalNode[Key, Value]]:
         return isinstance(node, AVLTreeInternalNode)
 
+    @staticmethod
     def node(
-        self,
         key: Key,
         value: Value,
-        left: Union[
-            AVLTreeInternalNode[Key, Value], AVLSentinel
-        ] = AVLSentinel.default(),
-        right: Union[
-            AVLTreeInternalNode[Key, Value], AVLSentinel
-        ] = AVLSentinel.default(),
-        parent: Union[
-            AVLTreeInternalNode[Key, Value], AVLSentinel
-        ] = AVLSentinel.default(),
+        left: Union[AVLTreeInternalNode[Key, Value], AVLSentinel] = AVLSentinel(),
+        right: Union[AVLTreeInternalNode[Key, Value], AVLSentinel] = AVLSentinel(),
+        parent: Union[AVLTreeInternalNode[Key, Value], AVLSentinel] = AVLSentinel(),
         height: int = 0,
         balance_factor: int = 0,
         *args,

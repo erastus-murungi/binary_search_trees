@@ -5,16 +5,9 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Optional, TypeGuard, Union
 
-
 from core import AbstractTree, Key, SentinelReferenceError, SentinelType, Value
-from nodes import (
-    BinaryNodeType,
-    BinaryNodeWithParentType,
-    BSTNode,
-    BSTNodeWithParent,
-    Sentinel,
-    draw_tree,
-)
+from nodes import (BinaryNodeType, BinaryNodeWithParentType, BSTNode,
+                   BSTNodeWithParent, Sentinel, draw_tree)
 
 
 class AbstractBinarySearchTree(
@@ -702,11 +695,12 @@ class BinarySearchTreeRecursive(
     def sentinel_class(cls):
         return Sentinel
 
-    def is_node(self, node: Any) -> TypeGuard[BSTNode[Key, Value]]:
+    @staticmethod
+    def is_node(node: Any) -> TypeGuard[BSTNode[Key, Value]]:
         return isinstance(node, BSTNode)
 
+    @staticmethod
     def node(
-        self,
         key: Key,
         value: Value,
         left: Union[BSTNode[Key, Value], Sentinel] = Sentinel(),
@@ -729,11 +723,12 @@ class BinarySearchTreeIterative(
     def sentinel_class(cls):
         return Sentinel
 
-    def is_node(self, node: Any) -> TypeGuard[BSTNode[Key, Value]]:
+    @staticmethod
+    def is_node(node: Any) -> TypeGuard[BSTNode[Key, Value]]:
         return isinstance(node, BSTNode)
 
+    @staticmethod
     def node(
-        self,
         key: Key,
         value: Value,
         left: Union[BSTNode[Key, Value], Sentinel] = Sentinel(),
@@ -756,11 +751,12 @@ class BSTWithParentIterative(
     def sentinel_class(cls):
         return Sentinel
 
-    def is_node(self, node: Any) -> TypeGuard[BSTNodeWithParent[Key, Value]]:
-        return isinstance(node, BSTNodeWithParent)
+    @staticmethod
+    def is_node(item: Any) -> TypeGuard[BSTNodeWithParent[Key, Value]]:
+        return isinstance(item, BSTNodeWithParent)
 
+    @staticmethod
     def node(
-        self,
         key: Key,
         value: Value,
         left: Union[

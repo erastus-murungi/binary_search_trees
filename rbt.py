@@ -6,7 +6,8 @@ from enum import IntEnum
 from typing import Any, Generic, Optional, TypeGuard, Union
 
 from bst import AbstractBSTWithParentIterative, Key, Value
-from nodes import AbstractBSTNodeWithParent, AbstractSentinelWithParent, SupportsParent
+from nodes import (AbstractBSTNodeWithParent, AbstractSentinelWithParent,
+                   SupportsParent)
 
 
 class Color(IntEnum):
@@ -53,10 +54,6 @@ class RBTSentinel(
 
     def black_height(self) -> int:
         return 0
-
-    @classmethod
-    def default(cls) -> RBTSentinel[Key, Value]:
-        return RBTSentinel()
 
 
 @dataclass(slots=True)
@@ -321,22 +318,17 @@ class RedBlackTree(
 
         recurse(self.root)
 
-    def is_node(self, item: Any) -> TypeGuard[RBTNode[Key, Value]]:
+    @staticmethod
+    def is_node(item: Any) -> TypeGuard[RBTNode[Key, Value]]:
         return isinstance(item, RBTNode)
 
+    @staticmethod
     def node(
-        self,
         key: Key,
         value: Value,
-        left: Union[
-            RBTNode[Key, Value], RBTSentinel[Key, Value]
-        ] = RBTSentinel.default(),
-        right: Union[
-            RBTNode[Key, Value], RBTSentinel[Key, Value]
-        ] = RBTSentinel.default(),
-        parent: Union[
-            RBTNode[Key, Value], RBTSentinel[Key, Value]
-        ] = RBTSentinel.default(),
+        left: Union[RBTNode[Key, Value], RBTSentinel[Key, Value]] = RBTSentinel(),
+        right: Union[RBTNode[Key, Value], RBTSentinel[Key, Value]] = RBTSentinel(),
+        parent: Union[RBTNode[Key, Value], RBTSentinel[Key, Value]] = RBTSentinel(),
         color=Color.RED,
         *args,
         **kwargs,

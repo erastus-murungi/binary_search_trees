@@ -5,12 +5,8 @@ from typing import Type
 import pytest
 
 from avl import AVLTreeIterative
-from bst import (
-    AbstractBinarySearchTree,
-    BinarySearchTreeIterative,
-    BinarySearchTreeRecursive,
-    BSTWithParentIterative,
-)
+from bst import (AbstractBinarySearchTree, BinarySearchTreeIterative,
+                 BinarySearchTreeRecursive, BSTWithParentIterative)
 from rbt import RedBlackTree
 from scapegoat import ScapeGoatTree
 from splaytree import SplayTree

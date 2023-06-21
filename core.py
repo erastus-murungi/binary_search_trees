@@ -2,21 +2,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    Container,
-    Generic,
-    Iterator,
-    MutableMapping,
-    Optional,
-    Protocol,
-    Sized,
-    TypeGuard,
-    TypeVar,
-    Union,
-    runtime_checkable,
-    Type,
-)
+from typing import (Any, Container, Generic, Iterator, MutableMapping,
+                    Optional, Protocol, Sized, Type, TypeGuard, TypeVar, Union,
+                    runtime_checkable)
 
 
 class SentinelReferenceError(ValueError):
@@ -68,7 +56,7 @@ class SentinelConstructorMixin(Generic[SentinelType], ABC):
     def sentinel_class(cls) -> Type[SentinelType]:
         pass
 
-    def sentinel(self, *args, **kwargs) -> SentinelType:
+    def sentinel(self) -> SentinelType:
         return self.sentinel_class()()
 
     def is_sentinel(self, node: Any) -> TypeGuard[SentinelType]:
@@ -322,12 +310,14 @@ class TreeIterativeMixin(Generic[NodeType], ABC):
 
 
 class NodeConstructorMixin(Generic[NodeType, Key, Value], ABC):
+    @staticmethod
     @abstractmethod
-    def node(self, key: Key, value: Value, *args, **kwargs) -> NodeType:
+    def node(key: Key, value: Value, *args, **kwargs) -> NodeType:
         pass
 
+    @staticmethod
     @abstractmethod
-    def is_node(self, node: Any) -> TypeGuard[NodeType]:
+    def is_node(node: Any) -> TypeGuard[NodeType]:
         pass
 
 
