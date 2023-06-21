@@ -2,9 +2,21 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import (Any, Container, Generic, Iterator, MutableMapping,
-                    Optional, Protocol, Sized, Type, TypeGuard, TypeVar, Union,
-                    runtime_checkable)
+from typing import (
+    Any,
+    Container,
+    Generic,
+    Iterator,
+    MutableMapping,
+    Optional,
+    Protocol,
+    Sized,
+    Type,
+    TypeGuard,
+    TypeVar,
+    Union,
+    runtime_checkable,
+)
 
 
 class SentinelReferenceError(ValueError):
@@ -157,6 +169,25 @@ class TreeMutationMixin(Generic[Key, Value, NodeType], ABC):
         ------
         ValueError
             If allow_overwrite is False and the key already exists in the tree.
+        """
+
+    @abstractmethod
+    def insert_node(self, node: NodeType, allow_overwrite: bool = True) -> bool:
+        """
+        Insert a new node with the specified key and value into the tree.
+
+        Parameters
+        ----------
+        node: NodeType
+            The node to insert into the tree.
+        allow_overwrite : bool
+            Whether to overwrite the value associated with the key if the key already
+            exists in the tree.
+
+        Returns
+        -------
+        bool
+            Whether the node was inserted or not.
         """
 
     @abstractmethod

@@ -5,11 +5,16 @@ from typing import Type
 import pytest
 
 from avl import AVLTreeIterative
-from bst import (AbstractBinarySearchTree, BinarySearchTreeIterative,
-                 BinarySearchTreeRecursive, BSTWithParentIterative)
+from bst import (
+    AbstractBinarySearchTree,
+    BinarySearchTreeIterative,
+    BinarySearchTreeRecursive,
+    BSTWithParentIterative,
+)
 from rbt import RedBlackTree
 from scapegoat import ScapeGoatTree
 from splaytree import SplayTree
+from treap import Treap
 from ziptree import ZipTree
 
 
@@ -24,9 +29,10 @@ from ziptree import ZipTree
         SplayTree,
         ZipTree,
         ScapeGoatTree,
+        Treap,
     ],
 )
-def test_insertion(bst_class: Type[AbstractBinarySearchTree]):
+def test_insertion_and_deletion(bst_class: Type[AbstractBinarySearchTree]):
     for _ in range(50):
         values = frozenset([randint(-10000, 10000) for _ in range(100)])
         bst = bst_class()
@@ -56,6 +62,7 @@ def test_insertion(bst_class: Type[AbstractBinarySearchTree]):
         SplayTree,
         ZipTree,
         ScapeGoatTree,
+        Treap,
     ],
 )
 def test_sorted(bst_class: Type[AbstractBinarySearchTree]):
@@ -79,6 +86,7 @@ def test_sorted(bst_class: Type[AbstractBinarySearchTree]):
         SplayTree,
         ZipTree,
         ScapeGoatTree,
+        Treap,
     ],
 )
 def test_successor(bst_class: Type[AbstractBinarySearchTree]):
@@ -107,6 +115,7 @@ def test_successor(bst_class: Type[AbstractBinarySearchTree]):
         SplayTree,
         ZipTree,
         ScapeGoatTree,
+        Treap,
     ],
 )
 def test_predecessor(bst_class: Type[AbstractBinarySearchTree]):
@@ -137,6 +146,7 @@ def test_predecessor(bst_class: Type[AbstractBinarySearchTree]):
         SplayTree,
         ZipTree,
         ScapeGoatTree,
+        Treap,
     ],
 )
 def test_minimum(bst_class: Type[AbstractBinarySearchTree]):
@@ -164,6 +174,7 @@ def test_minimum(bst_class: Type[AbstractBinarySearchTree]):
         SplayTree,
         ZipTree,
         ScapeGoatTree,
+        Treap,
     ],
 )
 def test_maximum(bst_class: Type[AbstractBinarySearchTree]):
@@ -191,6 +202,7 @@ def test_maximum(bst_class: Type[AbstractBinarySearchTree]):
         SplayTree,
         ZipTree,
         ScapeGoatTree,
+        Treap,
     ],
 )
 def test_extract_min(bst_class: Type[AbstractBinarySearchTree]):
@@ -221,6 +233,7 @@ def test_extract_min(bst_class: Type[AbstractBinarySearchTree]):
         SplayTree,
         ZipTree,
         ScapeGoatTree,
+        Treap,
     ],
 )
 def test_extract_max(bst_class: Type[AbstractBinarySearchTree]):

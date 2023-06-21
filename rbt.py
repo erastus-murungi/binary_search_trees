@@ -6,8 +6,7 @@ from enum import IntEnum
 from typing import Any, Generic, Optional, TypeGuard, Union
 
 from bst import AbstractBSTWithParentIterative, Key, Value
-from nodes import (AbstractBSTNodeWithParent, AbstractSentinelWithParent,
-                   SupportsParent)
+from nodes import AbstractBSTNodeWithParent, AbstractSentinelWithParent, SupportsParent
 
 
 class Color(IntEnum):

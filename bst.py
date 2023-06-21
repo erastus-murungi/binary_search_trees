@@ -6,8 +6,14 @@ from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Optional, TypeGuard, Union
 
 from core import AbstractTree, Key, SentinelReferenceError, SentinelType, Value
-from nodes import (BinaryNodeType, BinaryNodeWithParentType, BSTNode,
-                   BSTNodeWithParent, Sentinel, draw_tree)
+from nodes import (
+    BinaryNodeType,
+    BinaryNodeWithParentType,
+    BSTNode,
+    BSTNodeWithParent,
+    Sentinel,
+    draw_tree,
+)
 
 
 class AbstractBinarySearchTree(
@@ -91,6 +97,13 @@ class AbstractBinarySearchTree(
 
     def access(self, key: Key) -> BinaryNodeType:
         return self.nonnull_root.access(key)
+
+    def insert(
+        self, key: Key, value: Value, allow_overwrite: bool = True
+    ) -> BinaryNodeType:
+        node = self.node(key, value)
+        self.insert_node(node, allow_overwrite)
+        return node
 
 
 class BSTWithParent(
@@ -176,23 +189,18 @@ class BSTWithParent(
 class AbstractBinarySearchTreeRecursive(
     AbstractBinarySearchTree[Key, Value, BinaryNodeType, SentinelType], ABC
 ):
-    def insert(
-        self, key: Key, value: Value, allow_overwrite: bool = False
-    ) -> BinaryNodeType:
-        if self.is_sentinel(self.root):
-            node = self.node(key, value)
-            self.root = node
-        elif key in self.nonnull_root:
+    def insert_node(self, node: BinaryNodeType, allow_overwrite: bool = False) -> bool:
+        if node.key in self:
             if allow_overwrite:
-                self.nonnull_root[key] = value
-                return self.nonnull_root
-            else:
-                raise KeyError(f"Key {key} already exists")
-        else:
-            node = self.nonnull_root.insert_node(self.node(key, value), allow_overwrite)
+                self[node.key] = node.value
+                return False
+            raise KeyError(f"Key {node.key} already exists")
+        if self.is_sentinel(self.root):
             self.root = node
+        else:
+            self.root = self.nonnull_root.insert_node(node, allow_overwrite)
         self.size += 1
-        return node
+        return True
 
     def delete(self, key: Key) -> BinaryNodeType:
         if node := self.access(key):
@@ -310,32 +318,32 @@ class AbstractBSTIterative(
             current = current.right
         return current
 
-    def insert(self, key: Key, value: Value, allow_overwrite=True) -> BinaryNodeType:
+    def insert_node(self, node: BinaryNodeType, allow_overwrite: bool = True) -> bool:
         if self.is_sentinel(self.root):
-            self.root = self.node(key, value)
+            self.root = node
         else:
-            node = self.nonnull_root
+            current = self.nonnull_root
             while True:
-                if node.key == key:
+                if current.key == node.key:
                     if allow_overwrite:
-                        node.value = value
-                        return self.nonnull_root
+                        current.value = node.value
+                        return False
                     else:
-                        raise ValueError(f"Key {key} already in tree")
-                elif node.key < key:
-                    if self.is_node(node.right):
-                        node = node.right
+                        raise ValueError(f"Key {node.key} already in tree")
+                elif current.key < node.key:
+                    if self.is_node(current.right):
+                        current = current.right
                     else:
-                        node.right = self.node(key, value)
+                        current.right = node
                         break
                 else:
-                    if self.is_node(node.left):
-                        node = node.left
+                    if self.is_node(current.left):
+                        current = current.left
                     else:
-                        node.left = self.node(key, value)
+                        current.left = node
                         break
         self.size += 1
-        return self.nonnull_root
+        return True
 
     def parent(self, node: BinaryNodeType) -> Union[BinaryNodeType, SentinelType]:
         current = self.root
@@ -538,33 +546,33 @@ class AbstractBSTWithParentIterative(
     AbstractBSTIterative[Key, Value, BinaryNodeWithParentType, SentinelType],
     ABC,
 ):
-    def insert(
-        self, key: Key, value: Value, allow_overwrite: bool = True
-    ) -> BinaryNodeWithParentType:
+    def insert_node(
+        self, node: BinaryNodeWithParentType, allow_overwrite: bool = True
+    ) -> bool:
         x = self.root
         y: Union[BinaryNodeWithParentType, SentinelType] = self.sentinel()
 
         while self.is_node(x):
             y = x
-            if key < x.key:
+            if node.key < x.key:
                 x = x.left
-            elif key > x.key:
+            elif node.key > x.key:
                 x = x.right
             elif allow_overwrite:
-                x.value = value
-                return x
+                x.value = node.value
+                return False
             else:
-                raise ValueError(f"Key {key} already in tree")
-        z = self.node(key, value, parent=y)
+                raise ValueError(f"Key {node.key} already in tree")
+        node.parent = y
         if self.is_node(y):
-            if key < y.key:
-                y.left = z
+            if node.key < y.key:
+                y.left = node
             else:
-                y.right = z
+                y.right = node
         else:
-            self.root = z
+            self.root = node
         self.size += 1
-        return z
+        return True
 
     def transplant(
         self,
