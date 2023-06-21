@@ -220,14 +220,9 @@ class AVLTreeIterative(
             balance_factor=balance_factor,
         )
 
-    def is_sentinel(
-        self,
-        node: Any,
-    ) -> TypeGuard[AVLSentinel]:
-        return isinstance(node, AVLSentinel)
-
-    def sentinel(self, *args, **kwargs):
-        return AVLSentinel()
+    @classmethod
+    def sentinel_class(cls):
+        return AVLSentinel
 
 
 if __name__ == "__main__":

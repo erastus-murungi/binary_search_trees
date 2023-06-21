@@ -15,6 +15,7 @@ from typing import (
     TypeVar,
     Union,
     runtime_checkable,
+    Type,
 )
 
 
@@ -62,13 +63,16 @@ class Visitor(Generic[NodeType, SentinelType, VisitorReturnType], ABC):
 
 
 class SentinelConstructorMixin(Generic[SentinelType], ABC):
+    @classmethod
     @abstractmethod
-    def sentinel(self, *args, **kwargs) -> SentinelType:
+    def sentinel_class(cls) -> Type[SentinelType]:
         pass
 
-    @abstractmethod
+    def sentinel(self, *args, **kwargs) -> SentinelType:
+        return self.sentinel_class()()
+
     def is_sentinel(self, node: Any) -> TypeGuard[SentinelType]:
-        pass
+        return isinstance(node, self.sentinel_class())
 
 
 class MemberMixin(

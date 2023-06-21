@@ -324,9 +324,6 @@ class RedBlackTree(
     def is_node(self, item: Any) -> TypeGuard[RBTNode[Key, Value]]:
         return isinstance(item, RBTNode)
 
-    def is_sentinel(self, item: Any) -> TypeGuard[RBTSentinel[Key, Value]]:
-        return isinstance(item, RBTSentinel)
-
     def node(
         self,
         key: Key,
@@ -348,8 +345,9 @@ class RedBlackTree(
             key=key, value=value, left=left, right=right, parent=parent, color=color
         )
 
-    def sentinel(self, *args, **kwards) -> RBTSentinel[Key, Value]:
-        return RBTSentinel()
+    @classmethod
+    def sentinel_class(cls):
+        return RBTSentinel
 
     def extract_min(self) -> tuple[Key, Value]:
         z = self.minimum()

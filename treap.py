@@ -14,7 +14,7 @@ class TreapNode(
     priority: int
 
 
-class Treap(AbstractBSTWithParentIterative[Key, Value, TreapNode[Key, Value], Sentinel]):
+class Treap(
+    AbstractBSTWithParentIterative[Key, Value, TreapNode[Key, Value], Sentinel]
+):
     pass
-
-

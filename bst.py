@@ -698,11 +698,9 @@ class BinarySearchTreeRecursive(
     def __init__(self, root: Optional[BSTNode[Key, Value]] = None):
         super().__init__(root)
 
-    def is_sentinel(self, node: Any) -> TypeGuard[Sentinel]:
-        return isinstance(node, Sentinel)
-
-    def sentinel(self, *args, **kwargs) -> Sentinel:
-        return Sentinel()
+    @classmethod
+    def sentinel_class(cls):
+        return Sentinel
 
     def is_node(self, node: Any) -> TypeGuard[BSTNode[Key, Value]]:
         return isinstance(node, BSTNode)
@@ -727,11 +725,9 @@ class BinarySearchTreeIterative(
         Sentinel,
     ]
 ):
-    def is_sentinel(self, node: Any) -> TypeGuard[Sentinel]:
-        return isinstance(node, Sentinel)
-
-    def sentinel(self, *args, **kwargs) -> Sentinel:
-        return Sentinel()
+    @classmethod
+    def sentinel_class(cls):
+        return Sentinel
 
     def is_node(self, node: Any) -> TypeGuard[BSTNode[Key, Value]]:
         return isinstance(node, BSTNode)
@@ -756,11 +752,9 @@ class BSTWithParentIterative(
         Sentinel,
     ],
 ):
-    def is_sentinel(self, node: Any) -> TypeGuard[Sentinel]:
-        return isinstance(node, Sentinel)
-
-    def sentinel(self, *args, **kwargs) -> Sentinel:
-        return Sentinel()
+    @classmethod
+    def sentinel_class(cls):
+        return Sentinel
 
     def is_node(self, node: Any) -> TypeGuard[BSTNodeWithParent[Key, Value]]:
         return isinstance(node, BSTNodeWithParent)

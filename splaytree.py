@@ -125,12 +125,6 @@ class SplayTree(
     def is_node(self, node: Any) -> TypeGuard[BSTNodeWithParent[Key, Value]]:
         return isinstance(node, BSTNodeWithParent)
 
-    def is_sentinel(self, node: Any) -> TypeGuard[Sentinel]:
-        return isinstance(node, Sentinel)
-
-    def sentinel(self) -> Sentinel:
-        return Sentinel()
-
     def node(
         self,
         key: Key,
@@ -153,6 +147,10 @@ class SplayTree(
         return BSTNodeWithParent(
             key=key, value=value, left=left, right=right, parent=parent
         )
+
+    @classmethod
+    def sentinel_class(cls):
+        return Sentinel
 
 
 if __name__ == "__main__":

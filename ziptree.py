@@ -184,16 +184,12 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
     ) -> TypeGuard[ZipNode[Key, Value]]:
         return isinstance(node, ZipNode)
 
-    def is_sentinel(
-        self, node: Union[ZipNode[Key, Value], Sentinel]
-    ) -> TypeGuard[Sentinel]:
-        return isinstance(node, Sentinel)
-
     def node(self, key: Key, value: Value, *args, **kwargs) -> ZipNode[Key, Value]:
         return ZipNode(key=key, value=value)
 
-    def sentinel(self) -> Sentinel:
-        return Sentinel()
+    @classmethod
+    def sentinel_class(cls):
+        return Sentinel
 
 
 if __name__ == "__main__":
