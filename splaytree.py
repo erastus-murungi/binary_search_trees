@@ -120,7 +120,7 @@ class SplayTree(
             self.size -= 1
             return z
         else:
-            raise KeyError(f"Key = {target_key} not found {values}")
+            raise KeyError(f"Key = {target_key} not found")
 
     @staticmethod
     def is_node(node: Any) -> TypeGuard[BSTNodeWithParent[Key, Value]]:
