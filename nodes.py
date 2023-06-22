@@ -5,7 +5,17 @@ import subprocess
 import sys
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Any, Generic, Hashable, Iterator, TypeGuard, TypeVar, Union, cast
+from typing import (
+    Any,
+    Generic,
+    Hashable,
+    Iterator,
+    Optional,
+    TypeGuard,
+    TypeVar,
+    Union,
+    cast,
+)
 
 from core import (
     AbstractNode,
@@ -174,26 +184,58 @@ class AbstractBSTNode(
         return cast(BinaryNodeType, self)
 
     def delete_key(self, key: Key) -> Union[BinaryNodeType, SentinelType]:
+        return self._delete_key(key, None)
+
+    def _delete_key(
+        self, key: Key, parent: Optional[BinaryNodeType]
+    ) -> Union[BinaryNodeType, SentinelType]:
         if key < self.key:
-            self.left = self.nonnull_left.delete_key(key)
+            self.left = self.nonnull_left._delete_key(key, self)
         elif key > self.key:
-            self.right = self.nonnull_right.delete_key(key)
+            self.right = self.nonnull_right._delete_key(key, self)
         else:
             if not self._is_node(self.left):
                 return self.right
             elif not self._is_node(self.right):
                 return self.left
             else:
-                successor = self.nonnull_right.minimum()
-                self.key, self.value = successor.key, successor.value
-                self.right = self.nonnull_right.delete_key(successor.key)
+                parent_successor = self
+                successor = self.nonnull_right
+                while successor._is_node(successor.left):
+                    parent_successor = successor
+                    successor = successor.nonnull_left
+                assert not successor._is_node(successor.left)
+                if successor is not self.right:
+                    parent_successor.left = successor.right
+                    successor.right = self.right
+                successor.left = self.left
+                if parent is not None:
+                    if parent.left == self:
+                        parent.left = successor
+                    else:
+                        parent.right = successor
+                return successor
         return cast(BinaryNodeType, self)
 
-    def _extract_min(
+    def delete_min(self):
+        if not self._is_node(self.left):
+            return self.right
+        else:
+            self.left = self.nonnull_left.delete_min()
+            return cast(BinaryNodeType, self)
+
+    def delete_max(self):
+        if not self._is_node(self.right):
+            return self.left
+        else:
+            self.right = self.nonnull_right.delete_max()
+            return cast(BinaryNodeType, self)
+
+    def extract_min(
         self,
     ) -> tuple[tuple[Key, Value], Union[BinaryNodeType, SentinelType]]:
         try:
-            keyval, self.left = self.nonnull_left._extract_min()
+            keyval, self.left = self.nonnull_left.extract_min()
             return keyval, cast(BinaryNodeType, self)
         except SentinelReferenceError:
             keyval = (self.key, self.value)
@@ -202,11 +244,11 @@ class AbstractBSTNode(
             else:
                 return keyval, self.left
 
-    def _extract_max(
+    def extract_max(
         self,
     ) -> tuple[tuple[Key, Value], Union[BinaryNodeType, SentinelType]]:
         try:
-            keyval, self.right = self.nonnull_right._extract_max()
+            keyval, self.right = self.nonnull_right.extract_max()
             return keyval, cast(BinaryNodeType, self)
         except SentinelReferenceError:
             keyval = (self.key, self.value)

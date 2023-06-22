@@ -118,26 +118,33 @@ class AbstractBST(AbstractTree[Key, Value, BinaryNodeType, SentinelType], ABC):
 
     def delete(self, key: Key) -> BinaryNodeType:
         if node := self.access(key):
-            node_copy = deepcopy(node)
             self.root = self.nonnull_root.delete_key(key)
             self.size -= 1
-            return node_copy
+            return node
         else:
             raise KeyError(f"Key {key} not found")
 
     def extract_min(
         self,
     ) -> tuple[Key, Value]:
-        keyval, self.root = self.nonnull_root._extract_min()
+        keyval, self.root = self.nonnull_root.extract_min()
         self.size -= 1
         return keyval
 
     def extract_max(
         self,
     ) -> tuple[Key, Value]:
-        keyval, self.root = self.nonnull_root._extract_max()
+        keyval, self.root = self.nonnull_root.extract_max()
         self.size -= 1
         return keyval
+
+    def delete_min(self):
+        self.root = self.nonnull_root.delete_min()
+        self.size -= 1
+
+    def delete_max(self):
+        self.root = self.nonnull_root.delete_max()
+        self.size -= 1
 
     def minimum(self) -> BinaryNodeType:
         return self.nonnull_root.minimum()
@@ -789,12 +796,13 @@ class BSTWithParentIterative(
 
 
 if __name__ == "__main__":
+    from random import randint
+
     for _ in range(10000):
         bst: BST[int, None] = BST[int, None]()
-        num_values = 3
+        num_values = 5
         # values = list({randint(0, 100) for _ in range(num_values)})
-        # values = [35, 70, 51, 52, 20, 55, 91]
-        values = [50, 44, 94]
+        values = [67, 38, 77, 54, 29]
 
         for k in values:
             bst.insert(k, None, allow_overwrite=True)
@@ -802,7 +810,7 @@ if __name__ == "__main__":
             assert k in bst
 
         # bst.dot()
-
+        print(bst.pretty_str())
         for k in values:
             deleted = bst.delete(k)
             assert deleted.key == k, (k, deleted.key)

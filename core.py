@@ -242,6 +242,28 @@ class TreeMutationMixin(Generic[Key, Value, NodeType], ABC):
 
         """
 
+    @abstractmethod
+    def delete_min(self) -> None:
+        """
+        Delete the minimum node from the tree.
+
+        Raises
+        ------
+        KeyError
+            If the tree is empty.
+        """
+
+    @abstractmethod
+    def delete_max(self) -> None:
+        """
+        Delete the maximum node from the tree.
+
+        Raises
+        ------
+        KeyError
+            If the tree is empty.
+        """
+
 
 class NodeMutationMixin(Generic[Key, Value, NodeType, SentinelType], ABC):
     @abstractmethod
@@ -292,7 +314,7 @@ class NodeMutationMixin(Generic[Key, Value, NodeType, SentinelType], ABC):
         """
 
     @abstractmethod
-    def _extract_min(
+    def extract_min(
         self,
     ) -> tuple[tuple[Key, Value], Union[NodeType, SentinelType]]:
         """
@@ -307,7 +329,7 @@ class NodeMutationMixin(Generic[Key, Value, NodeType, SentinelType], ABC):
         """
 
     @abstractmethod
-    def _extract_max(
+    def extract_max(
         self,
     ) -> tuple[tuple[Key, Value], Union[NodeType, SentinelType]]:
         """
@@ -318,6 +340,38 @@ class NodeMutationMixin(Generic[Key, Value, NodeType, SentinelType], ABC):
         tuple[tuple[Key, Value], Union[NodeType, SentinelType]]
             The key value tuple representing the maximum
             and the new root of the tree
+        """
+
+    @abstractmethod
+    def delete_min(self) -> NodeType:
+        """
+        Delete the minimum node from the tree.
+
+        Returns
+        -------
+        node : NodeType
+            The root of the tree after deletion.
+
+        Raises
+        ------
+        KeyError
+            If the tree is empty.
+        """
+
+    @abstractmethod
+    def delete_max(self) -> NodeType:
+        """
+        Delete the maximum node from the tree.
+
+        Returns
+        -------
+        node : NodeType
+            The root of the tree after deletion.
+
+        Raises
+        ------
+        KeyError
+            If the tree is empty.
         """
 
 

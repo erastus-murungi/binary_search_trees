@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from random import random
 from typing import Any, TypeGuard, Union
 
-from bst import AbstractBSTIterative
+from bst import AbstractBST, AbstractBSTIterative
 from core import Key, Value
 from nodes import AbstractBSTNode, Sentinel
 
@@ -32,7 +32,7 @@ def random_rank():
 
 
 class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
-    def insert(self, key: Key, value: Value, allow_overwrite: bool = False):
+    def insert_node(self, node: ZipNode[Key, Value], allow_overwrite: bool = False):
         """
 
         Inserting x into a zip tree works as follows:
@@ -52,7 +52,6 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
                 Make those two chains the children of the node x.
         """
         rank = random_rank()
-        node = self.node(key=key, value=value, rank=rank)
         current: Union[ZipNode[Key, Value], Sentinel] = self.root
         prev: Union[ZipNode[Key, Value], Sentinel] = self.sentinel()
 
@@ -69,16 +68,16 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
             self.root = node
         else:
             assert self.is_node(prev)
-            if key < prev.key:
+            if node.key < prev.key:
                 prev.left = node
-            elif key > prev.key:
+            elif node.key > prev.key:
                 prev.right = node
             else:
                 if allow_overwrite:
-                    prev.value = value
+                    prev.value = node.value
                     return prev
                 else:
-                    raise KeyError(f"Key {key} already exists.")
+                    raise KeyError(f"Key {node.key} already exists.")
 
         if self.is_sentinel(current):
             node.left = self.sentinel()
@@ -86,7 +85,7 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
             self.size += 1
             return node
         assert self.is_node(current)
-        if key < current.key:
+        if node.key < current.key:
             node.right = current
         else:
             node.left = current
@@ -96,14 +95,14 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
         while self.is_node(current):
             assert self.is_node(prev)
             fix = prev
-            if current.key < key:
+            if current.key < node.key:
                 while True:
                     prev = current
                     current = current.right
                     if self.is_sentinel(current):
                         break
                     assert self.is_node(current)
-                    if current.key > key:
+                    if current.key > node.key:
                         break
             else:
                 while True:
@@ -112,9 +111,9 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
                     if self.is_sentinel(current):
                         break
                     assert self.is_node(current)
-                    if current.key < key:
+                    if current.key < node.key:
                         break
-            if fix.key > key or (fix == node and prev.key > key):
+            if fix.key > node.key or (fix == node and prev.key > node.key):
                 fix.left = current
             else:
                 fix.right = current
@@ -185,17 +184,111 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
         return Sentinel
 
 
+class ZipTreeRecursive(AbstractBST[Key, Value, ZipNode[Key, Value], Sentinel]):
+    def zip(
+        self,
+        x: Union[ZipNode[Key, Value], Sentinel],
+        y: Union[ZipNode[Key, Value], Sentinel],
+    ) -> Union[ZipNode[Key, Value], Sentinel]:
+        if self.is_sentinel(x):
+            return y
+        if self.is_sentinel(y):
+            return x
+        assert self.is_node(x) and self.is_node(y)
+        if x.rank < y.rank:
+            y.left = self.zip(x, y.left)
+            return y
+        else:
+            x.right = self.zip(x.right, y)
+            return x
+
+    def insert_node(
+        self, node: ZipNode[Key, Value], allow_overwrite: bool = True
+    ) -> bool:
+        old_size = self.size
+
+        def insert(
+            root: Union[ZipNode[Key, Value], Sentinel], x: ZipNode[Key, Value]
+        ) -> ZipNode[Key, Value]:
+            if self.is_sentinel(root):
+                return x
+            assert self.is_node(root)
+            if x.key == root.key:
+                if allow_overwrite:
+                    root.value = x.value
+                    self.size -= 1
+                else:
+                    raise KeyError(f"Key {x.key} already exists.")
+            elif x.key < root.key:
+                if insert(root.left, x) == x:
+                    if x.rank < root.rank:
+                        root.left = x
+                    else:
+                        root.left = x.right
+                        x.right = root
+                        return x
+            else:
+                if insert(root.right, x) == x:
+                    if x.rank <= root.rank:
+                        root.right = x
+                    else:
+                        root.right = x.left
+                        x.left = root
+                        return x
+            return root
+
+        self.root = insert(self.root, node)
+        self.size += 1
+        return self.size > old_size
+
+    def delete(self, key: Key) -> ZipNode[Key, Value]:
+        def delete(root: ZipNode[Key, Value], x: ZipNode[Key, Value]):
+            if x.key == root.key:
+                return self.zip(root.left, root.right)
+            elif self.is_node(root.left) and x.key < root.key:
+                if x.key == root.left.key:
+                    root.left = self.zip(root.left.left, root.left.right)
+                else:
+                    delete(root.left, x)
+            else:
+                assert self.is_node(root.right) and x.key > root.key
+                if x.key == root.right.key:
+                    root.right = self.zip(root.right.left, root.right.right)
+                else:
+                    delete(root.right, x)
+            return root
+
+        if node := self.access(key):
+            self.root = delete(self.nonnull_root, node)
+            self.size -= 1
+            return node
+        else:
+            raise KeyError(f"Key {key} does not exist.")
+
+    @staticmethod
+    def is_node(node: Any) -> TypeGuard[ZipNode[Key, Value]]:
+        return isinstance(node, ZipNode)
+
+    @staticmethod
+    def node(key: Key, value: Value, *args, **kwargs) -> ZipNode[Key, Value]:
+        return ZipNode(key=key, value=value)
+
+    @classmethod
+    def sentinel_class(cls):
+        return Sentinel
+
+
 if __name__ == "__main__":
-    from random import seed
+    from random import randint, seed
 
     seed(0)
 
     for _ in range(1000):
-        bst: ZipTree[int, None] = ZipTree[int, None]()
-        num_values = 3
-        # values = list({randint(0, 10000) for _ in range(num_values)})
-        # values = [35, 70, 51]
-        values = [7401, 66, 9236]
+        bst: ZipTreeRecursive[int, None] = ZipTreeRecursive[int, None]()
+        num_values = 20
+        values = list({randint(0, 10000) for _ in range(num_values)})
+        # values = [35]
+        # values = [7401, 66, 9236]
 
         for i, val in enumerate(values):
             bst.insert(val, None, allow_overwrite=True)
@@ -211,5 +304,5 @@ if __name__ == "__main__":
             deleted = bst.delete(val)
             assert deleted.key == val
             bst.validate(0, 1000000)
-            print(bst.pretty_str())
+            # print(bst.pretty_str())
             assert val not in bst, values

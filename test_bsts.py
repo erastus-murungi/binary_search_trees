@@ -10,7 +10,7 @@ from rbt import RedBlackTree
 from scapegoat import ScapeGoatTree
 from splaytree import SplayTree
 from treap import Treap, TreapNode, TreapSplitMerge
-from ziptree import ZipTree
+from ziptree import ZipTree, ZipTreeRecursive
 
 
 @pytest.mark.parametrize(
@@ -23,6 +23,7 @@ from ziptree import ZipTree
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ZipTreeRecursive,
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
@@ -57,6 +58,7 @@ def test_insertion_and_deletion(bst_class: Type[AbstractBST]):
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ZipTreeRecursive,
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
@@ -82,6 +84,7 @@ def test_sorted(bst_class: Type[AbstractBST]):
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ZipTreeRecursive,
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
@@ -112,6 +115,7 @@ def test_successor(bst_class: Type[AbstractBST]):
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ZipTreeRecursive,
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
@@ -144,6 +148,7 @@ def test_predecessor(bst_class: Type[AbstractBST]):
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ZipTreeRecursive,
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
@@ -173,6 +178,7 @@ def test_minimum(bst_class: Type[AbstractBST]):
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ZipTreeRecursive,
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
@@ -202,6 +208,7 @@ def test_maximum(bst_class: Type[AbstractBST]):
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ZipTreeRecursive,
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
@@ -234,6 +241,7 @@ def test_extract_min(bst_class: Type[AbstractBST]):
         RedBlackTree,
         SplayTree,
         ZipTree,
+        ZipTreeRecursive,
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
