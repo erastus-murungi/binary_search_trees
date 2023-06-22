@@ -291,6 +291,22 @@ class AbstractBSTIterative(
                 current = current.nonnull_right
         return current
 
+    def access_with_parent(
+        self, key: Key
+    ) -> tuple[BinaryNodeType, Union[BinaryNodeType, SentinelType]]:
+        parent: Union[BinaryNodeType, SentinelType] = self.sentinel()
+        current = self.nonnull_root
+        while self.is_node(current):
+            if current.key == key:
+                return current, parent
+            elif key < current.key:
+                parent = current
+                current = current.nonnull_left
+            else:
+                parent = current
+                current = current.nonnull_right
+        return current, parent
+
     def minimum(self) -> BinaryNodeType:
         current = self.nonnull_root
         while self.is_node(current.left):
