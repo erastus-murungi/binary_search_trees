@@ -5,20 +5,26 @@ from random import randint
 from sys import maxsize
 from typing import Any, TypeGuard, Union
 
-from bst import AbstractBSTWithParentIterative
+from bst import AbstractBSTWithParentIterative, AbstractBST
 from core import Key, Value
-from nodes import AbstractBSTNodeWithParent, Sentinel
+from nodes import AbstractBSTNodeWithParent, Sentinel, AbstractBSTNode
 
 
 @dataclass(slots=True)
-class TreapNode(
-    AbstractBSTNodeWithParent[Key, Value, "TreapNode[Key, Value]", Sentinel]
+class TreapNodeWithParent(
+    AbstractBSTNodeWithParent[Key, Value, "TreapNodeWithParent[Key, Value]", Sentinel]
 ):
     priority: float
 
 
+class TreapNode(AbstractBSTNode[Key, Value, "TreapNode[Key, Value]", Sentinel]):
+    priority: float
+
+
 class Treap(
-    AbstractBSTWithParentIterative[Key, Value, TreapNode[Key, Value], Sentinel]
+    AbstractBSTWithParentIterative[
+        Key, Value, TreapNodeWithParent[Key, Value], Sentinel
+    ]
 ):
     @classmethod
     def sentinel_class(cls) -> type[Sentinel]:
@@ -28,14 +34,14 @@ class Treap(
     def node(
         key: Key,
         value: Value,
-        left: Union[TreapNode[Key, Value], Sentinel] = Sentinel(),
-        right: Union[TreapNode[Key, Value], Sentinel] = Sentinel(),
-        parent: Union[TreapNode[Key, Value], Sentinel] = Sentinel(),
+        left: Union[TreapNodeWithParent[Key, Value], Sentinel] = Sentinel(),
+        right: Union[TreapNodeWithParent[Key, Value], Sentinel] = Sentinel(),
+        parent: Union[TreapNodeWithParent[Key, Value], Sentinel] = Sentinel(),
         priority: float = 0,
         *args,
         **kwargs,
-    ) -> TreapNode[Key, Value]:
-        return TreapNode(
+    ) -> TreapNodeWithParent[Key, Value]:
+        return TreapNodeWithParent(
             key=key,
             value=value,
             left=left,
@@ -45,10 +51,10 @@ class Treap(
         )
 
     @staticmethod
-    def is_node(node: Any) -> TypeGuard[TreapNode[Key, Value]]:
-        return isinstance(node, TreapNode)
+    def is_node(node: Any) -> TypeGuard[TreapNodeWithParent[Key, Value]]:
+        return isinstance(node, TreapNodeWithParent)
 
-    def bubble_up(self, node: TreapNode[Key, Value]):
+    def bubble_up(self, node: TreapNodeWithParent[Key, Value]):
         while self.is_node(node.parent) and node.priority < node.parent.priority:
             if node is node.parent.left:
                 self.right_rotate(node.parent)
@@ -59,25 +65,27 @@ class Treap(
 
     def insert_with_priority(
         self, key: Key, value: Value, priority: float, allow_overwrite: bool = True
-    ) -> TreapNode[Key, Value]:
+    ) -> TreapNodeWithParent[Key, Value]:
         node = self.node(key=key, value=value, priority=priority)
         self.insert_node(node, allow_overwrite)
         return node
 
     def insert(
         self, key: Key, value: Value, allow_overwrite: bool = True
-    ) -> TreapNode[Key, Value]:
+    ) -> TreapNodeWithParent[Key, Value]:
         return self.insert_with_priority(
             key, value, randint(0, maxsize), allow_overwrite
         )
 
-    def insert_node(self, node: TreapNode[Key, Value], allow_overwrite: bool = True):
+    def insert_node(
+        self, node: TreapNodeWithParent[Key, Value], allow_overwrite: bool = True
+    ):
         if super().insert_node(node, allow_overwrite):
             self.bubble_up(node)
             return True
         return False
 
-    def trickle_down_to_leaf(self, node: TreapNode[Key, Value]):
+    def trickle_down_to_leaf(self, node: TreapNodeWithParent[Key, Value]):
         """
         Trickle down the node until it is a leaf
         """
@@ -96,10 +104,37 @@ class Treap(
 
         assert self.is_sentinel(node.left) and self.is_sentinel(node.right)
 
-    def delete(self, key: Key) -> TreapNode[Key, Value]:
+    def delete(self, key: Key) -> TreapNodeWithParent[Key, Value]:
         node = self.access(key)
         self.trickle_down_to_leaf(node)
         return super().delete(key)
+
+
+class TreapSplitMerge(AbstractBST[Key, Value, TreapNode[Key, Value], Sentinel]):
+    @classmethod
+    def sentinel_class(cls) -> type[Sentinel]:
+        return Sentinel
+
+    def _split(
+        self, key: Key, node: Union[TreapNode[Key, Value], Sentinel]
+    ) -> tuple[
+        Union[TreapNode[Key, Value], Sentinel], Union[TreapNode[Key, Value], Sentinel]
+    ]:
+        if self.is_sentinel(node):
+            return node, node
+        if self.is_node(node):
+            if node.key <= key:
+                left, right = self._split(key, node.right)
+                return (
+                    self.node(node.key, node.value, node.left, left, node.priority),
+                    right,
+                )
+            else:
+                left, right = self._split(key, node.left)
+                return left, self.node(
+                    node.key, node.value, right, node.right, node.priority
+                )
+        return node, node
 
 
 if __name__ == "__main__":

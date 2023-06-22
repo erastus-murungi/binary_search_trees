@@ -16,9 +16,7 @@ from nodes import (
 )
 
 
-class AbstractBinarySearchTree(
-    AbstractTree[Key, Value, BinaryNodeType, SentinelType], ABC
-):
+class AbstractBST(AbstractTree[Key, Value, BinaryNodeType, SentinelType], ABC):
     def __contains__(self, key: Any) -> bool:
         return key in self.root
 
@@ -105,90 +103,6 @@ class AbstractBinarySearchTree(
         self.insert_node(node, allow_overwrite)
         return node
 
-
-class BSTWithParent(
-    AbstractBinarySearchTree[Key, Value, BinaryNodeWithParentType, SentinelType],
-    ABC,
-):
-    def left_rotate(
-        self,
-        node: BinaryNodeWithParentType,
-        update: Optional[
-            Callable[[Union[BinaryNodeWithParentType, SentinelType]], None]
-        ] = None,
-    ) -> BinaryNodeWithParentType:
-
-        assert self.is_node(node)
-        assert self.is_node(node.right)
-
-        right_child = node.right
-        node.right = right_child.left
-
-        if self.is_node(right_child.left):
-            right_child.left.parent = node
-
-        right_child.parent = node.parent
-
-        if self.is_sentinel(node.parent):
-            self.root = right_child
-            self.root.parent = self.sentinel()
-
-        elif node is node.parent.left:
-            node.parent.left = right_child
-
-        else:
-            node.parent.right = right_child
-
-        right_child.left = node
-        node.parent = right_child
-
-        if update:
-            update(node)
-            update(right_child)
-
-        return right_child
-
-    def right_rotate(
-        self,
-        node: BinaryNodeWithParentType,
-        update: Optional[
-            Callable[[Union[BinaryNodeWithParentType, SentinelType]], None]
-        ] = None,
-    ) -> BinaryNodeWithParentType:
-
-        assert self.is_node(node)
-        assert self.is_node(node.left)
-
-        left_child = node.left
-        node.left = left_child.right
-
-        if self.is_node(left_child.right):
-            left_child.right.parent = node
-
-        left_child.parent = node.parent
-
-        if self.is_sentinel(node.parent):
-            self.root = left_child
-
-        elif node is node.parent.right:
-            node.parent.right = left_child
-
-        else:
-            node.parent.left = left_child
-
-        left_child.right = node
-        node.parent = left_child
-
-        if update:
-            update(node)
-            update(left_child)
-
-        return left_child
-
-
-class AbstractBinarySearchTreeRecursive(
-    AbstractBinarySearchTree[Key, Value, BinaryNodeType, SentinelType], ABC
-):
     def insert_node(self, node: BinaryNodeType, allow_overwrite: bool = False) -> bool:
         if node.key in self:
             if allow_overwrite:
@@ -277,17 +191,88 @@ class AbstractBinarySearchTreeRecursive(
         return right_child
 
 
-class AbstractBinarySearchTreeWithParentRecursive(
-    AbstractBinarySearchTreeRecursive[
-        Key, Value, BinaryNodeWithParentType, SentinelType
-    ],
+class BSTWithParent(
+    AbstractBST[Key, Value, BinaryNodeWithParentType, SentinelType],
     ABC,
 ):
-    pass
+    def left_rotate(
+        self,
+        node: BinaryNodeWithParentType,
+        update: Optional[
+            Callable[[Union[BinaryNodeWithParentType, SentinelType]], None]
+        ] = None,
+    ) -> BinaryNodeWithParentType:
+
+        assert self.is_node(node)
+        assert self.is_node(node.right)
+
+        right_child = node.right
+        node.right = right_child.left
+
+        if self.is_node(right_child.left):
+            right_child.left.parent = node
+
+        right_child.parent = node.parent
+
+        if self.is_sentinel(node.parent):
+            self.root = right_child
+            self.root.parent = self.sentinel()
+
+        elif node is node.parent.left:
+            node.parent.left = right_child
+
+        else:
+            node.parent.right = right_child
+
+        right_child.left = node
+        node.parent = right_child
+
+        if update:
+            update(node)
+            update(right_child)
+
+        return right_child
+
+    def right_rotate(
+        self,
+        node: BinaryNodeWithParentType,
+        update: Optional[
+            Callable[[Union[BinaryNodeWithParentType, SentinelType]], None]
+        ] = None,
+    ) -> BinaryNodeWithParentType:
+
+        assert self.is_node(node)
+        assert self.is_node(node.left)
+
+        left_child = node.left
+        node.left = left_child.right
+
+        if self.is_node(left_child.right):
+            left_child.right.parent = node
+
+        left_child.parent = node.parent
+
+        if self.is_sentinel(node.parent):
+            self.root = left_child
+
+        elif node is node.parent.right:
+            node.parent.right = left_child
+
+        else:
+            node.parent.left = left_child
+
+        left_child.right = node
+        node.parent = left_child
+
+        if update:
+            update(node)
+            update(left_child)
+
+        return left_child
 
 
 class AbstractBSTIterative(
-    AbstractBinarySearchTree[
+    AbstractBST[
         Key,
         Value,
         BinaryNodeType,
@@ -688,8 +673,8 @@ class AbstractBSTWithParentIterative(
 
 
 @dataclass
-class BinarySearchTreeRecursive(
-    AbstractBinarySearchTreeRecursive[
+class BST(
+    AbstractBST[
         Key,
         Value,
         BSTNode[Key, Value],
@@ -719,7 +704,7 @@ class BinarySearchTreeRecursive(
         return BSTNode(key, value, left, right)
 
 
-class BinarySearchTreeIterative(
+class BSTIterative(
     AbstractBSTIterative[
         Key,
         Value,
@@ -789,9 +774,7 @@ class BSTWithParentIterative(
 
 if __name__ == "__main__":
     for _ in range(10000):
-        bst: BinarySearchTreeRecursive[int, None] = BinarySearchTreeRecursive[
-            int, None
-        ]()
+        bst: BST[int, None] = BST[int, None]()
         num_values = 3
         # values = list({randint(0, 100) for _ in range(num_values)})
         # values = [35, 70, 51, 52, 20, 55, 91]

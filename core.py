@@ -28,6 +28,9 @@ class SupportsLessThan(Protocol):
     def __lt__(self: Key, other: Key) -> bool:
         pass
 
+    def __le__(self: Key, other: Key) -> bool:
+        pass
+
 
 Key = TypeVar("Key", bound=SupportsLessThan)
 Value = TypeVar("Value")
