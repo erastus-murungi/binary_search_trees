@@ -121,15 +121,8 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
         self.size += 1
         return node
 
-    def delete(self, target_key: Key):
-        prev: Union[ZipNode[Key, Value], Sentinel] = self.sentinel()
-        target_node: ZipNode[Key, Value] = self.nonnull_root
-        while target_key != target_node.key:  # find the x in the tree
-            prev = target_node
-            if target_key < target_node.key:
-                target_node = target_node.nonnull_left
-            else:
-                target_node = target_node.nonnull_right
+    def delete(self, target_key: Key) -> ZipNode[Key, Value]:
+        target_node, prev = self.access_with_parent(target_key)
 
         current: Union[ZipNode[Key, Value] | Sentinel]
 
