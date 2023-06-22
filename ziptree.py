@@ -276,33 +276,3 @@ class ZipTreeRecursive(AbstractBST[Key, Value, ZipNode[Key, Value], Sentinel]):
     @classmethod
     def sentinel_class(cls):
         return Sentinel
-
-
-if __name__ == "__main__":
-    from random import randint, seed
-
-    seed(0)
-
-    for _ in range(1000):
-        bst: ZipTreeRecursive[int, None] = ZipTreeRecursive[int, None]()
-        num_values = 20
-        values = list({randint(0, 10000) for _ in range(num_values)})
-        # values = [35]
-        # values = [7401, 66, 9236]
-
-        for i, val in enumerate(values):
-            bst.insert(val, None, allow_overwrite=True)
-            # print(bst.pretty_str())
-            bst.validate(0, 1000000)
-            assert val in bst
-
-        assert bst.size == len(values)
-
-        # print(bst.pretty_str())
-
-        for val in values:
-            deleted = bst.delete(val)
-            assert deleted.key == val
-            bst.validate(0, 1000000)
-            # print(bst.pretty_str())
-            assert val not in bst, values
