@@ -23,16 +23,26 @@ class SentinelReferenceError(ValueError):
     pass
 
 
+class NodeValidationError(ValueError):
+    pass
+
+
 @runtime_checkable
-class SupportsLessThan(Protocol):
+class Comparable(Protocol):
     def __lt__(self: Key, other: Key) -> bool:
         pass
 
     def __le__(self: Key, other: Key) -> bool:
         pass
 
+    def __gt__(self: Key, other: Key) -> bool:
+        pass
 
-Key = TypeVar("Key", bound=SupportsLessThan)
+    def __ge__(self: Key, other: Key) -> bool:
+        pass
+
+
+Key = TypeVar("Key", bound=Comparable)
 Value = TypeVar("Value")
 VisitorReturnType = TypeVar("VisitorReturnType")
 
@@ -51,12 +61,12 @@ class PrettyLineYieldMixin(ABC):
 
 class ValidatorMixin(ABC):
     @abstractmethod
-    def validate(self, *arg, **kwargs) -> bool:
+    def validate(self, *arg, **kwargs) -> None:
         pass
 
 
 SentinelType = TypeVar("SentinelType", bound="AbstractSentinel")
-NodeType = TypeVar("NodeType", bound="AbstractNode")
+NodeType = TypeVar("NodeType", bound="Node")
 
 
 class Visitor(Generic[NodeType, SentinelType, VisitorReturnType], ABC):
@@ -120,8 +130,8 @@ class AbstractSentinel(
     def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
         yield f"{indent}{prefix}----'∅'\n"
 
-    def validate(self, *arg, **kwargs) -> bool:
-        return True
+    def validate(self, *arg, **kwargs) -> None:
+        pass
 
     def __len__(self) -> int:
         return 0
@@ -410,7 +420,7 @@ class NodeConstructorMixin(Generic[NodeType, Key, Value], ABC):
 
 
 @dataclass(slots=True)
-class AbstractNode(
+class Node(
     Generic[Key, Value, NodeType, SentinelType],
     NodeMutationMixin[Key, Value, NodeType, SentinelType],
     MutableMapping[Key, Value],
@@ -425,6 +435,9 @@ class AbstractNode(
 ):
     """Base class for all nodes in a tree."""
 
+    def _is_node(self, node: Any) -> TypeGuard[NodeType]:
+        return isinstance(node, type(self))
+
 
 NodeWithParentType = TypeVar("NodeWithParentType", bound="SupportsParent")
 
@@ -435,7 +448,7 @@ class SupportsParent(Generic[NodeWithParentType, SentinelType], ABC):
 
 
 @dataclass(slots=True)
-class AbstractTree(
+class Tree(
     Generic[Key, Value, NodeType, SentinelType],
     TreeMutationMixin[Key, Value, NodeType],
     NodeConstructorMixin[NodeType, Key, Value],
@@ -464,3 +477,20 @@ class AbstractTree(
 
     def __len__(self):
         return self.size
+
+    @property
+    def nonnull_root(self) -> NodeType:
+        if self.is_node(self.root):
+            return self.root
+        raise SentinelReferenceError("Tree is empty")
+
+    def _replace_root(self, node: NodeType, increment_size: int = 1) -> NodeType:
+        self.root = node
+        self.size += increment_size
+        return node
+
+    def _clear_root(self) -> None:
+        assert self.is_node(self.root)
+        assert len(self) == 1
+        self.root = self.sentinel()
+        self.size = 0

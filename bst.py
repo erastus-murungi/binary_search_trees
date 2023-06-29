@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from abc import ABC
-from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Callable, Iterator, Optional, TypeGuard, Union
 
-from core import AbstractTree, Key, SentinelReferenceError, SentinelType, Value
+from core import Key, SentinelReferenceError, SentinelType, Tree, Value
 from nodes import (
     BinaryNodeType,
     BinaryNodeWithParentType,
@@ -16,7 +15,9 @@ from nodes import (
 )
 
 
-class AbstractBST(AbstractTree[Key, Value, BinaryNodeType, SentinelType], ABC):
+class AbstractBST(Tree[Key, Value, BinaryNodeType, SentinelType], ABC):
+    root: Union[BinaryNodeType, SentinelType]
+
     def __contains__(self, key: Any) -> bool:
         return key in self.root
 
@@ -44,12 +45,6 @@ class AbstractBST(AbstractTree[Key, Value, BinaryNodeType, SentinelType], ABC):
 
     def __setitem__(self, key: Key, value: Value) -> None:
         self.insert(key, value, allow_overwrite=True)
-
-    @property
-    def nonnull_root(self) -> BinaryNodeType:
-        if self.is_node(self.root):
-            return self.root
-        raise SentinelReferenceError("Tree is empty")
 
     def level_order(self) -> Iterator[BinaryNodeType]:
         try:
@@ -109,12 +104,13 @@ class AbstractBST(AbstractTree[Key, Value, BinaryNodeType, SentinelType], ABC):
                 self[node.key] = node.value
                 return False
             raise KeyError(f"Key {node.key} already exists")
-        if self.is_sentinel(self.root):
-            self.root = node
-        else:
-            self.root = self.nonnull_root.insert_node(node, allow_overwrite)
-        self.size += 1
-        return True
+        return bool(
+            self._replace_root(
+                node
+                if self.is_sentinel(self.root)
+                else self.nonnull_root.insert_node(node, allow_overwrite)
+            )
+        )
 
     def delete(self, key: Key) -> BinaryNodeType:
         if node := self.access(key):
@@ -202,6 +198,9 @@ class BSTWithParent(
     AbstractBST[Key, Value, BinaryNodeWithParentType, SentinelType],
     ABC,
 ):
+
+    root: Union[BinaryNodeWithParentType, SentinelType]
+
     def left_rotate(
         self,
         node: BinaryNodeWithParentType,
@@ -724,7 +723,7 @@ class BST(
         *args,
         **kwargs,
     ) -> BSTNode[Key, Value]:
-        return BSTNode(key, value, left, right)
+        return BSTNode[Key, Value](key, value, left, right)
 
 
 class BSTIterative(
@@ -790,7 +789,7 @@ class BSTWithParentIterative(
         *args,
         **kwargs,
     ) -> BSTNodeWithParent[Key, Value]:
-        return BSTNodeWithParent(
+        return BSTNodeWithParent[Key, Value](
             key=key, value=value, left=left, right=right, parent=parent
         )
 

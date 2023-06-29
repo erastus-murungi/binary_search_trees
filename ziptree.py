@@ -24,7 +24,7 @@ class ZipNode(
     rank: int = field(default_factory=int)
 
 
-def random_rank():
+def random_rank() -> int:
     rank = 0
     while random() > 0.5:
         rank += 1
@@ -32,7 +32,9 @@ def random_rank():
 
 
 class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
-    def insert_node(self, node: ZipNode[Key, Value], allow_overwrite: bool = False):
+    def insert_node(
+        self, node: ZipNode[Key, Value], allow_overwrite: bool = False
+    ) -> bool:
         """
 
         Inserting x into a zip tree works as follows:
@@ -75,7 +77,7 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
             else:
                 if allow_overwrite:
                     prev.value = node.value
-                    return prev
+                    return False
                 else:
                     raise KeyError(f"Key {node.key} already exists.")
 
@@ -83,7 +85,7 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
             node.left = self.sentinel()
             node.right = self.sentinel()
             self.size += 1
-            return node
+            return True
         assert self.is_node(current)
         if node.key < current.key:
             node.right = current
@@ -118,7 +120,7 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
             else:
                 fix.right = current
         self.size += 1
-        return node
+        return True
 
     def delete(self, target_key: Key) -> ZipNode[Key, Value]:
         target_node, prev = self.access_with_parent(target_key)

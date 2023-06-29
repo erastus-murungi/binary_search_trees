@@ -332,7 +332,7 @@ class RedBlackTree(
         *args,
         **kwargs,
     ) -> RBTNode[Key, Value]:
-        return RBTNode(
+        return RBTNode[Key, Value](
             key=key, value=value, left=left, right=right, parent=parent, color=color
         )
 

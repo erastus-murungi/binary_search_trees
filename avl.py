@@ -29,8 +29,9 @@ class AVLSentinel(AbstractSentinel, AVLTreeNodeTraits):
     def yield_line(self, indent: str, prefix: str) -> Iterator[str]:
         yield f"{indent}{prefix}----'∅'\n"
 
-    def validate(self, *arg, **kwargs) -> bool:
-        return True
+    def validate(self, *arg, **kwargs) -> None:
+        """AVL Sentinel is always valid"""
+        pass
 
     def __len__(self) -> int:
         return 0
@@ -198,7 +199,7 @@ class AVLTreeIterative(
         *args,
         **kwargs,
     ) -> AVLTreeInternalNode[Key, Value]:
-        return AVLTreeInternalNode(
+        return AVLTreeInternalNode[Key, Value](
             key=key,
             value=value,
             left=left,

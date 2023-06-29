@@ -242,7 +242,7 @@ class TreapSplitMerge(
         *args,
         **kwargs,
     ) -> TreapNode[Key, Value]:
-        return TreapNode(
+        return TreapNode[Key, Value](
             key=key, value=value, left=left, right=right, priority=priority
         )
 

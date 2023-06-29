@@ -18,9 +18,9 @@ from typing import (
 )
 
 from core import (
-    AbstractNode,
     AbstractSentinel,
     Key,
+    Node,
     SentinelReferenceError,
     SentinelType,
     SupportsParent,
@@ -47,9 +47,7 @@ class AbstractSentinelWithParent(
 
 
 @dataclass
-class AbstractBSTNode(
-    AbstractNode[Key, Value, BinaryNodeType, SentinelType], Hashable, ABC
-):
+class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, ABC):
     key: Key
     value: Value
     left: Union[BinaryNodeType, SentinelType] = field(repr=False)
@@ -57,9 +55,6 @@ class AbstractBSTNode(
 
     def __hash__(self):
         return hash(self.key)
-
-    def _is_node(self, node: Any) -> TypeGuard[BinaryNodeType]:
-        return isinstance(node, type(self))
 
     def choose(self, key: Key) -> Union[BinaryNodeType, SentinelType]:
         if key > self.key:
@@ -83,12 +78,11 @@ class AbstractBSTNode(
     def dot(self, output_file_path: str = "tree.pdf"):
         return draw_tree(self, output_file_path)
 
-    def validate(self, lower_limit: Key, upper_limit: Key) -> bool:
+    def validate(self, lower_limit: Key, upper_limit: Key) -> None:
         if not (lower_limit < self.key < upper_limit):
-            return False
-        return self.left.validate(lower_limit, self.key) and self.right.validate(
-            self.key, upper_limit
-        )
+            raise ValueError(f"Node {self} violates BST property")
+        self.left.validate(lower_limit, self.key)
+        self.right.validate(self.key, upper_limit)
 
     def __len__(self) -> int:
         return 1 + len(self.left) + len(self.right)
