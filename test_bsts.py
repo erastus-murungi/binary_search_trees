@@ -11,6 +11,7 @@ from scapegoat import ScapeGoatTree
 from splaytree import SplayTree
 from treap import Treap, TreapNode, TreapSplitMerge
 from ziptree import ZipTree, ZipTreeRecursive
+from tree_23 import Tree23
 
 
 @pytest.mark.parametrize(
@@ -62,6 +63,7 @@ def test_insertion_and_deletion(bst_class: Type[AbstractBST]):
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
+        Tree23,
     ],
 )
 def test_sorted(bst_class: Type[AbstractBST]):

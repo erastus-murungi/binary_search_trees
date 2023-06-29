@@ -267,56 +267,61 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
     def _balance_4node(self, node: Node23[Key, Value]):
         assert node.is_unsupported_4node()
-        middle = node.content.pop(1)
+        (min_key, min_value), (mid_key, mid_value), (max_key, max_value) = node.content
+
+        assert min_key < mid_key < max_key
+
         if self.is_sentinel(node.parent):
             assert node is self.root
-            new_root = self.node(*middle)
-            if isinstance(node.children, list):
-                l1, l2 = node.children[:2]
-                r1, r2 = node.children[2:]
-                left_node = self.node(
-                    *node.content[0], children=[l1, l2], parent=new_root
-                )
-                right_node = self.node(
-                    *node.content[-1], children=[r1, r2], parent=new_root
-                )
-                l1.parent = l2.parent = left_node
-                r1.parent = r2.parent = right_node
-            else:
-                left_node = self.node(*node.content[0], parent=new_root)
-                right_node = self.node(*node.content[-1], parent=new_root)
-            new_root.children = [left_node, right_node]
-            self._replace_root(new_root)
+
+            # since the node is the root, the new acceptor will be a new node
+            # to replace the root
+            acceptor = self.node(mid_key, mid_value)
         else:
-            # we need to promote middle to parent
-            parent = node.parent
-            assert self.is_node(parent)
-            insort(parent.content, middle)
-            if isinstance(node.children, list):
-                l1, l2 = node.children[:2]
-                r1, r2 = node.children[2:]
-                left_node = self.node(
-                    *node.content[0], children=[l1, l2], parent=node.parent
-                )
-                right_node = self.node(
-                    *node.content[-1], children=[r1, r2], parent=node.parent
-                )
-                l1.parent = l2.parent = left_node
-                r1.parent = r2.parent = right_node
-            else:
-                left_node = self.node(*node.content[0], parent=node.parent)
-                right_node = self.node(*node.content[-1], parent=node.parent)
+            assert self.is_node(node.parent)
 
-            assert isinstance(parent.children, list)
-            parent.children.remove(node)
-            parent.children.extend([left_node, right_node])
-            parent.children.sort(key=Node23.min_key)
+            # potential 4 node created
+            insort(node.parent.content, (mid_key, mid_value))
 
-            if len(parent.content) == 3:
-                self._balance_4node(parent)
+            # the acceptor is just the parent
+            acceptor = node.parent
+
+        if isinstance(node.children, list):
+            left_node_left, left_node_right = node.children[:2]
+            right_node_left, right_node_right = node.children[2:]
+            left_node = self.node(
+                min_key,
+                min_value,
+                children=[left_node_left, left_node_right],
+                parent=acceptor,
+            )
+            right_node = self.node(
+                max_key,
+                max_value,
+                children=[right_node_left, right_node_right],
+                parent=acceptor,
+            )
+            left_node_left.parent = left_node_right.parent = left_node
+            right_node_left.parent = right_node_right.parent = right_node
+        else:
+            left_node = self.node(min_key, min_value, parent=acceptor)
+            right_node = self.node(max_key, max_value, parent=acceptor)
+
+        if self.is_sentinel(node.parent):
+            acceptor.children = [left_node, right_node]
+            self._replace_root(acceptor)
+        else:
+            assert isinstance(acceptor.children, list)
+            acceptor.children.remove(node)
+            acceptor.children.extend([left_node, right_node])
+            acceptor.children.sort(key=Node23.min_key)
+
+            if acceptor.is_unsupported_4node():
+                self._balance_4node(acceptor)
 
     def delete(self, key: Key) -> Node23[Key, Value]:
-        raise NotImplementedError()
+        target_node = self.access(key)
+        pass
 
     def extract_min(self) -> tuple[Key, Value]:
         raise NotImplementedError()
@@ -365,21 +370,26 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
     def __iter__(self) -> Iterator[Key]:
         def traverse(node: Node23[Key, Value]) -> Iterator[Key]:
-            match node.children:
-                case (left, right):
-                    ((key, _),) = node.content
-                    yield from traverse(left)
-                    yield key
-                    yield from traverse(right)
-                case (left, middle, right):
-                    (smaller_key, _), (larger_key, _) = node.content
-                    yield from traverse(left)
-                    yield smaller_key
-                    yield from traverse(middle)
-                    yield larger_key
-                    yield from traverse(right)
-                case Sentinel():
-                    yield from iter(())
+            match node.content:
+                case ((key, _),):
+                    match node.children:
+                        case (left, right):
+                            yield from traverse(left)
+                            yield key
+                            yield from traverse(right)
+                        case Sentinel():
+                            yield key
+                case (smaller_key, _), (larger_key, _):
+                    match node.children:
+                        case (left, middle, right):
+                            yield from traverse(left)
+                            yield smaller_key
+                            yield from traverse(middle)
+                            yield larger_key
+                            yield from traverse(right)
+                        case Sentinel():
+                            yield smaller_key
+                            yield larger_key
                 case _:
                     raise NodeValidationError(f"invalid node {node}")
 
@@ -468,8 +478,8 @@ if __name__ == "__main__":
 
     for _ in range(1):
         tree: Tree23[int, None] = Tree23[int, None]()
-        num_values = 10000
-        values = list({randint(0, 100000000) for _ in range(num_values)})
+        num_values = 1000
+        values = list({randint(0, 1000) for _ in range(num_values)})
         # values = [96, 33, 99, 73, 45, 82, 51, 25, 30]
 
         for V in values:
