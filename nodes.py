@@ -144,6 +144,7 @@ class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, 
             except ValueError:
                 return cast(BinaryNodeType, self)
         else:
+            assert key == self.key
             return self.nonnull_right.minimum()
 
     def predecessor(self, key: Key) -> BinaryNodeType:
@@ -155,6 +156,7 @@ class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, 
             except ValueError:
                 return cast(BinaryNodeType, self)
         else:
+            assert key == self.key
             return self.nonnull_left.maximum()
 
     def insert_node(
@@ -408,6 +410,42 @@ def create_graph_pdf(
 
 
 def draw_tree(
+    root: Union[AbstractSentinel, AbstractBSTNode],
+    output_filename: str = "tree.pdf",
+):
+    graph = [graph_prologue()]
+    edges = []
+    nodes = []
+
+    if isinstance(root, AbstractSentinel):
+        nodes.append(
+            f"   {id(root)} [shape=record, style=filled, fillcolor=black, "
+            f'fontcolor=white, label="{escape(str(root))}"];'
+        )
+    else:
+        for node in root.inorder():
+            if node.value:
+                s = f"key={node.key}, value={node.value}"
+            else:
+                s = f"key={node.key}"
+            nodes.append(
+                f"   {id(node)} [shape=record, style=filled, fillcolor=black, "
+                f'fontcolor=white, label="{escape(s)}"];'
+            )
+
+        for src, dst in root.yield_edges():
+            edges.append(
+                f"{(id(src))}:from_false -> {(id(dst))}:from_node [arrowhead=vee] "
+            )
+
+    graph.extend(edges)
+    graph.extend(nodes)
+    graph.append(graph_epilogue())
+
+    create_graph_pdf(graph, output_filename=output_filename)
+
+
+def draw_tree_23(
     root: Union[AbstractSentinel, AbstractBSTNode],
     output_filename: str = "tree.pdf",
 ):
