@@ -173,7 +173,7 @@ class RedBlackTree(
                 u.parent.right = v
         v.parent = u.parent
 
-    def delete(self, target_key: Key):
+    def delete_node(self, target_key: Key) -> RBTNode[Key, Value]:
         z = self.access(target_key)
         if self.is_node(z):
             # y identifies the node to be deleted

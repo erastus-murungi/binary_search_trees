@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from bisect import insort
-from dataclasses import field, dataclass
+from dataclasses import dataclass, field
+from operator import itemgetter
 from sys import maxsize
 from typing import Any, Iterator, Optional, Type, TypeGuard, Union
 
+from more_itertools import partition
+
 from core import Key, Node, NodeValidationError, SentinelReferenceError, Tree, Value
 from nodes import Sentinel
-from more_itertools import partition
 
 
 def all_equal(iterator: Iterator[Any]) -> bool:
@@ -17,6 +19,9 @@ def all_equal(iterator: Iterator[Any]) -> bool:
     except StopIteration:
         return True
     return all(first == x for x in iterator)
+
+
+use_key = itemgetter(0)
 
 
 @dataclass(slots=True, eq=True)
@@ -243,6 +248,15 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
     def is_unsupported_4node(self):
         return len(self.content) == 3
 
+    def access_value(self, key: Key) -> Value:
+        try:
+            for k, v in self.content:
+                if k == key:
+                    return v
+            raise KeyError(f"Key {key} not found locally")
+        except SentinelReferenceError as e:
+            raise KeyError from e
+
 
 class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
     def _try_overwrite(
@@ -327,13 +341,20 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
             assert isinstance(acceptor.children, list)
             acceptor.children.remove(node)
             acceptor.children.extend([left_node, right_node])
-            acceptor.children.sort(key=Node23.min_key)
+            acceptor.children.sort(key=Node23.min_key)  # type: ignore
 
             if acceptor.is_unsupported_4node():
                 self._balance_4node(acceptor)
 
-    def delete(self, key: Key) -> Node23[Key, Value]:
+    def delete_node(self, key: Key) -> Node23[Key, Value]:
+        raise NotImplementedError(
+            "getting exact node where key was deleted "
+            "is not supported because nodes share keys"
+        )
+
+    def delete(self, key: Key) -> Value:
         target_node = self.access(key)
+        value = target_node.access_value(key)
         if target_node.is_leaf:
             if target_node.is_3_node():
                 new_content = [(k, v) for k, v in target_node.content if k != key]
@@ -366,7 +387,6 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                                 ]
                             else:
                                 # case 2.2
-                                #
                                 grand_parent = parent.parent
                                 if self.is_node(grand_parent):
                                     if grand_parent.is_2node():
@@ -386,6 +406,8 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                                                 )
                                                 # back to case 2.1
                                                 self.delete(key)
+                                            else:
+                                                raise NotImplementedError()
                                         else:
                                             assert parent is grand_parent.max_child()
                                             root_predecessor = (
@@ -402,6 +424,8 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                                                 )
                                                 # back to case 2.1
                                                 self.delete(key)
+                                            else:
+                                                raise NotImplementedError()
 
                                     elif grand_parent.is_3_node():
                                         raise NotImplementedError()
@@ -437,7 +461,7 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                             ],
                             parent.content,
                         )
-                        data.sort(key=lambda x: x[0])
+                        data.sort(key=use_key)
                         parent.content = data[1:2]
                         parent.children = [
                             Node23[Key, Value](content=data[:1], parent=parent),
@@ -445,17 +469,14 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                         ]
         else:
             # replace node with successor
-            root_successor = (
-                target_node.max_child().minimum()
-            )
-            suc_cv = root_successor.content[0]
-            self.delete(suc_cv[0])
-            target_rest, _ = partition(
-                lambda x: x[0] == key, target_node.content
-            )
+            root_successor = target_node.max_child().minimum()
+            successor_key, successor_value = root_successor.content[0]
+            self.delete(successor_key)
+            target_rest, _ = partition(lambda x: use_key(x) == key, target_node.content)
             target_node.content = list(target_rest)
-            insort(target_node.content, suc_cv)
-        return target_node
+            insort(target_node.content, (successor_key, successor_value))
+
+        return value
 
     def extract_min(self) -> tuple[Key, Value]:
         raise NotImplementedError()
@@ -494,8 +515,7 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
     def __getitem__(self, key: Key) -> Value:
         try:
-            node = self.access(key)
-            for k, v in node.content:
+            for k, v in self.access(key).content:
                 if k == key:
                     return v
             raise RuntimeError("Implementation error")
@@ -614,7 +634,7 @@ def draw_tree_23(
     root: Union[Sentinel, Node23],
     output_filename: str = "tree23.pdf",
 ):
-    from nodes import graph_prologue, escape, graph_epilogue, create_graph_pdf
+    from nodes import create_graph_pdf, escape, graph_epilogue, graph_prologue
 
     graph = [graph_prologue()]
     edges = []
@@ -645,7 +665,7 @@ def draw_tree_23(
 
 
 if __name__ == "__main__":
-    from random import randint, shuffle
+    from random import randint
 
     for _ in range(1):
         tree: Tree23[int, None] = Tree23[int, None]()

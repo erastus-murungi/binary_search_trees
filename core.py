@@ -204,7 +204,28 @@ class TreeMutationMixin(Generic[Key, Value, NodeType], ABC):
         """
 
     @abstractmethod
-    def delete(self, key: Key) -> NodeType:
+    def delete(self, key: Key) -> Value:
+        """Delete the node with the specified key from the tree.
+
+
+        Parameters
+        ----------
+        key : Key
+            The key to delete from the tree.
+
+        Returns
+        -------
+        Value
+            The value stored in the deleted node
+
+        Raises
+        ------
+        KeyError
+            If the key does not exist in the tree.
+        """
+
+    @abstractmethod
+    def delete_node(self, key: Key) -> NodeType:
         """Delete the node with the specified key from the tree.
 
 

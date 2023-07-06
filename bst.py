@@ -112,13 +112,17 @@ class AbstractBST(Tree[Key, Value, BinaryNodeType, SentinelType], ABC):
             )
         )
 
-    def delete(self, key: Key) -> BinaryNodeType:
+    def delete_node(self, key: Key) -> BinaryNodeType:
         if node := self.access(key):
             self.root = self.nonnull_root.delete_key(key)
             self.size -= 1
             return node
         else:
             raise KeyError(f"Key {key} not found")
+
+    def delete(self, key: Key) -> Value:
+        node = self.delete_node(key)
+        return node.value
 
     def extract_min(
         self,
@@ -375,7 +379,7 @@ class AbstractBSTIterative(
         else:
             self.root = replacement
 
-    def delete(self, key: Key) -> BinaryNodeType:
+    def delete_node(self, key: Key) -> BinaryNodeType:
         try:
             target_node = self.access(key)
             if self.is_sentinel(target_node.left):
@@ -598,7 +602,7 @@ class AbstractBSTWithParentIterative(
         if self.is_node(v):
             v.parent = u.parent
 
-    def delete(self, key: Key) -> BinaryNodeWithParentType:
+    def delete_node(self, key: Key) -> BinaryNodeWithParentType:
         try:
             node = self.access(key)
             if self.is_sentinel(node.left):
@@ -792,26 +796,3 @@ class BSTWithParentIterative(
         return BSTNodeWithParent[Key, Value](
             key=key, value=value, left=left, right=right, parent=parent
         )
-
-
-if __name__ == "__main__":
-    from random import randint
-
-    for _ in range(10000):
-        bst: BST[int, None] = BST[int, None]()
-        num_values = 5
-        # values = list({randint(0, 100) for _ in range(num_values)})
-        values = [67, 38, 77, 54, 29]
-
-        for k in values:
-            bst.insert(k, None, allow_overwrite=True)
-            bst.validate(0, 1000)
-            assert k in bst
-
-        # bst.dot()
-        print(bst.pretty_str())
-        for k in values:
-            deleted = bst.delete(k)
-            assert deleted.key == k, (k, deleted.key)
-            print(bst.pretty_str())
-            assert k not in bst, values

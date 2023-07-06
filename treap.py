@@ -105,10 +105,10 @@ class Treap(
 
         assert self.is_sentinel(node.left) and self.is_sentinel(node.right)
 
-    def delete(self, key: Key) -> TreapNodeWithParent[Key, Value]:
+    def delete_node(self, key: Key) -> TreapNodeWithParent[Key, Value]:
         node = self.access(key)
         self.trickle_down_to_leaf(node)
-        return super().delete(key)
+        return super().delete_node(key)
 
 
 class TreapSplitMerge(
@@ -246,7 +246,7 @@ class TreapSplitMerge(
             key=key, value=value, left=left, right=right, priority=priority
         )
 
-    def delete(self, key: Key) -> TreapNode[Key, Value]:
+    def delete_node(self, key: Key) -> TreapNode[Key, Value]:
         node, parent = self.access_with_parent(key)
         if self.is_sentinel(parent):
             self.root = self.merge(node.left, node.right)
@@ -257,25 +257,3 @@ class TreapSplitMerge(
                 parent.right = self.merge(node.left, node.right)
         self.size -= 1
         return node
-
-
-if __name__ == "__main__":
-    for _ in range(10):
-        bst: TreapSplitMerge[int, None] = TreapSplitMerge[int, None]()
-        num_values = 100
-        values = list({randint(0, 100) for _ in range(num_values)})
-        # values = [98, 27, 12]
-
-        for k in values:
-            bst.insert(k, None, allow_overwrite=True)
-            # print(bst.pretty_str())
-            bst.validate(0, 1000)
-            assert k in bst
-
-        # bst.dot()
-
-        for k in values:
-            deleted = bst.delete(k)
-            assert deleted.key == k, (k, deleted.key)
-            # print(bst.pretty_str())
-            assert k not in bst, values

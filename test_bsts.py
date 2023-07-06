@@ -1,6 +1,6 @@
 from random import randint
 from sys import maxsize
-from typing import Type, cast
+from typing import Type, cast, Iterator
 
 import pytest
 
@@ -10,8 +10,13 @@ from rbt import RedBlackTree
 from scapegoat import ScapeGoatTree
 from splaytree import SplayTree
 from treap import Treap, TreapNode, TreapSplitMerge
-from ziptree import ZipTree, ZipTreeRecursive
 from tree_23 import Tree23
+from ziptree import ZipTree, ZipTreeRecursive
+
+
+def gen_random_string(count: int) -> Iterator[str]:
+    for _ in range(count):
+        yield "".join([chr(randint(97, 122)) for _ in range(randint(1, 10))])
 
 
 @pytest.mark.parametrize(
@@ -32,17 +37,18 @@ from tree_23 import Tree23
 )
 def test_insertion_and_deletion(bst_class: Type[AbstractBST]):
     for _ in range(50):
-        values = frozenset([randint(-10000, 10000) for _ in range(100)])
+        keys = list({randint(-10000, 10000) for _ in range(100)})
+        values = list(gen_random_string(len(keys)))
         bst = bst_class()
-        for val in values:
-            bst.insert(val, None)
-            assert val in bst
+        for key, value in zip(keys, values):
+            bst.insert(key, value)
+            assert key in bst
             bst.validate(-maxsize, maxsize)
 
-        for val in values:
-            deleted = bst.delete(val)
-            assert deleted.key == val
-            assert val not in bst
+        for key, value in zip(keys, values):
+            deleted_value = bst.delete(key)
+            assert deleted_value == value
+            assert key not in bst
             bst.validate(-maxsize, maxsize)
 
         assert not bst

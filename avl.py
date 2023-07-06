@@ -129,7 +129,7 @@ class AVLTreeIterative(
         self.avl_fixup(node.parent)
         return node
 
-    def delete(self, key: Key) -> AVLTreeInternalNode[Key, Value]:
+    def delete_node(self, key: Key) -> AVLTreeInternalNode[Key, Value]:
         try:
             node = self.access(key)
             if self.is_sentinel(node.left):

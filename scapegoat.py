@@ -114,8 +114,8 @@ class ScapeGoatTree(BSTWithParentIterative[Key, Value]):
         node.parent = parent
         return node
 
-    def delete(self, key: Key) -> BSTNodeWithParent[Key, Value]:
-        node = super().delete(key)
+    def delete_node(self, key: Key) -> BSTNodeWithParent[Key, Value]:
+        node = super().delete_node(key)
         if 2 * self.size < self.max_size:
             if self.is_node(self.root):
                 self.rebuild(self.nonnull_root)

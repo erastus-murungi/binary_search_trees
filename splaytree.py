@@ -95,16 +95,16 @@ class SplayTree(
         y.parent = self.sentinel()
         return self, SplayTree[Key, Value](self.nonnull_root.nonnull_right)
 
-    def delete(self, target_key):
+    def delete_node(self, target_key: Key) -> BSTNodeWithParent[Key, Value]:
         """Deletes a key from the Splay Tree"""
 
         z = self.access(target_key)
         if self.is_node(z):
             self.splay(z)
-            left, right = self.root.left, self.root.right
+            left, right = self.nonnull_root.left, self.nonnull_root.right
             self.transplant(z, self.sentinel())
 
-            m = self.sentinel()
+            m: Union[BSTNodeWithParent[Key, Value], Sentinel] = self.sentinel()
             if self.is_node(left):
                 left.parent = self.sentinel()
                 left.parent = self.sentinel()
@@ -113,6 +113,7 @@ class SplayTree(
                 self.root = m
             if self.is_node(right):
                 if self.is_node(left):
+                    assert self.is_node(m)
                     m.right = right
                 else:
                     self.root = right

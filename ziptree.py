@@ -122,7 +122,7 @@ class ZipTree(AbstractBSTIterative[Key, Value, ZipNode[Key, Value], Sentinel]):
         self.size += 1
         return True
 
-    def delete(self, target_key: Key) -> ZipNode[Key, Value]:
+    def delete_node(self, target_key: Key) -> ZipNode[Key, Value]:
         target_node, prev = self.access_with_parent(target_key)
 
         current: Union[ZipNode[Key, Value] | Sentinel]
@@ -243,7 +243,7 @@ class ZipTreeRecursive(AbstractBST[Key, Value, ZipNode[Key, Value], Sentinel]):
         self.size += 1
         return self.size > old_size
 
-    def delete(self, key: Key) -> ZipNode[Key, Value]:
+    def delete_node(self, key: Key) -> ZipNode[Key, Value]:
         def delete(root: ZipNode[Key, Value], x: ZipNode[Key, Value]):
             if x.key == root.key:
                 return self.zip(root.left, root.right)
