@@ -730,14 +730,7 @@ class BST(
         return BSTNode[Key, Value](key, value, left, right)
 
 
-class BSTIterative(
-    AbstractBSTIterative[
-        Key,
-        Value,
-        BSTNode[Key, Value],
-        Sentinel,
-    ]
-):
+class BSTIterative(AbstractBSTIterative[Key, Value, BSTNode[Key, Value], Sentinel]):
     @classmethod
     def sentinel_class(cls):
         return Sentinel

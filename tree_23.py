@@ -6,10 +6,10 @@ from operator import itemgetter
 from sys import maxsize
 from typing import Any, Iterator, Optional, Type, TypeGuard, Union
 
-from more_itertools import partition
-
 from core import Key, Node, NodeValidationError, SentinelReferenceError, Tree, Value
 from nodes import Sentinel
+
+from more_itertools import one
 
 
 def all_equal(iterator: Iterator[Any]) -> bool:
@@ -24,6 +24,14 @@ def all_equal(iterator: Iterator[Any]) -> bool:
 use_key = itemgetter(0)
 
 
+def insort_lists(A, B, key=None):
+    A.extend(B)
+    if key is None:
+        A.sort()
+    else:
+        A.sort(key=key)
+
+
 @dataclass(slots=True, eq=True)
 class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
     content: list[tuple[Key, Value]]
@@ -33,8 +41,35 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
     def is_2node(self):
         return len(self.content) == 1
 
-    def is_3_node(self):
+    def is_3node(self):
         return len(self.content) == 2
+
+    def is_hole(self):
+        return self.content == [] and len(self.children) <= 1
+
+    def to_hole(self, node: Optional[Node23[Key, Value]] = None) -> Node23:
+        self.content = []
+        if node is not None:
+            self.children = [node]
+        else:
+            self.children = []
+        return self
+
+    def remove_key(self, key: Key) -> Optional[Value]:
+        new_content = []
+        to_ret = None
+        for k, v in self.content:
+            if k != key:
+                new_content.append((k, v))
+            else:
+                to_ret = v
+        self.content = new_content
+        return to_ret
+
+    def remove_child(self, child: Node23[Key, Value]):
+        self.nonnull_children.remove(child)
+        if not self.children:
+            self.children = Sentinel()
 
     def validate(
         self,
@@ -85,7 +120,7 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
         if self.is_2node():
             return f"({self.content[0][0]})"
         else:
-            assert self.is_3_node()
+            assert self.is_3node()
             return f"({self.content[0][0]} : {self.content[1][0]})"
 
     def contains_key(self, key: Key) -> bool:
@@ -98,6 +133,35 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
     def is_leaf(self):
         return isinstance(self.children, Sentinel)
 
+    def sibling(self) -> Node23[Key, Value]:
+        if isinstance(self.parent, Sentinel):
+            raise ValueError("root has no sibling")
+        assert isinstance(self.parent, Node23)
+        if self.parent.is_3node():
+            raise ValueError("siblings in a 3-node are not well defined sibling")
+        if self.parent.left == self:
+            return self.parent.right
+        else:
+            return self.parent.left
+
+    @property
+    def left(self) -> Node23[Key, Value]:
+        return self.nonnull_children[0]
+
+    @property
+    def right(self) -> Node23[Key, Value]:
+        if self.is_2node():
+            return self.nonnull_children[1]
+        elif self.is_3node():
+            return self.nonnull_children[2]
+        raise ValueError("left only defined for 2- and 3-nodes")
+
+    @property
+    def middle(self) -> Node23[Key, Value]:
+        if self.is_2node():
+            raise ValueError("middle only defined for 3-nodes")
+        return self.nonnull_children[1]
+
     def access(self, key: Key) -> Node23[Key, Value]:
         if self.contains_key(key):
             return self
@@ -107,26 +171,7 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
     def __len__(self):
         return 1 + len(self.left) + len(self.right)
 
-    def min_child(self) -> Node23[Key, Value]:
-        if isinstance(self.children, list):
-            return self.children[0]
-        raise NodeValidationError("leaf")
-
-    def max_child(self) -> Node23[Key, Value]:
-        if isinstance(self.children, list):
-            return self.children[-1]
-        raise NodeValidationError("leaf")
-
-    def nonnull_min_child(self) -> Node23[Key, Value]:
-        if isinstance(min_child := self.min_child(), Node23):
-            return min_child
-        raise SentinelReferenceError("min child in null")
-
-    def nonnull_max_child(self) -> Node23[Key, Value]:
-        if isinstance(max_child := self.max_child(), Node23):
-            return max_child
-        raise SentinelReferenceError("max child in null")
-
+    @property
     def nonnull_children(self) -> list[Node23[Key, Value]]:
         if isinstance(self.children, list):
             return self.children
@@ -141,12 +186,12 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
     def minimum(self) -> Node23[Key, Value]:
         if self.is_leaf:
             return self
-        return self.min_child().minimum()
+        return self.left.minimum()
 
     def maximum(self) -> Node23[Key, Value]:
         if self.is_leaf:
             return self
-        return self.max_child().maximum()
+        return self.right.maximum()
 
     def trickle_down(self, key: Key) -> Node23[Key, Value]:
         assert not self.contains_key(key)
@@ -158,11 +203,11 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
     def drop_level(self, key: Key) -> Node23[Key, Value]:
         assert not self.contains_key(key)
 
-        for (my_key, _), child in zip(self.content, self.nonnull_children()):
+        for (my_key, _), child in zip(self.content, self.nonnull_children):
             if key < my_key:
                 return child
         assert key > self.max_key()
-        return self.nonnull_max_child()
+        return self.right
 
     def insert_node(
         self, node: Node23[Key, Value], allow_overwrite: bool = True
@@ -237,9 +282,8 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
         yield f"{indent}{prefix}----{self}\n"
         indent += "     " if prefix == "R" else "|    "
         if not self.is_leaf:
-            children = self.nonnull_children()
             prefixes = ("L", "R") if self.is_2node() else ("L", "M", "R")
-            for prefix, child in zip(prefixes, children):
+            for prefix, child in zip(prefixes, self.nonnull_children):
                 yield from child.yield_line(indent, prefix)
 
     def pretty_str(self) -> str:
@@ -336,7 +380,7 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
         if self.is_sentinel(node.parent):
             acceptor.children = [left_node, right_node]
-            self._replace_root(acceptor)
+            self._replace_root(acceptor, 0)
         else:
             assert isinstance(acceptor.children, list)
             acceptor.children.remove(node)
@@ -352,130 +396,194 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
             "is not supported because nodes share keys"
         )
 
+    def _fixup_case2(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
+        assert hole.is_hole()
+        parent = hole.parent
+        assert self.is_node(parent) and parent.is_2node()
+        if hole is parent.left:
+            sibling = parent.right
+            hole.content = parent.content
+            parent.content = sibling.content[:1]
+            sibling.content = sibling.content[1:]
+            if isinstance(sibling.children, list):
+                insort_lists(hole.children, sibling.children[:1], key=Node23.min_key)
+                sibling.children[0].parent = hole
+                sibling.children = sibling.children[1:]
+        else:
+            sibling = parent.left
+            hole.content = parent.content
+            parent.content = sibling.content[-1:]
+            sibling.content = sibling.content[:-1]
+            if isinstance(sibling.children, list):
+                insort_lists(hole.children, sibling.children[-1:], key=Node23.min_key)
+                sibling.children[-1].parent = hole
+                sibling.children = sibling.children[:-1]
+        if not hole.children:
+            hole.children = self.sentinel()
+
+        return None
+
+    def _fixup_case1(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
+        parent = hole.parent
+        assert self.is_node(parent) and parent.is_2node()
+
+        sibling = hole.sibling()
+        insort_lists(sibling.content, parent.content, key=use_key)
+        if sibling.children:
+            insort_lists(sibling.children, hole.children, key=Node23.min_key)
+        for child in hole.nonnull_children:
+            child.parent = sibling
+        return parent.to_hole(sibling)
+
+    def _fixup_case3(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
+        parent = hole.parent
+        assert self.is_node(parent) and parent.is_3node()
+        # case 2.3
+        # we have a 3-node parent
+        # remove one child
+        data: list[tuple[Key, Value]] = sum(
+            [c.content for c in parent.nonnull_children],
+            parent.content,
+        )
+        mid = len(data) // 2
+        data.sort(key=use_key)
+        parent.content = data[mid : mid + 1]
+        parent.children = [
+            Node23[Key, Value](content=data[:mid], parent=parent),
+            Node23[Key, Value](content=data[mid + 1 :], parent=parent),
+        ]
+        for child in parent.nonnull_children:
+            child.parent = parent
+        return None
+
     def delete(self, key: Key) -> Value:
         target_node = self.access(key)
         value = target_node.access_value(key)
-        if target_node.is_leaf:
-            if target_node.is_3_node():
-                new_content = [(k, v) for k, v in target_node.content if k != key]
-                target_node.content = new_content
-            else:
-                # underflow
-                assert target_node.is_2node()
-                # case 2.1
-                # The removed node's sibling is a 3-node
-                if self.is_sentinel(target_node.parent):
-                    assert target_node is self.root
-                    raise NotImplementedError()
-                else:
-                    parent = target_node.parent
-                    assert self.is_node(parent)
-                    if parent.is_2node():
-                        if parent.min_child() is target_node:
-                            if parent.max_child().is_3_node():
-                                # case 2.1
-                                #       30                               35
-                                #     /   \        delete 22 -------->  /  \
-                                #   22   35 : 40                       30  40
 
-                                root_content, right_content = parent.max_child().content
-                                (left_content,) = parent.content
-                                parent.content = [root_content]
-                                parent.children = [
-                                    self.node(*left_content, parent=parent),
-                                    self.node(*right_content, parent=parent),
-                                ]
-                            else:
-                                # case 2.2
-                                grand_parent = parent.parent
-                                if self.is_node(grand_parent):
-                                    if grand_parent.is_2node():
-                                        # first replace the root with the minimum on the right
-                                        if parent is grand_parent.min_child():
-                                            root_successor = (
-                                                grand_parent.max_child().minimum()
-                                            )
-                                            if root_successor.is_3_node():
-                                                # make successor a 2-node
-                                                parent.max_child().content.append(
-                                                    grand_parent.content.pop(0)
-                                                )
-                                                # swap root with successor
-                                                grand_parent.content.append(
-                                                    root_successor.content.pop(0)
-                                                )
-                                                # back to case 2.1
-                                                self.delete(key)
-                                            else:
-                                                raise NotImplementedError()
-                                        else:
-                                            assert parent is grand_parent.max_child()
-                                            root_predecessor = (
-                                                grand_parent.min_child().maximum()
-                                            )
-                                            if root_predecessor.is_3_node():
-                                                # make predecessor a 2-node
-                                                parent.min_child().content.insert(
-                                                    0, grand_parent.content.pop(0)
-                                                )
-                                                # swap root with predecessor
-                                                grand_parent.content.append(
-                                                    root_predecessor.content.pop(-1)
-                                                )
-                                                # back to case 2.1
-                                                self.delete(key)
-                                            else:
-                                                raise NotImplementedError()
-
-                                    elif grand_parent.is_3_node():
-                                        raise NotImplementedError()
-                                    else:
-                                        raise NotImplementedError()
-                                else:
-                                    raise NotImplementedError()
-                        elif parent.max_child() is target_node:
-                            if parent.min_child().is_2node():
-                                # case 2.1
-                                #       30                               20
-                                #     /   \        delete 50 -------->  /  \
-                                #  10: 20  50                         10    30
-                                left_content, root_content = parent.min_child().content
-                                (right_content,) = parent.content
-                                parent.content = [root_content]
-                                parent.children = [
-                                    self.node(*left_content, parent=parent),
-                                    self.node(*right_content, parent=parent),
-                                ]
-                            else:
-                                raise NotImplementedError()
-                    else:
-                        assert parent.is_3_node()
-                        # case 2.3
-                        # we have a 3-node parent
-                        # remove one child
-                        data: list[tuple[Key, Value]] = sum(
-                            [
-                                c.content
-                                for c in parent.nonnull_children()
-                                if c is not target_node
-                            ],
-                            parent.content,
-                        )
-                        data.sort(key=use_key)
-                        parent.content = data[1:2]
-                        parent.children = [
-                            Node23[Key, Value](content=data[:1], parent=parent),
-                            Node23[Key, Value](content=data[2:], parent=parent),
-                        ]
-        else:
+        if not target_node.is_leaf:
             # replace node with successor
-            root_successor = target_node.max_child().minimum()
-            successor_key, successor_value = root_successor.content[0]
-            self.delete(successor_key)
-            target_rest, _ = partition(lambda x: use_key(x) == key, target_node.content)
-            target_node.content = list(target_rest)
-            insort(target_node.content, (successor_key, successor_value))
+            if target_node.is_3node():
+                if key == target_node.min_key():
+                    root_successor = target_node.middle.minimum()
+                else:
+                    root_successor = target_node.right.minimum()
+            else:
+                root_successor = target_node.right.minimum()
+            # assert root.successor.is_leaf and is_sorted(root.successor.content, key=use_key)
+            successor_key, successor_value = root_successor.content.pop(0)
+            target_node.remove_key(key)
+            insort(target_node.content, (successor_key, successor_value), key=use_key)
+            target_node = root_successor
 
+            if target_node.is_2node():
+                self.size -= 1
+                return value
+
+        assert target_node.is_leaf
+
+        if target_node.is_3node():
+            # Easy case. Replace 3-node by 2-node
+            target_node.remove_key(key)
+        else:
+            assert target_node.is_2node() or target_node.is_hole()
+            hole: Optional[Node23[Key, Value]] = target_node.to_hole()
+            # underflow
+            # replacement the 2-node with a hole
+            assert target_node.is_hole()
+            # hole is a leaf and is the root
+            if hole is self.root:
+                # case 0: The hole is the root
+                self._clear_root()
+                return value
+            else:
+                while hole is not None:
+                    if hole is self.root:
+                        # case 0: The hole is the root
+                        new_root = one(hole.nonnull_children)
+                        new_root.parent = self.sentinel()
+                        self._replace_root(new_root, 0)
+                        break
+                    else:
+                        parent = hole.parent
+                        assert self.is_node(parent)
+                        # case 1: The hole has a 2-node as a parent and a 2-node as a sibling
+                        if parent.is_2node() and hole.sibling().is_2node():
+                            hole = self._fixup_case1(hole)
+
+                        # case 2: The hole has a 2-node as a parent and a 3-node as a sibling
+                        elif parent.is_2node() and hole.sibling().is_3node():
+                            hole = self._fixup_case2(hole)
+
+                        # case 3: The hole has a 3-node as a parent with a 2-node as a sibling
+                        elif parent.is_3node() and any(
+                            node.is_2node() for node in parent.nonnull_children
+                        ):
+                            hole = self._fixup_case3(hole)
+                        else:
+                            assert parent.is_3node()
+                            # a < 47 < b < 259 < c < 362 < d < 527 < e < 552 < f < 964 < g
+                            # R----(362 : 965)
+                            #      L----(47 : 259) => (a, b, c)
+                            #      M----(527 : 552) => (d, e, f)
+                            #      R---- 'hole' => (g)
+
+                            # R----(362 : 552)
+                            #      L----(47 : 259) => (a, b, c)
+                            #      M----(527) => (d, e)
+                            #      R---- (964) => (f, g)
+                            if hole is parent.right:
+                                middle = parent.middle
+                                right = parent.right
+                                right.content.append(parent.content.pop())
+                                parent.content.append(middle.content.pop())
+                                if isinstance(middle.children, list) and isinstance(right.children, list):
+                                    child = middle.children.pop()
+                                    right.children.insert(0, child)
+                                    child.parent = right
+                            # a < 211 < b < 476 < c < 757 < d < 849 < e < 872 < f < 923 < g
+                            # R----(757 : 849)
+                            #      L----(211 : 476) => (a, b, c)
+                            #      M---- 'hole' => (d)
+                            #      R----(872 : 923) => (e, f, g)
+
+                            # R----(757 : 872)
+                            #      L---- (211 : 476) => (a, b, c)
+                            #      M---- (849) => (d, e)
+                            #      R---- (923) => (f, g)
+
+                            elif hole is parent.middle:
+                                middle = parent.middle
+                                right = parent.right
+                                middle.content.append(parent.content.pop())
+                                parent.content.append(right.content.pop(0))
+                                if isinstance(middle.children, list) and isinstance(right.children, list):
+                                    child = right.children.pop(0)
+                                    middle.children.append(child)
+                                    child.parent = middle
+                            # a < 172 < b < 275 < c < 409 < d < 678 < e < 684 < f < 926 < g
+                            # R----(172 : 678)
+                            #      L---- 'hole' => (a)
+                            #      M----(275 : 409) => (b, c, d)
+                            #      R----(684 : 926) => (e, f, g)
+
+                            # R----(275 : 678)
+                            #      L----(172) => (a, b)
+                            #      M----(409) => (c, d)
+                            #      R----(684 : 926) => (e, f, g)
+                            else:
+                                assert hole is parent.left
+                                left = parent.left
+                                middle = parent.middle
+                                left.content.append(parent.content.pop(0))
+                                parent.content.insert(0, middle.content.pop(0))
+                                if isinstance(left.children, list) and isinstance(middle.children, list):
+                                    child = middle.children.pop(0)
+                                    left.children.append(child)
+                                    child.parent = left
+                            if not hole.children:
+                                hole.children = self.sentinel()
+                            hole = None
+        self.size -= 1
         return value
 
     def extract_min(self) -> tuple[Key, Value]:
@@ -610,7 +718,7 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                 if node.is_leaf:
                     leaf_depth = depth
                 else:
-                    children = iter(node.nonnull_children())
+                    children = iter(node.nonnull_children)
                     leaf_depth = recurse(next(children), depth)
                     assert all_equal(
                         recurse(child, depth + 1) == leaf_depth for child in children
@@ -667,36 +775,48 @@ def draw_tree_23(
 if __name__ == "__main__":
     from random import randint
 
-    for _ in range(1):
-        tree: Tree23[int, None] = Tree23[int, None]()
-        num_values = 11
-        values = list({randint(0, 1000) for _ in range(num_values)})
-        # values = [22, 30, 35, 40, 45, 60, 82, 51, 55, 75, 87]
+    try:
+        for _ in range(10000):
+            tree: Tree23[int, None] = Tree23[int, None]()
+            num_values = 11
+            values = list({randint(0, 1000) for _ in range(num_values)})
+            values = [257, 194, 897, 72, 941, 945, 754, 243, 317, 541, 350]
+            # print(values)
+            # values = [807, 872, 849, 211, 757, 923, 476]
+            for V in values:
+                tree.insert(V, None, allow_overwrite=True)
+                # print(tree.pretty_str())
+                tree.validate(-maxsize, maxsize)
+                assert V in tree
+
+            print(tree.pretty_str())
+            for V in values:
+                tree.delete(V)
+                print(tree.pretty_str())
+                tree.validate(-maxsize, maxsize)
+                assert V not in tree
+    except Exception as e:
+        print(values)
+        raise
+
+        # tree.size = 11
+        # n45 = Node23[int, None]([(45, None)])
+        # n30 = Node23[int, None]([(30, None)])
+        # n6082 = Node23[int, None]([(60, None), (82, None)])
+        # n45.children = [n30, n6082]
+        # n30.parent = n6082.parent = n45
+        # tree.root = n45
         #
-        # for V in values:
-        #     tree.insert(V, None, allow_overwrite=True)
-        #     # print(tree.pretty_str())
-        #     tree.validate(-maxsize, maxsize)
-        #     assert V in tree
-
-        tree.size = 11
-        n45 = Node23[int, None]([(45, None)])
-        n30 = Node23[int, None]([(30, None)])
-        n6082 = Node23[int, None]([(60, None), (82, None)])
-        n45.children = [n30, n6082]
-        n30.parent = n6082.parent = n45
-        tree.root = n45
-
-        n22 = Node23[int, None]([(22, None)])
-        n3540 = Node23[int, None]([(35, None), (40, None)])
-        n30.children = [n22, n3540]
-        n22.parent = n3540.parent = n30
-
-        n5155 = Node23[int, None]([(51, None), (55, None)])
-        n75 = Node23[int, None]([(75, None)])
-        n87 = Node23[int, None]([(87, None)])
-        n5155.parent = n75.parent = n87.parent = n6082
-        n6082.children = [n5155, n75, n87]
+        # n22 = Node23[int, None]([(22, None)])
+        # n3540 = Node23[int, None]([(35, None), (40, None)])
+        # n30.children = [n22, n3540]
+        # n22.parent = n3540.parent = n30
+        #
+        # n5155 = Node23[int, None]([(51, None), (55, None)])
+        # n75 = Node23[int, None]([(75, None)])
+        # n87 = Node23[int, None]([(87, None)])
+        # n5155.parent = n75.parent = n87.parent = n6082
+        # n6082.children = [n5155, n75, n87]
 
         # n45 = Node23[int, None]([(45, None)])
         # n3032 = Node23[int, None]([(30, None), (32, None)])
@@ -714,29 +834,45 @@ if __name__ == "__main__":
         # n60.children = [n51, n75]
         # n51.parent = n75.parent = n60
 
-        tree.root = n45
-        tree.validate(-maxsize, maxsize)
-
-        # print(tree.dot())
-
+        # tree.root = n45
+        #
+        # # print(tree.dot())
+        #
+        # # tree.delete(22)
+        # #
+        # # print(tree.pretty_str())
+        # #
+        # tree.validate(-maxsize, maxsize)
+        # # tree.dot()
+        # print(tree.pretty_str())
         # tree.delete(22)
-        #
         # print(tree.pretty_str())
-        #
-        tree.validate(-maxsize, maxsize)
-        # tree.dot()
+        # tree.validate(-maxsize, maxsize)
+        # tree.delete(30)
         # print(tree.pretty_str())
-        tree.delete(22)
-        tree.delete(30)
-        print(tree.pretty_str())
-        tree.delete(55)
-        tree.delete(82)
-        tree.validate(-maxsize, maxsize)
-        print(tree.pretty_str())
-        tree.delete(51)
+        # tree.validate(-maxsize, maxsize)
+        # tree.delete(55)
+        # print(tree.pretty_str())
+        # tree.validate(-maxsize, maxsize)
+        # tree.delete(45)
+        # print(tree.pretty_str())
+        # tree.validate(-maxsize, maxsize)
+        #
+        # tree.delete(82)
+        # print(tree.pretty_str())
+        # tree.validate(-maxsize, maxsize)
+        #
+        # tree.delete(35)
+        # print(tree.pretty_str())
+        # tree.validate(-maxsize, maxsize)
 
-        tree.validate(-maxsize, maxsize)
-        print(tree.pretty_str())
+        # tree.delete(82)
+        # tree.validate(-maxsize, maxsize)
+        # print(tree.pretty_str())
+        # tree.delete(51)
+        #
+        # tree.validate(-maxsize, maxsize)
+        # print(tree.pretty_str())
 
         # for k in values:
         #     deleted = tree.delete(k)
