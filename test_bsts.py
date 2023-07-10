@@ -34,6 +34,7 @@ def gen_random_string(count: int) -> Iterator[str]:
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
+        Tree23
     ],
 )
 def test_insertion_and_deletion(bst_class: Type[AbstractBST]):

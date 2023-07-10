@@ -117,6 +117,8 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
                         )
 
     def __repr__(self):
+        if self.is_hole():
+            return 'hole'
         if self.is_2node():
             return f"({self.content[0][0]})"
         else:
@@ -438,23 +440,149 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
     def _fixup_case3(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
         parent = hole.parent
         assert self.is_node(parent) and parent.is_3node()
-        # case 2.3
-        # we have a 3-node parent
-        # remove one child
-        data: list[tuple[Key, Value]] = sum(
-            [c.content for c in parent.nonnull_children],
-            parent.content,
-        )
-        mid = len(data) // 2
-        data.sort(key=use_key)
-        parent.content = data[mid : mid + 1]
-        parent.children = [
-            Node23[Key, Value](content=data[:mid], parent=parent),
-            Node23[Key, Value](content=data[mid + 1 :], parent=parent),
-        ]
-        for child in parent.nonnull_children:
-            child.parent = parent
+        # we have about 6 cases
+        if hole is parent.left:
+            if parent.middle.is_2node():
+                middle = parent.middle
+                # R----(287 : 830)
+                #      L----hole -> (a)
+                #      M----(466) -> (b, c)
+                #      R----X
+                # R----(830)
+                #      M----(287: 466) -> (a, b, c)
+                #      R----X
+                middle.content.insert(0, parent.content.pop(0))
+                if hole.children:
+                    child = hole.nonnull_children.pop()
+                    middle.nonnull_children.insert(0, child)
+                    child.parent = middle
+                parent.remove_child(hole)
+            else:
+                right = parent.right
+                middle = parent.middle
+                assert parent.right.is_2node()
+                # R----(303 : 785)
+                #      L----hole -> a
+                #      M----(374 : 700) -> (b, c, d)
+                #      R----(980) -> (e, f)
+
+                # R----(700)
+                #      L----(303 : 374) -> (a, b, c)
+                #      R----(785 : 980) -> (d, e, f)
+                right.content.insert(0, parent.content.pop())
+                middle.content.insert(0, parent.content.pop())
+                parent.content.append(middle.content.pop())
+                if hole.children:
+                    child_mid = hole.nonnull_children.pop()
+                    child_mid.parent = middle
+                    middle.nonnull_children.insert(0, child_mid)
+
+                    child_right = middle.nonnull_children.pop()
+                    child_right.parent = right
+                    right.nonnull_children.insert(0, child_right)
+                parent.remove_child(hole)
+        elif hole is parent.middle:
+            if parent.left.is_2node():
+                left = parent.left
+                assert self.is_node(left)
+                # R----(317 : 754)
+                #      L----(194) -> (a, b)
+                #      M----hole -> c
+                #      R----(941, 1000) -> (d, e, f?)
+                # merge hole into a 2 node with L
+                left.content.append(parent.content.pop(0))
+                if left.children:
+                    hole_child = hole.nonnull_children[0]
+                    left.nonnull_children.append(hole_child)
+                    hole_child.parent = left
+                parent.remove_child(hole)
+            else:
+                right = parent.right
+                assert parent.right.is_2node()
+                # R----(269 : 376)
+                #      L----X
+                #      M----hole -> (a)
+                #      R----(535) -> (b,c)
+                right.content.insert(0, parent.content.pop())
+                if hole.children:
+                    child = hole.nonnull_children.pop()
+                    right.nonnull_children.insert(0, child)
+                    child.parent = right
+                parent.remove_child(hole)
+        else:
+            assert hole is parent.right
+            middle = parent.middle
+            if parent.left.is_2node():
+                assert self.is_node(middle)
+                if parent.middle.is_3node():
+                    # R----(317 : 754)
+                    #      L----X
+                    #      M----(350 : 541) -> (c, d, e)
+                    #      R----hole -> f
+
+                    # R----(317 : 541)
+                    #      L----X
+                    #      M----(350) -> (c, d)
+                    #      R----(754) -> (e, f)
+                    hole.content.append(parent.content.pop())
+                    parent.content.append(middle.content.pop())
+                    if hole.children:
+                        child = middle.nonnull_children.pop()
+                        hole.nonnull_children.insert(0, child)
+                        child.parent = hole
+                else:
+                    # R----(317 : 541)
+                    #      L----(243) -> (a, b)
+                    #      M----(350) -> (c, d)
+                    #      R----hole -> e
+
+                    # R----(317)
+                    #      L----(243) -> (a, b)
+                    #      R----(350: 541) -> (c, d, e)
+                    middle.content.append(parent.content.pop())
+                    if hole.children:
+                        child = hole.nonnull_children.pop()
+                        middle.nonnull_children.append(child)
+                        child.parent = middle
+                    parent.remove_child(hole)
+            else:
+                assert parent.middle.is_2node()
+                # R----(306 : 721)
+                #      L---- X
+                #      M----(504) -> a, b
+                #      R----hole -> c
+
+                # R----(306 : 721)
+                #      L---- X
+                #      R ----(504: 721) -> (a, b, c)
+                middle.content.append(parent.content.pop())
+                if hole.children:
+                    child = hole.nonnull_children.pop()
+                    middle.nonnull_children.append(child)
+                    child.parent = middle
+                parent.remove_child(hole)
+        if not hole.children:
+            hole.children = self.sentinel()
+
         return None
+
+        # # case 2.3
+        # # we have a 3-node parent
+        # # remove one child
+        # data: list[tuple[Key, Value]] = sum(
+        #     [c.content for c in parent.nonnull_children],
+        #     parent.content,
+        # )
+        # mid = len(data) // 2
+        # data.sort(key=use_key)
+        # parent.content = data[mid : mid + 1]
+        # parent.children = [
+        #     Node23[Key, Value](content=data[:mid], parent=parent),
+        #     Node23[Key, Value](content=data[mid + 1 :], parent=parent),
+        # ]
+        # for child in parent.nonnull_children:
+        #     child.parent = parent
+        # return None
 
     def delete(self, key: Key) -> Value:
         target_node = self.access(key)
@@ -773,14 +901,17 @@ def draw_tree_23(
 
 
 if __name__ == "__main__":
-    from random import randint
+    from random import randint, shuffle
 
     try:
         for _ in range(10000):
             tree: Tree23[int, None] = Tree23[int, None]()
-            num_values = 11
-            values = list({randint(0, 1000) for _ in range(num_values)})
-            values = [257, 194, 897, 72, 941, 945, 754, 243, 317, 541, 350]
+            num_values = 100
+            values = list({randint(0, 100000) for _ in range(num_values)})
+            # values = [6, 966, 860, 903, 138, 267, 175, 914, 791, 474, 604, 701, 735]
+            # values = [928, 227, 415, 969, 104, 459, 146, 693, 949, 438, 761, 955, 607]
+            # values = [806, 648, 969, 746, 237, 925, 174, 721, 306, 504, 61]
+            # values = [736, 322, 104, 554, 76, 269, 110, 535, 376, 315, 255]
             # print(values)
             # values = [807, 872, 849, 211, 757, 923, 476]
             for V in values:
@@ -788,11 +919,12 @@ if __name__ == "__main__":
                 # print(tree.pretty_str())
                 tree.validate(-maxsize, maxsize)
                 assert V in tree
-
-            print(tree.pretty_str())
-            for V in values:
+            shuffle(values)
+            # print(tree.pretty_str())
+            for c, V in enumerate(values):
                 tree.delete(V)
-                print(tree.pretty_str())
+                # print(tree.pretty_str())
+                assert tree.size == (len(values) - (c + 1))
                 tree.validate(-maxsize, maxsize)
                 assert V not in tree
     except Exception as e:
