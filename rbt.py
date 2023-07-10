@@ -188,7 +188,7 @@ class RedBlackTree(
                 x = z.left
                 self.transplant(z, z.left)
             else:
-                y = z.nonnull_right.minimum()  # find z's successor
+                y = z.nonnull_right.minimum_node()  # find z's successor
                 y_original_color = y.color
                 x = y.right
                 if y is not z.right:
@@ -341,7 +341,7 @@ class RedBlackTree(
         return RBTSentinel
 
     def extract_min(self) -> tuple[Key, Value]:
-        z = self.minimum()
+        z = self.minimum_node()
         y = z
         y_original_color = y.color
         if self.is_sentinel(z.right):
@@ -349,7 +349,7 @@ class RedBlackTree(
             self.transplant(z, z.left)
         else:
             assert self.is_node(z.right)
-            y = z.right.minimum()
+            y = z.right.minimum_node()
             y_original_color = y.color
             x = y.right
             self.transplant(y, y.right)
@@ -365,7 +365,7 @@ class RedBlackTree(
         return z.key, z.value
 
     def extract_max(self) -> tuple[Key, Value]:
-        z = self.maximum()
+        z = self.maximum_node()
         y = z
         y_original_color = y.color
         if self.is_sentinel(z.left):
@@ -373,7 +373,7 @@ class RedBlackTree(
             self.transplant(z, z.right)
         else:
             assert self.is_node(z.left)
-            y = z.left.maximum()
+            y = z.left.maximum_node()
             y_original_color = y.color
             x = y.left
             self.transplant(y, y.left)

@@ -139,7 +139,7 @@ class AVLTreeIterative(
                 self.transplant(node, node.left)
                 self.avl_fixup(node.parent)
             else:
-                successor = node.nonnull_right.minimum()
+                successor = node.nonnull_right.minimum_node()
                 if successor is not node.right:
                     assert self.is_sentinel(successor.left)
                     assert self.is_node(node.right)
@@ -159,7 +159,7 @@ class AVLTreeIterative(
             raise ValueError(f"Key {key} not in tree") from e
 
     def extract_min(self) -> tuple[Key, Value]:
-        root = self.minimum()
+        root = self.minimum_node()
         keyval = (root.key, root.value)
         self.transplant(root, root.right)
         self.avl_fixup(root.parent)
@@ -167,7 +167,7 @@ class AVLTreeIterative(
         return keyval
 
     def extract_max(self) -> tuple[Key, Value]:
-        root = self.maximum()
+        root = self.maximum_node()
         keyval = (root.key, root.value)
         self.transplant(root, root.left)
         self.avl_fixup(root.parent)

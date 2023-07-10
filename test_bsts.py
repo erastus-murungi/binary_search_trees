@@ -162,6 +162,7 @@ def test_predecessor(bst_class: Type[AbstractBST]):
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
+        Tree23
     ],
 )
 def test_minimum(bst_class: Type[AbstractBST]):
@@ -171,11 +172,11 @@ def test_minimum(bst_class: Type[AbstractBST]):
         for value in values:
             bst.insert(value, None)
 
-        assert bst.minimum().key == min(values)
+        assert bst.minimum()[0] == min(values)
 
     bst_empty = bst_class()
     with pytest.raises(ValueError):
-        _ = bst_empty.minimum()
+        _ = bst_empty.minimum_node()
 
 
 @pytest.mark.parametrize(
@@ -201,11 +202,11 @@ def test_maximum(bst_class: Type[AbstractBST]):
         for value in values:
             bst.insert(value, None)
 
-        assert bst.maximum().key == max(values)
+        assert bst.maximum()[0] == max(values)
 
     bst_empty = bst_class()
     with pytest.raises(ValueError):
-        _ = bst_empty.maximum()
+        _ = bst_empty.maximum_node()
 
 
 @pytest.mark.parametrize(

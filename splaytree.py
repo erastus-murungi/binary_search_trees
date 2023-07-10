@@ -108,7 +108,7 @@ class SplayTree(
             if self.is_node(left):
                 left.parent = self.sentinel()
                 left.parent = self.sentinel()
-                m = left.maximum()
+                m = left.maximum_node()
                 self.splay(m)
                 self.root = m
             if self.is_node(right):

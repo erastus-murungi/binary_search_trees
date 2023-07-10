@@ -137,13 +137,21 @@ class AbstractSentinel(
         return 0
 
 
-class TreeQueryMixin(Generic[Key, NodeType, SentinelType], ABC):
+class TreeQueryMixin(Generic[Key, Value, NodeType, SentinelType], ABC):
     @abstractmethod
-    def minimum(self) -> NodeType:
+    def minimum_node(self) -> NodeType:
         pass
 
     @abstractmethod
-    def maximum(self) -> NodeType:
+    def maximum_node(self) -> NodeType:
+        pass
+
+    @abstractmethod
+    def minimum(self) -> tuple[Key, Value]:
+        pass
+
+    @abstractmethod
+    def maximum(self) -> tuple[Key, Value]:
         pass
 
     @abstractmethod
@@ -445,7 +453,7 @@ class Node(
     Generic[Key, Value, NodeType, SentinelType],
     NodeMutationMixin[Key, Value, NodeType, SentinelType],
     MutableMapping[Key, Value],
-    TreeQueryMixin[Key, NodeType, SentinelType],
+    TreeQueryMixin[Key, Value, NodeType, SentinelType],
     TreeIterativeMixin[NodeType],
     MemberMixin[Key, NodeType],
     PrettyLineYieldMixin,
@@ -474,7 +482,7 @@ class Tree(
     TreeMutationMixin[Key, Value, NodeType],
     NodeConstructorMixin[NodeType, Key, Value],
     MutableMapping[Key, Value],
-    TreeQueryMixin[Key, NodeType, SentinelType],
+    TreeQueryMixin[Key, Value, NodeType, SentinelType],
     TreeIterativeMixin[NodeType],
     MemberMixin[Key, NodeType],
     SentinelConstructorMixin[SentinelType],

@@ -185,15 +185,15 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
     def min_key(self) -> Key:
         return self.content[0][0]
 
-    def minimum(self) -> Node23[Key, Value]:
+    def minimum_node(self) -> Node23[Key, Value]:
         if self.is_leaf:
             return self
-        return self.left.minimum()
+        return self.left.minimum_node()
 
-    def maximum(self) -> Node23[Key, Value]:
+    def maximum_node(self) -> Node23[Key, Value]:
         if self.is_leaf:
             return self
-        return self.right.maximum()
+        return self.right.maximum_node()
 
     def trickle_down(self, key: Key) -> Node23[Key, Value]:
         assert not self.contains_key(key)
@@ -264,6 +264,12 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
 
     def level_order(self) -> Iterator[Node23[Key, Value]]:
         raise NotImplementedError()
+
+    def minimum(self) -> tuple[Key, Value]:
+        return self.minimum_node().content[0]
+
+    def maximum(self) -> tuple[Key, Value]:
+        return self.maximum_node().content[-1]
 
     def yield_edges(self) -> Iterator[tuple[Node23[Key, Value], Node23[Key, Value]]]:
         if isinstance(self.children, list):
@@ -566,24 +572,6 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
         return None
 
-        # # case 2.3
-        # # we have a 3-node parent
-        # # remove one child
-        # data: list[tuple[Key, Value]] = sum(
-        #     [c.content for c in parent.nonnull_children],
-        #     parent.content,
-        # )
-        # mid = len(data) // 2
-        # data.sort(key=use_key)
-        # parent.content = data[mid : mid + 1]
-        # parent.children = [
-        #     Node23[Key, Value](content=data[:mid], parent=parent),
-        #     Node23[Key, Value](content=data[mid + 1 :], parent=parent),
-        # ]
-        # for child in parent.nonnull_children:
-        #     child.parent = parent
-        # return None
-
     def delete(self, key: Key) -> Value:
         target_node = self.access(key)
         value = target_node.access_value(key)
@@ -592,11 +580,11 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
             # replace node with successor
             if target_node.is_3node():
                 if key == target_node.min_key():
-                    root_successor = target_node.middle.minimum()
+                    root_successor = target_node.middle.minimum_node()
                 else:
-                    root_successor = target_node.right.minimum()
+                    root_successor = target_node.right.minimum_node()
             else:
-                root_successor = target_node.right.minimum()
+                root_successor = target_node.right.minimum_node()
             # assert root.successor.is_leaf and is_sorted(root.successor.content, key=use_key)
             successor_key, successor_value = root_successor.content.pop(0)
             target_node.remove_key(key)
@@ -786,10 +774,16 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         if self.is_node(self.root):
             yield from traverse(self.root)
 
-    def minimum(self) -> Node23[Key, Value]:
+    def minimum_node(self) -> Node23[Key, Value]:
         raise NotImplementedError()
 
-    def maximum(self) -> Node23[Key, Value]:
+    def maximum_node(self) -> Node23[Key, Value]:
+        raise NotImplementedError()
+
+    def minimum(self) -> tuple[Key, Value]:
+        raise NotImplementedError()
+
+    def maximum(self) -> tuple[Key, Value]:
         raise NotImplementedError()
 
     def successor(self, key: Key) -> Union[Node23[Key, Value], Sentinel]:

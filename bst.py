@@ -146,11 +146,11 @@ class AbstractBST(Tree[Key, Value, BinaryNodeType, SentinelType], ABC):
         self.root = self.nonnull_root.delete_max()
         self.size -= 1
 
-    def minimum(self) -> BinaryNodeType:
-        return self.nonnull_root.minimum()
+    def minimum_node(self) -> BinaryNodeType:
+        return self.nonnull_root.minimum_node()
 
-    def maximum(self) -> BinaryNodeType:
-        return self.nonnull_root.maximum()
+    def maximum_node(self) -> BinaryNodeType:
+        return self.nonnull_root.maximum_node()
 
     def right_rotate(
         self,
@@ -317,17 +317,25 @@ class AbstractBSTIterative(
                 current = current.nonnull_right
         return current, parent
 
-    def minimum(self) -> BinaryNodeType:
+    def minimum_node(self) -> BinaryNodeType:
         current = self.nonnull_root
         while self.is_node(current.left):
             current = current.left
         return current
 
-    def maximum(self) -> BinaryNodeType:
+    def maximum_node(self) -> BinaryNodeType:
         current = self.nonnull_root
         while self.is_node(current.right):
             current = current.right
         return current
+
+    def maximum(self) -> tuple[Key, Value]:
+        node = self.maximum_node()
+        return node.key, node.value
+
+    def minimum(self) -> tuple[Key, Value]:
+        node = self.minimum_node()
+        return node.key, node.value
 
     def insert_node(self, node: BinaryNodeType, allow_overwrite: bool = True) -> bool:
         if self.is_sentinel(self.root):
@@ -387,7 +395,7 @@ class AbstractBSTIterative(
             elif self.is_sentinel(target_node.right):
                 self.transplant(target_node, target_node.left)
             else:
-                successor = target_node.nonnull_right.minimum()
+                successor = target_node.nonnull_right.minimum_node()
                 if successor != target_node.right:
                     self.transplant(successor, successor.right)
                     successor.right = target_node.right
@@ -470,7 +478,7 @@ class AbstractBSTIterative(
         try:
             node = self.access(key)
             if self.is_node(node.right):
-                return node.right.minimum()
+                return node.right.minimum_node()
             else:
                 candidate: Optional[BinaryNodeType] = None
                 current = self.root
@@ -490,7 +498,7 @@ class AbstractBSTIterative(
         try:
             node = self.access(key)
             if self.is_node(node.left):
-                return node.left.maximum()
+                return node.left.maximum_node()
             else:
                 candidate: Optional[BinaryNodeType] = None
                 current = self.root
@@ -610,7 +618,7 @@ class AbstractBSTWithParentIterative(
             elif self.is_sentinel(node.right):
                 self.transplant(node, node.left)
             else:
-                successor = node.right.minimum()
+                successor = node.right.minimum_node()
                 if successor is not node.right:
                     self.transplant(successor, successor.right)
                     successor.right = node.right

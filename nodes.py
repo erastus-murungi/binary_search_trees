@@ -113,15 +113,23 @@ class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, 
                 f"Key {key} not found, Sentinel {self.right} reached"
             )
 
-    def minimum(self) -> BinaryNodeType:
+    def minimum_node(self) -> BinaryNodeType:
         if self._is_node(self.left):
-            return self.left.minimum()
+            return self.left.minimum_node()
         return cast(BinaryNodeType, self)
 
-    def maximum(self) -> BinaryNodeType:
+    def maximum_node(self) -> BinaryNodeType:
         if self._is_node(self.right):
-            return self.right.maximum()
+            return self.right.maximum_node()
         return cast(BinaryNodeType, self)
+
+    def minimum(self) -> tuple[Key, Value]:
+        node = self.minimum_node()
+        return node.key, node.value
+
+    def maximum(self):
+        node = self.maximum_node()
+        return node.key, node.value
 
     @property
     def nonnull_right(self) -> BinaryNodeType:
@@ -145,7 +153,7 @@ class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, 
                 return cast(BinaryNodeType, self)
         else:
             assert key == self.key
-            return self.nonnull_right.minimum()
+            return self.nonnull_right.minimum_node()
 
     def predecessor(self, key: Key) -> BinaryNodeType:
         if key < self.key:
@@ -157,7 +165,7 @@ class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, 
                 return cast(BinaryNodeType, self)
         else:
             assert key == self.key
-            return self.nonnull_left.maximum()
+            return self.nonnull_left.maximum_node()
 
     def insert_node(
         self, node: BinaryNodeType, allow_overwrite: bool = False
