@@ -152,6 +152,14 @@ class AbstractBST(Tree[Key, Value, BinaryNodeType, SentinelType], ABC):
     def maximum_node(self) -> BinaryNodeType:
         return self.nonnull_root.maximum_node()
 
+    def minimum(self) -> tuple[Key, Value]:
+        node = self.minimum_node()
+        return node.key, node.value
+
+    def maximum(self) -> tuple[Key, Value]:
+        node = self.maximum_node()
+        return node.key, node.value
+
     def right_rotate(
         self,
         node: BinaryNodeType,

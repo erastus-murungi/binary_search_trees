@@ -118,7 +118,7 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
 
     def __repr__(self):
         if self.is_hole():
-            return 'hole'
+            return "hole"
         if self.is_2node():
             return f"({self.content[0][0]})"
         else:
@@ -652,7 +652,9 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                                 right = parent.right
                                 right.content.append(parent.content.pop())
                                 parent.content.append(middle.content.pop())
-                                if isinstance(middle.children, list) and isinstance(right.children, list):
+                                if isinstance(middle.children, list) and isinstance(
+                                    right.children, list
+                                ):
                                     child = middle.children.pop()
                                     right.children.insert(0, child)
                                     child.parent = right
@@ -672,7 +674,9 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                                 right = parent.right
                                 middle.content.append(parent.content.pop())
                                 parent.content.append(right.content.pop(0))
-                                if isinstance(middle.children, list) and isinstance(right.children, list):
+                                if isinstance(middle.children, list) and isinstance(
+                                    right.children, list
+                                ):
                                     child = right.children.pop(0)
                                     middle.children.append(child)
                                     child.parent = middle
@@ -692,7 +696,9 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                                 middle = parent.middle
                                 left.content.append(parent.content.pop(0))
                                 parent.content.insert(0, middle.content.pop(0))
-                                if isinstance(left.children, list) and isinstance(middle.children, list):
+                                if isinstance(left.children, list) and isinstance(
+                                    middle.children, list
+                                ):
                                     child = middle.children.pop(0)
                                     left.children.append(child)
                                     child.parent = left
@@ -775,16 +781,22 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
             yield from traverse(self.root)
 
     def minimum_node(self) -> Node23[Key, Value]:
-        raise NotImplementedError()
+        current = self.nonnull_root
+        while not current.is_leaf:
+            current = current.left
+        return current
 
     def maximum_node(self) -> Node23[Key, Value]:
-        raise NotImplementedError()
+        current = self.nonnull_root
+        while not current.is_leaf:
+            current = current.right
+        return current
 
     def minimum(self) -> tuple[Key, Value]:
-        raise NotImplementedError()
+        return self.minimum_node().content[0]
 
     def maximum(self) -> tuple[Key, Value]:
-        raise NotImplementedError()
+        return self.maximum_node().content[-1]
 
     def successor(self, key: Key) -> Union[Node23[Key, Value], Sentinel]:
         raise NotImplementedError()

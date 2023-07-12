@@ -34,7 +34,7 @@ def gen_random_string(count: int) -> Iterator[str]:
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
-        Tree23
+        Tree23,
     ],
 )
 def test_insertion_and_deletion(bst_class: Type[AbstractBST]):
@@ -162,7 +162,7 @@ def test_predecessor(bst_class: Type[AbstractBST]):
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
-        Tree23
+        Tree23,
     ],
 )
 def test_minimum(bst_class: Type[AbstractBST]):
@@ -193,6 +193,7 @@ def test_minimum(bst_class: Type[AbstractBST]):
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
+        Tree23,
     ],
 )
 def test_maximum(bst_class: Type[AbstractBST]):
