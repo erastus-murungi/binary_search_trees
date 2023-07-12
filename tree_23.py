@@ -6,10 +6,10 @@ from operator import itemgetter
 from sys import maxsize
 from typing import Any, Iterator, Optional, Type, TypeGuard, Union
 
+from more_itertools import one
+
 from core import Key, Node, NodeValidationError, SentinelReferenceError, Tree, Value
 from nodes import Sentinel
-
-from more_itertools import one
 
 
 def all_equal(iterator: Iterator[Any]) -> bool:
@@ -572,6 +572,74 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
         return None
 
+    def _fixup_case4(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
+        # a < 47 < b < 259 < c < 362 < d < 527 < e < 552 < f < 964 < g
+        # R----(362 : 965)
+        #      L----(47 : 259) => (a, b, c)
+        #      M----(527 : 552) => (d, e, f)
+        #      R---- 'hole' => (g)
+
+        # R----(362 : 552)
+        #      L----(47 : 259) => (a, b, c)
+        #      M----(527) => (d, e)
+        #      R---- (964) => (f, g)
+        parent = hole.parent
+        assert self.is_node(parent)
+
+        if hole is parent.right:
+            middle = parent.middle
+            right = parent.right
+            right.content.append(parent.content.pop())
+            parent.content.append(middle.content.pop())
+            if isinstance(middle.children, list) and isinstance(right.children, list):
+                child = middle.children.pop()
+                right.children.insert(0, child)
+                child.parent = right
+        # a < 211 < b < 476 < c < 757 < d < 849 < e < 872 < f < 923 < g
+        # R----(757 : 849)
+        #      L----(211 : 476) => (a, b, c)
+        #      M---- 'hole' => (d)
+        #      R----(872 : 923) => (e, f, g)
+
+        # R----(757 : 872)
+        #      L---- (211 : 476) => (a, b, c)
+        #      M---- (849) => (d, e)
+        #      R---- (923) => (f, g)
+
+        elif hole is parent.middle:
+            middle = parent.middle
+            right = parent.right
+            middle.content.append(parent.content.pop())
+            parent.content.append(right.content.pop(0))
+            if isinstance(middle.children, list) and isinstance(right.children, list):
+                child = right.children.pop(0)
+                middle.children.append(child)
+                child.parent = middle
+        # a < 172 < b < 275 < c < 409 < d < 678 < e < 684 < f < 926 < g
+        # R----(172 : 678)
+        #      L---- 'hole' => (a)
+        #      M----(275 : 409) => (b, c, d)
+        #      R----(684 : 926) => (e, f, g)
+
+        # R----(275 : 678)
+        #      L----(172) => (a, b)
+        #      M----(409) => (c, d)
+        #      R----(684 : 926) => (e, f, g)
+        else:
+            assert hole is parent.left
+            left = parent.left
+            middle = parent.middle
+            left.content.append(parent.content.pop(0))
+            parent.content.insert(0, middle.content.pop(0))
+            if isinstance(left.children, list) and isinstance(middle.children, list):
+                child = middle.children.pop(0)
+                left.children.append(child)
+                child.parent = left
+        if not hole.children:
+            hole.children = self.sentinel()
+
+        return None
+
     def delete(self, key: Key) -> Value:
         target_node = self.access(key)
         value = target_node.access_value(key)
@@ -600,119 +668,71 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         if target_node.is_3node():
             # Easy case. Replace 3-node by 2-node
             target_node.remove_key(key)
+            self.size -= 1
         else:
             assert target_node.is_2node() or target_node.is_hole()
-            hole: Optional[Node23[Key, Value]] = target_node.to_hole()
-            # underflow
-            # replacement the 2-node with a hole
-            assert target_node.is_hole()
-            # hole is a leaf and is the root
-            if hole is self.root:
-                # case 0: The hole is the root
-                self._clear_root()
-                return value
-            else:
-                while hole is not None:
-                    if hole is self.root:
-                        # case 0: The hole is the root
-                        new_root = one(hole.nonnull_children)
-                        new_root.parent = self.sentinel()
-                        self._replace_root(new_root, 0)
-                        break
-                    else:
-                        parent = hole.parent
-                        assert self.is_node(parent)
-                        # case 1: The hole has a 2-node as a parent and a 2-node as a sibling
-                        if parent.is_2node() and hole.sibling().is_2node():
-                            hole = self._fixup_case1(hole)
-
-                        # case 2: The hole has a 2-node as a parent and a 3-node as a sibling
-                        elif parent.is_2node() and hole.sibling().is_3node():
-                            hole = self._fixup_case2(hole)
-
-                        # case 3: The hole has a 3-node as a parent with a 2-node as a sibling
-                        elif parent.is_3node() and any(
-                            node.is_2node() for node in parent.nonnull_children
-                        ):
-                            hole = self._fixup_case3(hole)
-                        else:
-                            assert parent.is_3node()
-                            # a < 47 < b < 259 < c < 362 < d < 527 < e < 552 < f < 964 < g
-                            # R----(362 : 965)
-                            #      L----(47 : 259) => (a, b, c)
-                            #      M----(527 : 552) => (d, e, f)
-                            #      R---- 'hole' => (g)
-
-                            # R----(362 : 552)
-                            #      L----(47 : 259) => (a, b, c)
-                            #      M----(527) => (d, e)
-                            #      R---- (964) => (f, g)
-                            if hole is parent.right:
-                                middle = parent.middle
-                                right = parent.right
-                                right.content.append(parent.content.pop())
-                                parent.content.append(middle.content.pop())
-                                if isinstance(middle.children, list) and isinstance(
-                                    right.children, list
-                                ):
-                                    child = middle.children.pop()
-                                    right.children.insert(0, child)
-                                    child.parent = right
-                            # a < 211 < b < 476 < c < 757 < d < 849 < e < 872 < f < 923 < g
-                            # R----(757 : 849)
-                            #      L----(211 : 476) => (a, b, c)
-                            #      M---- 'hole' => (d)
-                            #      R----(872 : 923) => (e, f, g)
-
-                            # R----(757 : 872)
-                            #      L---- (211 : 476) => (a, b, c)
-                            #      M---- (849) => (d, e)
-                            #      R---- (923) => (f, g)
-
-                            elif hole is parent.middle:
-                                middle = parent.middle
-                                right = parent.right
-                                middle.content.append(parent.content.pop())
-                                parent.content.append(right.content.pop(0))
-                                if isinstance(middle.children, list) and isinstance(
-                                    right.children, list
-                                ):
-                                    child = right.children.pop(0)
-                                    middle.children.append(child)
-                                    child.parent = middle
-                            # a < 172 < b < 275 < c < 409 < d < 678 < e < 684 < f < 926 < g
-                            # R----(172 : 678)
-                            #      L---- 'hole' => (a)
-                            #      M----(275 : 409) => (b, c, d)
-                            #      R----(684 : 926) => (e, f, g)
-
-                            # R----(275 : 678)
-                            #      L----(172) => (a, b)
-                            #      M----(409) => (c, d)
-                            #      R----(684 : 926) => (e, f, g)
-                            else:
-                                assert hole is parent.left
-                                left = parent.left
-                                middle = parent.middle
-                                left.content.append(parent.content.pop(0))
-                                parent.content.insert(0, middle.content.pop(0))
-                                if isinstance(left.children, list) and isinstance(
-                                    middle.children, list
-                                ):
-                                    child = middle.children.pop(0)
-                                    left.children.append(child)
-                                    child.parent = left
-                            if not hole.children:
-                                hole.children = self.sentinel()
-                            hole = None
-        self.size -= 1
+            self._remove_hole(target_node.to_hole())
         return value
 
+    def _remove_hole(self, hole: Optional[Node23[Key, Value]]) -> None:
+        # hole is a leaf and is the root
+        if hole is self.root:
+            # case 0: The hole is the root
+            self._clear_root()
+            return
+        else:
+            while hole is not None:
+                if hole is self.root:
+                    # case 0: The hole is the root
+                    new_root = one(hole.nonnull_children)
+                    new_root.parent = self.sentinel()
+                    self._replace_root(new_root, 0)
+                    break
+                else:
+                    parent = hole.parent
+                    assert self.is_node(parent)
+
+                    # case 1: The hole has a 2-node as a parent and a 2-node as a sibling
+                    if parent.is_2node() and hole.sibling().is_2node():
+                        hole = self._fixup_case1(hole)
+
+                    # case 2: The hole has a 2-node as a parent and a 3-node as a sibling
+                    elif parent.is_2node() and hole.sibling().is_3node():
+                        hole = self._fixup_case2(hole)
+
+                    # case 3: The hole has a 3-node as a parent with a 2-node as a sibling
+                    elif parent.is_3node() and any(
+                        node.is_2node() for node in parent.nonnull_children
+                    ):
+                        hole = self._fixup_case3(hole)
+                    # case 4: The hole has a 3-node as a parent with only 3-node siblings
+                    else:
+                        hole = self._fixup_case4(hole)
+        self.size -= 1
+
     def extract_min(self) -> tuple[Key, Value]:
-        raise NotImplementedError()
+        min_node = self.minimum_node()
+        assert min_node.is_leaf
+
+        keyval = min_node.content.pop(0)
+        if not min_node.content:
+            self._remove_hole(min_node.to_hole())
+        else:
+            self.size -= 1
+
+        return keyval
 
     def extract_max(self) -> tuple[Key, Value]:
-        raise NotImplementedError()
+        max_node = self.maximum_node()
+        assert max_node.is_leaf
+
+        keyval = max_node.content.pop()
+        if not max_node.content:
+            self._remove_hole(max_node.to_hole())
+        else:
+            self.size -= 1
+
+        return keyval
 
     def delete_min(self) -> None:
         raise NotImplementedError()
@@ -830,7 +850,10 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
     def insert_node(
         self, node: Node23[Key, Value], allow_overwrite: bool = True
     ) -> bool:
-        raise NotImplementedError()
+        raise NotImplementedError(
+            "insert node not implemented for this class "
+            "because of the ambiguity of a node"
+        )
 
     @classmethod
     def sentinel_class(cls) -> Type[Sentinel]:

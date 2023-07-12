@@ -223,6 +223,7 @@ def test_maximum(bst_class: Type[AbstractBST]):
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
+        Tree23,
     ],
 )
 def test_extract_min(bst_class: Type[AbstractBST]):
@@ -256,6 +257,7 @@ def test_extract_min(bst_class: Type[AbstractBST]):
         ScapeGoatTree,
         Treap,
         TreapSplitMerge,
+        Tree23,
     ],
 )
 def test_extract_max(bst_class: Type[AbstractBST]):

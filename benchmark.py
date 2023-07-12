@@ -1,11 +1,12 @@
 import statistics
 from collections import defaultdict
-from time import monotonic
-from typing import Final, Type
 from sys import setrecursionlimit
+from time import monotonic
 from timeit import timeit
+from typing import Final, Type
 
 import matplotlib.pyplot as plt  # type: ignore
+
 from avl import AVLTreeIterative
 from bst import BST, BSTIterative, BSTWithParentIterative, Tree
 from rbt import RedBlackTree
@@ -14,7 +15,6 @@ from splaytree import SplayTree
 from treap import Treap, TreapSplitMerge
 from tree_23 import Tree23
 from ziptree import ZipTree, ZipTreeRecursive
-
 
 ALL_CLASSES: Final[tuple[Type[Tree], ...]] = (
     BST,
