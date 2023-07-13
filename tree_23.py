@@ -498,9 +498,9 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                 # merge hole into a 2 node with L
                 left.content.append(parent.content.pop(0))
                 if left.children:
-                    hole_child = hole.nonnull_children[0]
-                    left.nonnull_children.append(hole_child)
-                    hole_child.parent = left
+                    child = hole.nonnull_children.pop()
+                    left.nonnull_children.append(child)
+                    child.parent = left
                 parent.remove_child(hole)
             else:
                 right = parent.right
@@ -518,24 +518,31 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         else:
             assert hole is parent.right
             middle = parent.middle
+            left = parent.left
             if parent.left.is_2node():
                 assert self.is_node(middle)
                 if parent.middle.is_3node():
                     # R----(317 : 754)
-                    #      L----X
+                    #      L----(200) -> (a, b)
                     #      M----(350 : 541) -> (c, d, e)
                     #      R----hole -> f
 
-                    # R----(317 : 541)
-                    #      L----X
-                    #      M----(350) -> (c, d)
-                    #      R----(754) -> (e, f)
-                    hole.content.append(parent.content.pop())
-                    parent.content.append(middle.content.pop())
+                    # R----(350)
+                    #      L----(200: 317) -> (a, b, c)
+                    #      M----(541: 754) -> (d, e, f)
+
+                    middle.content.append(parent.content.pop())
+                    left.content.append(parent.content.pop())
+                    parent.content.append(middle.content.pop(0))
                     if hole.children:
-                        child = middle.nonnull_children.pop()
-                        hole.nonnull_children.insert(0, child)
-                        child.parent = hole
+                        child_mid = middle.nonnull_children.pop(0)
+                        child_mid.parent = left
+                        left.nonnull_children.append(child_mid)
+
+                        child = hole.nonnull_children.pop()
+                        child.parent = middle
+                        middle.nonnull_children.append(child)
+                    parent.remove_child(hole)
                 else:
                     # R----(317 : 541)
                     #      L----(243) -> (a, b)
