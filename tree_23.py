@@ -462,7 +462,6 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                     child = hole.nonnull_children.pop()
                     middle.nonnull_children.insert(0, child)
                     child.parent = middle
-                parent.remove_child(hole)
             else:
                 right = parent.right
                 middle = parent.middle
@@ -486,7 +485,6 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                     child_right = middle.nonnull_children.pop()
                     child_right.parent = right
                     right.nonnull_children.insert(0, child_right)
-                parent.remove_child(hole)
         elif hole is parent.middle:
             if parent.left.is_2node():
                 left = parent.left
@@ -501,7 +499,6 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                     child = hole.nonnull_children.pop()
                     left.nonnull_children.append(child)
                     child.parent = left
-                parent.remove_child(hole)
             else:
                 right = parent.right
                 assert parent.right.is_2node()
@@ -514,7 +511,6 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                     child = hole.nonnull_children.pop()
                     right.nonnull_children.insert(0, child)
                     child.parent = right
-                parent.remove_child(hole)
         else:
             assert hole is parent.right
             middle = parent.middle
@@ -542,7 +538,6 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                         child = hole.nonnull_children.pop()
                         child.parent = middle
                         middle.nonnull_children.append(child)
-                    parent.remove_child(hole)
                 else:
                     # R----(317 : 541)
                     #      L----(243) -> (a, b)
@@ -557,7 +552,6 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                         child = hole.nonnull_children.pop()
                         middle.nonnull_children.append(child)
                         child.parent = middle
-                    parent.remove_child(hole)
             else:
                 assert parent.middle.is_2node()
                 # R----(306 : 721)
@@ -573,10 +567,8 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                     child = hole.nonnull_children.pop()
                     middle.nonnull_children.append(child)
                     child.parent = middle
-                parent.remove_child(hole)
-        if not hole.children:
-            hole.children = self.sentinel()
 
+        parent.remove_child(hole)
         return None
 
     def _fixup_case4(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:

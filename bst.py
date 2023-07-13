@@ -210,7 +210,6 @@ class BSTWithParent(
     AbstractBST[Key, Value, BinaryNodeWithParentType, SentinelType],
     ABC,
 ):
-
     root: Union[BinaryNodeWithParentType, SentinelType]
 
     def left_rotate(
@@ -220,7 +219,6 @@ class BSTWithParent(
             Callable[[Union[BinaryNodeWithParentType, SentinelType]], None]
         ] = None,
     ) -> BinaryNodeWithParentType:
-
         assert self.is_node(node)
         assert self.is_node(node.right)
 
@@ -258,7 +256,6 @@ class BSTWithParent(
             Callable[[Union[BinaryNodeWithParentType, SentinelType]], None]
         ] = None,
     ) -> BinaryNodeWithParentType:
-
         assert self.is_node(node)
         assert self.is_node(node.left)
 
@@ -553,7 +550,6 @@ class AbstractBSTIterative(
         node: BinaryNodeType,
         update: Optional[Callable[[Union[BinaryNodeType, SentinelType]], None]] = None,
     ) -> BinaryNodeType:
-
         assert self.is_node(node)
         assert self.is_node(node.right)
 
@@ -646,7 +642,6 @@ class AbstractBSTWithParentIterative(
             Callable[[Union[BinaryNodeWithParentType, SentinelType]], None]
         ] = None,
     ) -> BinaryNodeWithParentType:
-
         assert self.is_node(node)
         assert self.is_node(node.right)
 
@@ -683,7 +678,6 @@ class AbstractBSTWithParentIterative(
             Callable[[Union[BinaryNodeWithParentType, SentinelType]], None]
         ] = None,
     ) -> BinaryNodeWithParentType:
-
         assert self.is_node(node)
         assert self.is_node(node.left)
 
