@@ -139,11 +139,11 @@ class AbstractSentinel(
 
 class TreeQueryMixin(Generic[Key, Value, NodeType, SentinelType], ABC):
     @abstractmethod
-    def minimum_node(self) -> NodeType:
+    def minimum_node(self, root: Optional[NodeType] = None) -> NodeType:
         pass
 
     @abstractmethod
-    def maximum_node(self) -> NodeType:
+    def maximum_node(self, root: Optional[NodeType] = None) -> NodeType:
         pass
 
     @abstractmethod
@@ -155,11 +155,19 @@ class TreeQueryMixin(Generic[Key, Value, NodeType, SentinelType], ABC):
         pass
 
     @abstractmethod
-    def successor(self, key: Key) -> Union[NodeType, SentinelType]:
+    def successor_node(self, key: Key) -> Union[NodeType, SentinelType]:
         pass
 
     @abstractmethod
-    def predecessor(self, key: Key) -> Union[NodeType, SentinelType]:
+    def predecessor_node(self, key: Key) -> Union[NodeType, SentinelType]:
+        pass
+
+    @abstractmethod
+    def successor(self, key: Key) -> tuple[Key, Value]:
+        pass
+
+    @abstractmethod
+    def predecessor(self, key: Key) -> tuple[Key, Value]:
         pass
 
 
@@ -464,7 +472,7 @@ class Node(
 ):
     """Base class for all nodes in a tree."""
 
-    def _is_node(self, node: Any) -> TypeGuard[NodeType]:
+    def is_node(self, node: Any) -> TypeGuard[NodeType]:
         return isinstance(node, type(self))
 
 

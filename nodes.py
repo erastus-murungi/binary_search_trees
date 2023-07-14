@@ -5,17 +5,7 @@ import subprocess
 import sys
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    Generic,
-    Hashable,
-    Iterator,
-    Optional,
-    TypeGuard,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import Any, Generic, Hashable, Iterator, Optional, TypeVar, Union, cast
 
 from core import (
     AbstractSentinel,
@@ -101,25 +91,25 @@ class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, 
         if self.key == key:
             return cast(BinaryNodeType, self)
         elif key < self.key:
-            if self._is_node(self.left):
+            if self.is_node(self.left):
                 return self.left.access(key)
             raise SentinelReferenceError(
                 f"Key {key} not found, Sentinel {self.left} reached"
             )
         else:
-            if self._is_node(self.right):
+            if self.is_node(self.right):
                 return self.right.access(key)
             raise SentinelReferenceError(
                 f"Key {key} not found, Sentinel {self.right} reached"
             )
 
-    def minimum_node(self) -> BinaryNodeType:
-        if self._is_node(self.left):
+    def minimum_node(self, _: Optional[BinaryNodeType] = None) -> BinaryNodeType:
+        if self.is_node(self.left):
             return self.left.minimum_node()
         return cast(BinaryNodeType, self)
 
-    def maximum_node(self) -> BinaryNodeType:
-        if self._is_node(self.right):
+    def maximum_node(self, _: Optional[BinaryNodeType] = None) -> BinaryNodeType:
+        if self.is_node(self.right):
             return self.right.maximum_node()
         return cast(BinaryNodeType, self)
 
@@ -133,39 +123,47 @@ class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, 
 
     @property
     def nonnull_right(self) -> BinaryNodeType:
-        if self._is_node(self.right):
+        if self.is_node(self.right):
             return self.right
         raise SentinelReferenceError(f"Node {self.right} is not a BinarySearchTreeNode")
 
     @property
     def nonnull_left(self) -> BinaryNodeType:
-        if self._is_node(self.left):
+        if self.is_node(self.left):
             return self.left
         raise SentinelReferenceError(f"Node {self.left} is not a BinarySearchTreeNode")
 
-    def successor(self, key: Key) -> BinaryNodeType:
+    def successor_node(self, key: Key) -> BinaryNodeType:
         if key > self.key:
-            return self.nonnull_right.successor(key)
+            return self.nonnull_right.successor_node(key)
         elif key < self.key:
             try:
-                return self.nonnull_left.successor(key)
+                return self.nonnull_left.successor_node(key)
             except ValueError:
                 return cast(BinaryNodeType, self)
         else:
             assert key == self.key
             return self.nonnull_right.minimum_node()
 
-    def predecessor(self, key: Key) -> BinaryNodeType:
+    def predecessor_node(self, key: Key) -> BinaryNodeType:
         if key < self.key:
-            return self.nonnull_left.predecessor(key)
+            return self.nonnull_left.predecessor_node(key)
         elif key > self.key:
             try:
-                return self.nonnull_right.predecessor(key)
+                return self.nonnull_right.predecessor_node(key)
             except ValueError:
                 return cast(BinaryNodeType, self)
         else:
             assert key == self.key
             return self.nonnull_left.maximum_node()
+
+    def successor(self, key: Key) -> tuple[Key, Value]:
+        node = self.successor_node(key)
+        return node.key, node.value
+
+    def predecessor(self, key: Key) -> tuple[Key, Value]:
+        node = self.predecessor_node(key)
+        return node.key, node.value
 
     def insert_node(
         self, node: BinaryNodeType, allow_overwrite: bool = False
@@ -176,12 +174,12 @@ class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, 
             else:
                 raise ValueError(f"Overwrites of {node.key} not allowed")
         elif node.key < self.key:
-            if self._is_node(self.left):
+            if self.is_node(self.left):
                 self.left = self.left.insert_node(node, allow_overwrite)
             else:
                 self.left = node
         else:
-            if self._is_node(self.right):
+            if self.is_node(self.right):
                 self.right = self.right.insert_node(node, allow_overwrite)
             else:
                 self.right = node
@@ -198,17 +196,17 @@ class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, 
         elif key > self.key:
             self.right = self.nonnull_right._delete_key(key, self)
         else:
-            if not self._is_node(self.left):
+            if not self.is_node(self.left):
                 return self.right
-            elif not self._is_node(self.right):
+            elif not self.is_node(self.right):
                 return self.left
             else:
                 parent_successor = self
                 successor = self.nonnull_right
-                while successor._is_node(successor.left):
+                while successor.is_node(successor.left):
                     parent_successor = successor
                     successor = successor.nonnull_left
-                assert not successor._is_node(successor.left)
+                assert not successor.is_node(successor.left)
                 if successor is not self.right:
                     parent_successor.left = successor.right
                     successor.right = self.right
@@ -222,14 +220,14 @@ class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, 
         return cast(BinaryNodeType, self)
 
     def delete_min(self):
-        if not self._is_node(self.left):
+        if not self.is_node(self.left):
             return self.right
         else:
             self.left = self.nonnull_left.delete_min()
             return cast(BinaryNodeType, self)
 
     def delete_max(self):
-        if not self._is_node(self.right):
+        if not self.is_node(self.right):
             return self.left
         else:
             self.right = self.nonnull_right.delete_max()
@@ -243,7 +241,7 @@ class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, 
             return keyval, cast(BinaryNodeType, self)
         except SentinelReferenceError:
             keyval = (self.key, self.value)
-            if self._is_node(self.right):
+            if self.is_node(self.right):
                 return keyval, self.right
             else:
                 return keyval, self.left
@@ -256,37 +254,37 @@ class AbstractBSTNode(Node[Key, Value, BinaryNodeType, SentinelType], Hashable, 
             return keyval, cast(BinaryNodeType, self)
         except SentinelReferenceError:
             keyval = (self.key, self.value)
-            if self._is_node(self.left):
+            if self.is_node(self.left):
                 return keyval, self.left
             else:
                 return keyval, self.right
 
     def inorder(self) -> Iterator[BinaryNodeType]:
-        if self._is_node(self.left):
+        if self.is_node(self.left):
             yield from self.left.inorder()
         yield cast(BinaryNodeType, self)
-        if self._is_node(self.right):
+        if self.is_node(self.right):
             yield from self.right.inorder()
 
     def preorder(self) -> Iterator[BinaryNodeType]:
         yield cast(BinaryNodeType, self)
-        if self._is_node(self.left):
+        if self.is_node(self.left):
             yield from self.left.inorder()
-        if self._is_node(self.right):
+        if self.is_node(self.right):
             yield from self.right.inorder()
 
     def postorder(self) -> Iterator[BinaryNodeType]:
-        if self._is_node(self.left):
+        if self.is_node(self.left):
             yield from self.left.inorder()
-        if self._is_node(self.right):
+        if self.is_node(self.right):
             yield from self.right.inorder()
         yield cast(BinaryNodeType, self)
 
     def yield_edges(self) -> Iterator[tuple[BinaryNodeType, BinaryNodeType]]:
-        if self._is_node(self.left):
+        if self.is_node(self.left):
             yield from self.left.yield_edges()
             yield cast(BinaryNodeType, self), self.left
-        if self._is_node(self.right):
+        if self.is_node(self.right):
             yield from self.right.yield_edges()
             yield cast(BinaryNodeType, self), self.right
 

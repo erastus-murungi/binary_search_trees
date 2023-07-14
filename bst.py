@@ -76,17 +76,25 @@ class AbstractBST(Tree[Key, Value, BinaryNodeType, SentinelType], ABC):
         except SentinelReferenceError:
             return iter([])
 
-    def predecessor(self, key: Key) -> BinaryNodeType:
+    def predecessor_node(self, key: Key) -> BinaryNodeType:
         try:
-            return self.nonnull_root.predecessor(key)
+            return self.nonnull_root.predecessor_node(key)
         except SentinelReferenceError as e:
             raise KeyError(f"No predecessor found, {key} is minimum key in tree") from e
 
-    def successor(self, key: Key) -> BinaryNodeType:
+    def successor_node(self, key: Key) -> BinaryNodeType:
         try:
-            return self.nonnull_root.successor(key)
+            return self.nonnull_root.successor_node(key)
         except SentinelReferenceError as e:
             raise KeyError(f"No successor found, {key} is maximum key in tree") from e
+
+    def successor(self, key: Key) -> tuple[Key, Value]:
+        node = self.successor_node(key)
+        return node.key, node.value
+
+    def predecessor(self, key: Key) -> tuple[Key, Value]:
+        node = self.predecessor_node(key)
+        return node.key, node.value
 
     def access(self, key: Key) -> BinaryNodeType:
         return self.nonnull_root.access(key)
@@ -101,7 +109,8 @@ class AbstractBST(Tree[Key, Value, BinaryNodeType, SentinelType], ABC):
     def insert_node(self, node: BinaryNodeType, allow_overwrite: bool = False) -> bool:
         if node.key in self:
             if allow_overwrite:
-                self[node.key] = node.value
+                existing_node = self.access(node.key)
+                existing_node.value = node.value
                 return False
             raise KeyError(f"Key {node.key} already exists")
         return bool(
@@ -146,10 +155,10 @@ class AbstractBST(Tree[Key, Value, BinaryNodeType, SentinelType], ABC):
         self.root = self.nonnull_root.delete_max()
         self.size -= 1
 
-    def minimum_node(self) -> BinaryNodeType:
+    def minimum_node(self, _: Optional[BinaryNodeType] = None) -> BinaryNodeType:
         return self.nonnull_root.minimum_node()
 
-    def maximum_node(self) -> BinaryNodeType:
+    def maximum_node(self, _: Optional[BinaryNodeType] = None) -> BinaryNodeType:
         return self.nonnull_root.maximum_node()
 
     def minimum(self) -> tuple[Key, Value]:
@@ -322,14 +331,14 @@ class AbstractBSTIterative(
                 current = current.nonnull_right
         return current, parent
 
-    def minimum_node(self) -> BinaryNodeType:
-        current = self.nonnull_root
+    def minimum_node(self, root: Optional[BinaryNodeType] = None) -> BinaryNodeType:
+        current = self.nonnull_root if root is None else root
         while self.is_node(current.left):
             current = current.left
         return current
 
-    def maximum_node(self) -> BinaryNodeType:
-        current = self.nonnull_root
+    def maximum_node(self, root: Optional[BinaryNodeType] = None) -> BinaryNodeType:
+        current = self.nonnull_root if root is None else root
         while self.is_node(current.right):
             current = current.right
         return current
@@ -479,7 +488,7 @@ class AbstractBSTIterative(
     def level_order(self) -> Iterator[BinaryNodeType]:
         raise NotImplementedError()
 
-    def successor(self, key: Key) -> BinaryNodeType:
+    def successor_node(self, key: Key) -> BinaryNodeType:
         try:
             node = self.access(key)
             if self.is_node(node.right):
@@ -499,7 +508,7 @@ class AbstractBSTIterative(
         except SentinelReferenceError as e:
             raise ValueError(f"Key {key} not found") from e
 
-    def predecessor(self, key: Key) -> BinaryNodeType:
+    def predecessor_node(self, key: Key) -> BinaryNodeType:
         try:
             node = self.access(key)
             if self.is_node(node.left):
@@ -518,6 +527,14 @@ class AbstractBSTIterative(
             return candidate
         except SentinelReferenceError as e:
             raise ValueError(f"Key {key} not found") from e
+
+    def successor(self, key: Key) -> tuple[Key, Value]:
+        node = self.successor_node(key)
+        return node.key, node.value
+
+    def predecessor(self, key: Key) -> tuple[Key, Value]:
+        node = self.predecessor_node(key)
+        return node.key, node.value
 
     def right_rotate(
         self,
@@ -706,6 +723,22 @@ class AbstractBSTWithParentIterative(
             update(left_child)
 
         return left_child
+
+    def successor_node(self, key: Key) -> BinaryNodeWithParentType:
+        try:
+            node = self.access(key)
+            if self.is_node(node.right):
+                return self.minimum_node(node.right)
+            else:
+                y = node.parent
+                while self.is_node(y) and node is y.right:
+                    node = y
+                    y = y.parent
+                if self.is_node(y):
+                    return y
+                raise KeyError(f"{key=} has no successor")
+        except SentinelReferenceError as e:
+            raise KeyError(f"{key=} not found") from e
 
 
 @dataclass

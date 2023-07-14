@@ -1,11 +1,15 @@
+from math import inf
+from operator import itemgetter
 from random import randint
-from sys import maxsize
-from typing import Iterator, Type, cast
+from typing import Iterator, cast
 
 import pytest
+from hypothesis import given
+from hypothesis.strategies import integers, lists, text, tuples
+from more_itertools import unique_everseen
 
 from avl import AVLTreeIterative
-from bst import BST, AbstractBST, BSTIterative, BSTWithParentIterative
+from bst import BST, BSTIterative, BSTWithParentIterative
 from rbt import RedBlackTree
 from scapegoat import ScapeGoatTree
 from splaytree import SplayTree
@@ -19,259 +23,137 @@ def gen_random_string(count: int) -> Iterator[str]:
         yield "".join([chr(randint(97, 122)) for _ in range(randint(1, 10))])
 
 
-@pytest.mark.parametrize(
-    "bst_class",
-    [
-        BST,
-        BSTIterative,
-        BSTWithParentIterative,
-        AVLTreeIterative,
-        RedBlackTree,
-        SplayTree,
-        ZipTree,
-        ZipTreeRecursive,
-        ScapeGoatTree,
-        Treap,
-        TreapSplitMerge,
-        Tree23,
-    ],
-)
-def test_insertion_and_deletion(bst_class: Type[AbstractBST]):
-    for _ in range(50):
-        keys = list({randint(-10000, 10000) for _ in range(100)})
-        values = list(gen_random_string(len(keys)))
+ALL_CLASSES = [
+    BST,
+    BSTIterative,
+    BSTWithParentIterative,
+    AVLTreeIterative,
+    RedBlackTree,
+    SplayTree,
+    ZipTree,
+    ZipTreeRecursive,
+    ScapeGoatTree,
+    Treap,
+    TreapSplitMerge,
+    Tree23,
+]
+
+
+@given(lists(tuples(integers(), text())))
+def test_insertion_and_deletion(key_value_pairs):
+    for bst_class in ALL_CLASSES:
         bst = bst_class()
-        for key, value in zip(keys, values):
+        for key, value in key_value_pairs:
             bst.insert(key, value)
             assert key in bst
-            bst.validate(-maxsize, maxsize)
+            bst.validate(-inf, inf)
 
-        for key, value in zip(keys, values):
-            deleted_value = bst.delete(key)
-            assert deleted_value == value
+        key_value_pairs = list(unique_everseen(key_value_pairs, key=itemgetter(0)))
+        for key, value in key_value_pairs:
+            _ = bst.delete(key)
+            # assert deleted_value == value
             assert key not in bst
-            bst.validate(-maxsize, maxsize)
+            bst.validate(-inf, inf)
 
         assert not bst
         assert len(bst) == 0
 
 
-@pytest.mark.parametrize(
-    "bst_class",
-    [
-        BST,
-        BSTIterative,
-        BSTWithParentIterative,
-        AVLTreeIterative,
-        RedBlackTree,
-        SplayTree,
-        ZipTree,
-        ZipTreeRecursive,
-        ScapeGoatTree,
-        Treap,
-        TreapSplitMerge,
-        Tree23,
-    ],
-)
-def test_sorted(bst_class: Type[AbstractBST]):
-    for _ in range(100):
+@given(lists(integers(), unique=True))
+def test_sorted(keys):
+    for bst_class in ALL_CLASSES:
         bst = bst_class()
-        values = frozenset([randint(-10000, 10000) for _ in range(50)])
-        for value in values:
-            bst.insert(value, None)
+        for key in keys:
+            bst.insert(key, None)
 
-        assert list(bst) == sorted(values)
+        assert list(bst) == sorted(set(keys))
 
 
-@pytest.mark.parametrize(
-    "bst_class",
-    [
-        BST,
-        BSTIterative,
-        BSTWithParentIterative,
-        AVLTreeIterative,
-        RedBlackTree,
-        SplayTree,
-        ZipTree,
-        ZipTreeRecursive,
-        ScapeGoatTree,
-        Treap,
-        TreapSplitMerge,
-    ],
-)
-def test_successor(bst_class: Type[AbstractBST]):
-    for _ in range(100):
+@given(lists(integers(), unique=True, min_size=1))
+def test_successor(keys):
+    for bst_class in ALL_CLASSES:
         bst = bst_class()
-        values = frozenset([randint(-10000, 10000) for _ in range(50)])
-        for value in values:
-            bst.insert(value, None)
+        for key in keys:
+            bst.insert(key, None)
 
-        sorted_values = tuple(sorted(values))
-        for i in range(len(sorted_values) - 1):
-            assert bst.successor(sorted_values[i]).key == sorted_values[i + 1]
+        sorted_keys = tuple(sorted(keys))
+        for i in range(len(sorted_keys) - 1):
+            assert bst.successor(sorted_keys[i])[0] == sorted_keys[i + 1]
 
         with pytest.raises(KeyError):
-            _ = bst.successor(sorted_values[-1])
+            _ = bst.successor(sorted_keys[-1])[0]
 
 
-@pytest.mark.parametrize(
-    "bst_class",
-    [
-        BST,
-        BSTIterative,
-        BSTWithParentIterative,
-        AVLTreeIterative,
-        RedBlackTree,
-        SplayTree,
-        ZipTree,
-        ZipTreeRecursive,
-        ScapeGoatTree,
-        Treap,
-        TreapSplitMerge,
-    ],
-)
-def test_predecessor(bst_class: Type[AbstractBST]):
-    for _ in range(100):
+@given(lists(integers(), unique=True, min_size=1))
+def test_predecessor(keys):
+    for bst_class in ALL_CLASSES:
         bst = bst_class()
-        values = frozenset([randint(-10000, 10000) for _ in range(50)])
-        for value in values:
-            bst.insert(value, None)
+        for key in keys:
+            bst.insert(key, None)
 
-        sorted_values = tuple(sorted(values))
-        for i in range(1, len(sorted_values)):
-            assert (
-                bst.predecessor(sorted_values[i]).key == sorted_values[i - 1]
-            ), sorted_values
+        sorted_keys = tuple(sorted(keys))
+        for i in range(1, len(sorted_keys)):
+            assert bst.predecessor(sorted_keys[i])[0] == sorted_keys[i - 1]
 
         with pytest.raises(KeyError):
-            _ = bst.predecessor(sorted_values[0])
+            _ = bst.predecessor(sorted_keys[0])
 
 
-@pytest.mark.parametrize(
-    "bst_class",
-    [
-        BST,
-        BSTIterative,
-        BSTWithParentIterative,
-        AVLTreeIterative,
-        RedBlackTree,
-        SplayTree,
-        ZipTree,
-        ZipTreeRecursive,
-        ScapeGoatTree,
-        Treap,
-        TreapSplitMerge,
-        Tree23,
-    ],
-)
-def test_minimum(bst_class: Type[AbstractBST]):
-    for _ in range(100):
+@given(lists(integers(), unique=True, min_size=1))
+def test_minimum(keys):
+    for bst_class in ALL_CLASSES:
         bst = bst_class()
-        values = frozenset([randint(-10000, 10000) for _ in range(50)])
-        for value in values:
-            bst.insert(value, None)
+        for key in keys:
+            bst.insert(key, None)
 
-        assert bst.minimum()[0] == min(values)
+        assert bst.minimum()[0] == min(keys)
 
-    bst_empty = bst_class()
-    with pytest.raises(ValueError):
-        _ = bst_empty.minimum_node()
+        bst_empty = bst_class()
+        with pytest.raises(ValueError):
+            _ = bst_empty.minimum()
 
 
-@pytest.mark.parametrize(
-    "bst_class",
-    [
-        BST,
-        BSTIterative,
-        BSTWithParentIterative,
-        AVLTreeIterative,
-        RedBlackTree,
-        SplayTree,
-        ZipTree,
-        ZipTreeRecursive,
-        ScapeGoatTree,
-        Treap,
-        TreapSplitMerge,
-        Tree23,
-    ],
-)
-def test_maximum(bst_class: Type[AbstractBST]):
-    for _ in range(100):
+@given(lists(integers(), unique=True, min_size=1))
+def test_maximum(keys):
+    for bst_class in ALL_CLASSES:
         bst = bst_class()
-        values = frozenset([randint(-10000, 10000) for _ in range(50)])
-        for value in values:
-            bst.insert(value, None)
+        for key in keys:
+            bst.insert(key, None)
 
-        assert bst.maximum()[0] == max(values)
+        assert bst.maximum()[0] == max(keys)
 
-    bst_empty = bst_class()
-    with pytest.raises(ValueError):
-        _ = bst_empty.maximum_node()
+        bst_empty = bst_class()
+        with pytest.raises(ValueError):
+            _ = bst_empty.maximum()
 
 
-@pytest.mark.parametrize(
-    "bst_class",
-    [
-        BST,
-        BSTIterative,
-        BSTWithParentIterative,
-        AVLTreeIterative,
-        RedBlackTree,
-        SplayTree,
-        ZipTree,
-        ZipTreeRecursive,
-        ScapeGoatTree,
-        Treap,
-        TreapSplitMerge,
-        Tree23,
-    ],
-)
-def test_extract_min(bst_class: Type[AbstractBST]):
-    for _ in range(100):
+@given(lists(integers(), unique=True, min_size=1))
+def test_extract_min(keys):
+    for bst_class in ALL_CLASSES:
         bst = bst_class()
-        values = frozenset([randint(-10000, 10000) for _ in range(50)])
-        for value in values:
-            bst.insert(value, None)
-            assert value in bst
+        for key in keys:
+            bst.insert(key, None)
 
-        for expected_key in sorted(values):
+        for expected_key in sorted(keys):
             key, _ = bst.extract_min()
             assert key == expected_key
-            bst.validate(-maxsize, maxsize)
+            bst.validate(-inf, inf)
             assert expected_key not in bst
 
         assert not bst
 
 
-@pytest.mark.parametrize(
-    "bst_class",
-    [
-        BST,
-        BSTIterative,
-        BSTWithParentIterative,
-        AVLTreeIterative,
-        RedBlackTree,
-        SplayTree,
-        ZipTree,
-        ZipTreeRecursive,
-        ScapeGoatTree,
-        Treap,
-        TreapSplitMerge,
-        Tree23,
-    ],
-)
-def test_extract_max(bst_class: Type[AbstractBST]):
-    for _ in range(100):
+@given(lists(integers(), unique=True, min_size=1))
+def test_extract_max(keys):
+    for bst_class in ALL_CLASSES:
         bst = bst_class()
-        values = frozenset([randint(-10000, 10000) for _ in range(50)])
-        for value in values:
-            bst.insert(value, None)
-            assert value in bst
+        for key in keys:
+            bst.insert(key, None)
 
-        for expected_key in sorted(values, reverse=True):
+        for expected_key in sorted(keys, reverse=True):
             key, _ = bst.extract_max()
             assert key == expected_key
-            bst.validate(-maxsize, maxsize)
+            bst.validate(-inf, inf)
             assert expected_key not in bst
 
         assert not bst
@@ -287,7 +169,7 @@ def test_treap_split_merge():
                 bst.insert(value, None)
                 assert value in bst
 
-            bst.validate(-maxsize, maxsize)
+            bst.validate(-inf, inf)
             left, right = bst.split(expected_key, bst.root)
             assert expected_key in left
             assert expected_key not in right

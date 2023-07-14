@@ -3,7 +3,6 @@ from __future__ import annotations
 from bisect import insort
 from dataclasses import dataclass, field
 from operator import itemgetter
-from sys import maxsize
 from typing import Any, Iterator, Optional, Type, TypeGuard, Union
 
 from more_itertools import one
@@ -185,12 +184,16 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
     def min_key(self) -> Key:
         return self.content[0][0]
 
-    def minimum_node(self) -> Node23[Key, Value]:
+    def minimum_node(
+        self, _: Optional[Node23[Key, Value]] = None
+    ) -> Node23[Key, Value]:
         if self.is_leaf:
             return self
         return self.left.minimum_node()
 
-    def maximum_node(self) -> Node23[Key, Value]:
+    def maximum_node(
+        self, _: Optional[Node23[Key, Value]] = None
+    ) -> Node23[Key, Value]:
         if self.is_leaf:
             return self
         return self.right.maximum_node()
@@ -247,10 +250,16 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
     def __iter__(self) -> Iterator[Key]:
         raise NotImplementedError()
 
-    def successor(self, key: Key) -> Union[Node23[Key, Value], Sentinel]:
+    def successor_node(self, key: Key) -> Union[Node23[Key, Value], Sentinel]:
         raise NotImplementedError()
 
-    def predecessor(self, key: Key) -> Union[Node23[Key, Value], Sentinel]:
+    def predecessor_node(self, key: Key) -> Union[Node23[Key, Value], Sentinel]:
+        raise NotImplementedError()
+
+    def successor(self, key: Key) -> tuple[Key, Value]:
+        raise NotImplementedError()
+
+    def predecessor(self, key: Key) -> tuple[Key, Value]:
         raise NotImplementedError()
 
     def inorder(self) -> Iterator[Node23[Key, Value]]:
@@ -447,7 +456,7 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         self, hole: Node23[Key, Value], dest: Node23[Key, Value], *, at_start: bool
     ) -> None:
         assert hole.is_hole()
-        if dest.children:
+        if not self.is_sentinel(dest.children):
             child = hole.nonnull_children.pop()
             if at_start:
                 dest.nonnull_children.insert(0, child)
@@ -772,14 +781,18 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         if self.is_node(self.root):
             yield from traverse(self.root)
 
-    def minimum_node(self) -> Node23[Key, Value]:
-        current = self.nonnull_root
+    def minimum_node(
+        self, root: Optional[Node23[Key, Value]] = None
+    ) -> Node23[Key, Value]:
+        current = self.nonnull_root if root is None else root
         while not current.is_leaf:
             current = current.left
         return current
 
-    def maximum_node(self) -> Node23[Key, Value]:
-        current = self.nonnull_root
+    def maximum_node(
+        self, root: Optional[Node23[Key, Value]] = None
+    ) -> Node23[Key, Value]:
+        current = self.nonnull_root if root is None else root
         while not current.is_leaf:
             current = current.right
         return current
@@ -790,11 +803,65 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
     def maximum(self) -> tuple[Key, Value]:
         return self.maximum_node().content[-1]
 
-    def successor(self, key: Key) -> Union[Node23[Key, Value], Sentinel]:
+    def successor_node(self, key: Key) -> Node23[Key, Value]:
         raise NotImplementedError()
 
-    def predecessor(self, key: Key) -> Union[Node23[Key, Value], Sentinel]:
+    def predecessor_node(self, key: Key) -> Union[Node23[Key, Value], Sentinel]:
         raise NotImplementedError()
+
+    def successor(self, key: Key) -> tuple[Key, Value]:
+        try:
+            node = self.access(key)
+            if node.is_leaf:
+                if node.is_3node() and key == node.min_key():
+                    return node.content[1]
+                p = node.parent
+                while self.is_node(p) and p.right is node:
+                    node = p
+                    p = p.parent
+                if self.is_node(p):
+                    if p.left is node:
+                        return p.content[0]
+                    elif p.is_3node() and p.middle is node:
+                        return p.content[1]
+                else:
+                    if node.is_3node() and key == node.min_key():
+                        return node.content[1]
+                raise KeyError(f"{key=} has no successor")
+            else:
+                if node.is_3node() and key == node.min_key():
+                    return node.middle.minimum()
+                else:
+                    return node.right.minimum()
+        except SentinelReferenceError as e:
+            raise KeyError(f"{key=} not found") from e
+
+    def predecessor(self, key: Key) -> tuple[Key, Value]:
+        try:
+            node = self.access(key)
+            if node.is_leaf:
+                if node.is_3node() and key == node.max_key():
+                    return node.content[0]
+                p = node.parent
+                while self.is_node(p) and p.left is node:
+                    node = p
+                    p = p.parent
+                if self.is_node(p):
+                    if p.right is node:
+                        return p.content[-1]
+                    elif p.is_3node() and p.middle is node:
+                        return p.content[0]
+                else:
+                    if node.is_3node() and key == node.max_key():
+                        return node.content[0]
+                raise KeyError(f"{key=} has no successor")
+            else:
+                if node.is_3node() and key == node.max_key():
+                    return node.middle.maximum()
+                else:
+                    return node.left.maximum()
+        except SentinelReferenceError as e:
+            raise KeyError(f"{key=} not found") from e
 
     def preorder(self) -> Iterator[Node23[Key, Value]]:
         raise NotImplementedError()
@@ -902,112 +969,4 @@ def draw_tree_23(
 
 
 if __name__ == "__main__":
-    from random import randint, shuffle
-
-    try:
-        for _ in range(10000):
-            tree: Tree23[int, None] = Tree23[int, None]()
-            num_values = 100
-            values = list({randint(0, 100000) for _ in range(num_values)})
-            # values = [6, 966, 860, 903, 138, 267, 175, 914, 791, 474, 604, 701, 735]
-            # values = [928, 227, 415, 969, 104, 459, 146, 693, 949, 438, 761, 955, 607]
-            # values = [806, 648, 969, 746, 237, 925, 174, 721, 306, 504, 61]
-            # values = [736, 322, 104, 554, 76, 269, 110, 535, 376, 315, 255]
-            # print(values)
-            # values = [807, 872, 849, 211, 757, 923, 476]
-            for V in values:
-                tree.insert(V, None, allow_overwrite=True)
-                # print(tree.pretty_str())
-                tree.validate(-maxsize, maxsize)
-                assert V in tree
-            shuffle(values)
-            # print(tree.pretty_str())
-            for c, V in enumerate(values):
-                tree.delete(V)
-                # print(tree.pretty_str())
-                assert tree.size == (len(values) - (c + 1))
-                tree.validate(-maxsize, maxsize)
-                assert V not in tree
-    except Exception as e:
-        print(values)
-        raise
-
-        # tree.size = 11
-        # n45 = Node23[int, None]([(45, None)])
-        # n30 = Node23[int, None]([(30, None)])
-        # n6082 = Node23[int, None]([(60, None), (82, None)])
-        # n45.children = [n30, n6082]
-        # n30.parent = n6082.parent = n45
-        # tree.root = n45
-        #
-        # n22 = Node23[int, None]([(22, None)])
-        # n3540 = Node23[int, None]([(35, None), (40, None)])
-        # n30.children = [n22, n3540]
-        # n22.parent = n3540.parent = n30
-        #
-        # n5155 = Node23[int, None]([(51, None), (55, None)])
-        # n75 = Node23[int, None]([(75, None)])
-        # n87 = Node23[int, None]([(87, None)])
-        # n5155.parent = n75.parent = n87.parent = n6082
-        # n6082.children = [n5155, n75, n87]
-
-        # n45 = Node23[int, None]([(45, None)])
-        # n3032 = Node23[int, None]([(30, None), (32, None)])
-        # n31 = Node23[int, None]([(31, None)])
-        # n22 = Node23[int, None]([(22, None)])
-        # n3540 = Node23[int, None]([(35, None), (40, None)])
-        # n3032.children = [n22, n31, n3540]
-        # n60 = Node23[int, None]([(60, None)])
-        # n31.parent = n22.parent = n3540.parent = n3032
-        # n45.children = [n3032, n60]
-        # n3032.parent = n60.parent = n45
-        #
-        # n51 = Node23[int, None]([(51, None)])
-        # n75 = Node23[int, None]([(75, None)])
-        # n60.children = [n51, n75]
-        # n51.parent = n75.parent = n60
-
-        # tree.root = n45
-        #
-        # # print(tree.dot())
-        #
-        # # tree.delete(22)
-        # #
-        # # print(tree.pretty_str())
-        # #
-        # tree.validate(-maxsize, maxsize)
-        # # tree.dot()
-        # print(tree.pretty_str())
-        # tree.delete(22)
-        # print(tree.pretty_str())
-        # tree.validate(-maxsize, maxsize)
-        # tree.delete(30)
-        # print(tree.pretty_str())
-        # tree.validate(-maxsize, maxsize)
-        # tree.delete(55)
-        # print(tree.pretty_str())
-        # tree.validate(-maxsize, maxsize)
-        # tree.delete(45)
-        # print(tree.pretty_str())
-        # tree.validate(-maxsize, maxsize)
-        #
-        # tree.delete(82)
-        # print(tree.pretty_str())
-        # tree.validate(-maxsize, maxsize)
-        #
-        # tree.delete(35)
-        # print(tree.pretty_str())
-        # tree.validate(-maxsize, maxsize)
-
-        # tree.delete(82)
-        # tree.validate(-maxsize, maxsize)
-        # print(tree.pretty_str())
-        # tree.delete(51)
-        #
-        # tree.validate(-maxsize, maxsize)
-        # print(tree.pretty_str())
-
-        # for k in values:
-        #     deleted = tree.delete(k)
-        #     print(tree.pretty_str())
-        #     assert k not in tree, values
+    pass
