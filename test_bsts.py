@@ -58,6 +58,43 @@ def test_insertion_and_deletion_integers(keys):
         assert len(bst) == 0
 
 
+@pytest.mark.parametrize(
+    "bst_class",
+    [
+        BST,
+        BSTIterative,
+        BSTWithParentIterative,
+        AVLTreeIterative,
+        RedBlackTree,
+        SplayTree,
+        ZipTree,
+        ZipTreeRecursive,
+        ScapeGoatTree,
+        Treap,
+        TreapSplitMerge,
+        Tree23,
+    ],
+)
+def test_insertion_and_deletion_legacy(bst_class):
+    for _ in range(50):
+        keys = list({randint(-10000, 10000) for _ in range(100)})
+        values = list(gen_random_string(len(keys)))
+        bst = bst_class()
+        for key, value in zip(keys, values):
+            bst.insert(key, value)
+            assert key in bst
+            bst.validate(-inf, inf)
+
+        for key, value in zip(keys, values):
+            deleted_value = bst.delete(key)
+            assert deleted_value == value
+            assert key not in bst
+            bst.validate(-inf, inf)
+
+        assert not bst
+        assert len(bst) == 0
+
+
 @given(lists(floats(0, 1e100)))  # ignore nan and inf for now
 def test_insertion_and_deletion_randoms(keys):
     for bst_class in ALL_CLASSES:

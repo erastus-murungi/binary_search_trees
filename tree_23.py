@@ -315,6 +315,16 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
         except SentinelReferenceError as e:
             raise KeyError from e
 
+    def insort_data(self, data: list[tuple[Key, Value]]):
+        self.data.extend(data)
+        self.data.sort(key=itemgetter(0))
+
+    def insort_children(self, children: list[Node23[Key, Value]]):
+        self.nonnull_children.extend(children)
+        self.nonnull_children.sort(key=lambda x: x.min_key())
+        for child in children:
+            child.parent = self
+
 
 class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
     def _try_overwrite(
@@ -345,8 +355,10 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
         leaf = self.nonnull_root.trickle_down(key)
         insort(leaf.data, (key, value))
+
         if leaf.is_unsupported_4node():
             self._balance_4node(leaf)
+
         self.size += 1
         return self.access(key)
 
@@ -410,6 +422,35 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
             "is not supported because nodes share keys"
         )
 
+    def _maybe_move_child(
+        self,
+        src: Node23[Key, Value],
+        dst: Node23[Key, Value],
+        *,
+        at_start: bool,
+        first_child: bool = False,
+    ) -> None:
+        if not self.is_sentinel(src.children) and not self.is_sentinel(dst.children):
+            if first_child:
+                child = src.nonnull_children.pop(0)
+            else:
+                child = src.nonnull_children.pop()
+            if at_start:
+                dst.nonnull_children.insert(0, child)
+            else:
+                dst.nonnull_children.append(child)
+            child.parent = dst
+
+    def _fixup_case1(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
+        parent = hole.parent
+        assert self.is_node(parent) and parent.is_2node
+
+        sibling = hole.sibling()
+        sibling.insort_data(parent.data)
+        if sibling.children:
+            sibling.insort_children(hole.nonnull_children)
+        return parent.to_hole(sibling)
+
     def _fixup_case2(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
         assert hole.is_hole
         parent = hole.parent
@@ -419,153 +460,58 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
             hole.data = parent.data
             parent.data = sibling.data[:1]
             sibling.data = sibling.data[1:]
-            if isinstance(sibling.children, list):
-                insort_lists(hole.children, sibling.children[:1], key=Node23.min_key)
-                sibling.children[0].parent = hole
-                sibling.children = sibling.children[1:]
+            self._maybe_move_child(sibling, hole, at_start=False, first_child=True)
         else:
             sibling = parent.left
             hole.data = parent.data
             parent.data = sibling.data[-1:]
             sibling.data = sibling.data[:-1]
-            if isinstance(sibling.children, list):
-                insort_lists(hole.children, sibling.children[-1:], key=Node23.min_key)
-                sibling.children[-1].parent = hole
-                sibling.children = sibling.children[:-1]
+            self._maybe_move_child(sibling, hole, at_start=True, first_child=False)
         if not hole.children:
             hole.children = self.sentinel()
 
         return None
-
-    def _fixup_case1(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
-        parent = hole.parent
-        assert self.is_node(parent) and parent.is_2node
-
-        sibling = hole.sibling()
-        insort_lists(sibling.data, parent.data, key=itemgetter(0))
-        if sibling.children:
-            insort_lists(sibling.children, hole.children, key=Node23.min_key)
-        for child in hole.nonnull_children:
-            child.parent = sibling
-        return parent.to_hole(sibling)
-
-    def _maybe_transfer_child_from_hole(
-        self, hole: Node23[Key, Value], dest: Node23[Key, Value], *, at_start: bool
-    ) -> None:
-        assert hole.is_hole
-        if not self.is_sentinel(dest.children):
-            child = hole.nonnull_children.pop()
-            if at_start:
-                dest.nonnull_children.insert(0, child)
-            else:
-                dest.nonnull_children.append(child)
-            child.parent = dest
 
     def _fixup_case3(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
         parent = hole.parent
         assert self.is_node(parent) and parent.is_3node
         left, middle, right = parent.left, parent.middle, parent.right
 
-        # we have about 6 cases
         if hole is left:
             if middle.is_2node:
-                # R----(287 : 830)
-                #      L----hole -> (a)
-                #      M----(466) -> (b, c)
-                #      R----X
-                # R----(830)
-                #      M----(287: 466) -> (a, b, c)
-                #      R----X
                 middle.data.insert(0, parent.data.pop(0))
-                self._maybe_transfer_child_from_hole(hole, middle, at_start=True)
+                self._maybe_move_child(hole, middle, at_start=True)
             else:
                 assert right.is_2node
-                # R----(303 : 785)
-                #      L----hole -> a
-                #      M----(374 : 700) -> (b, c, d)
-                #      R----(980) -> (e, f)
-
-                # R----(700)
-                #      L----(303 : 374) -> (a, b, c)
-                #      R----(785 : 980) -> (d, e, f)
-
                 right.data.insert(0, parent.data.pop())
                 middle.data.insert(0, parent.data.pop())
                 parent.data.append(middle.data.pop())
-                if hole.children:
-                    child_mid = hole.nonnull_children.pop()
-                    child_mid.parent = middle
-                    middle.nonnull_children.insert(0, child_mid)
-
-                    child_right = middle.nonnull_children.pop()
-                    child_right.parent = right
-                    right.nonnull_children.insert(0, child_right)
+                self._maybe_move_child(hole, middle, at_start=True)
+                self._maybe_move_child(middle, right, at_start=True)
         elif hole is middle:
             if left.is_2node:
-                # R----(317 : 754)
-                #      L----(194) -> (a, b)
-                #      M----hole -> (c)
-                #      R----X
-                # R----
                 left.data.append(parent.data.pop(0))
-                self._maybe_transfer_child_from_hole(hole, left, at_start=False)
+                self._maybe_move_child(hole, left, at_start=False)
             else:
                 assert right.is_2node
-                # R----(269 : 376)
-                #      L----X
-                #      M----hole -> (a)
-                #      R----(535) -> (b, c)
                 right.data.insert(0, parent.data.pop())
-                self._maybe_transfer_child_from_hole(hole, right, at_start=True)
+                self._maybe_move_child(hole, right, at_start=True)
         else:
             assert hole is right
             if middle.is_2node:
-                # R----(306 : 721)
-                #      L---- X
-                #      M----(504) -> (a, b)
-                #      R----hole -> (c)
-
-                # R----(306 : 721)
-                #      L---- X
-                #      R ----(504: 721) -> (a, b, c)
                 middle.data.append(parent.data.pop())
-                self._maybe_transfer_child_from_hole(hole, middle, at_start=False)
+                self._maybe_move_child(hole, middle, at_start=False)
             else:
                 assert left.is_2node
-                # R----(317 : 754)
-                #      L----(200) -> (a, b)
-                #      M----(350 : 541) -> (c, d, e)
-                #      R----hole -> f
-
-                # R----(350)
-                #      L----(200: 317) -> (a, b, c)
-                #      M----(541: 754) -> (d, e, f)
-
                 middle.data.append(parent.data.pop())
                 left.data.append(parent.data.pop())
                 parent.data.append(middle.data.pop(0))
-                if hole.children:
-                    child_mid = middle.nonnull_children.pop(0)
-                    child_mid.parent = left
-                    left.nonnull_children.append(child_mid)
-
-                    child = hole.nonnull_children.pop()
-                    child.parent = middle
-                    middle.nonnull_children.append(child)
+                self._maybe_move_child(middle, left, at_start=False, first_child=True)
+                self._maybe_move_child(hole, middle, at_start=False)
         parent.remove_child(hole)
         return None
 
     def _fixup_case4(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
-        # a < 47 < b < 259 < c < 362 < d < 527 < e < 552 < f < 964 < g
-        # R----(362 : 965)
-        #      L----(47 : 259) => (a, b, c)
-        #      M----(527 : 552) => (d, e, f)
-        #      R---- 'hole' => (g)
-
-        # R----(362 : 552)
-        #      L----(47 : 259) => (a, b, c)
-        #      M----(527) => (d, e)
-        #      R---- (964) => (f, g)
         parent = hole.parent
         assert self.is_node(parent)
         left, middle, right = parent.left, parent.middle, parent.right
@@ -573,46 +519,19 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         if hole is parent.right:
             right.data.append(parent.data.pop())
             parent.data.append(middle.data.pop())
-            if isinstance(middle.children, list) and isinstance(right.children, list):
-                child = middle.children.pop()
-                right.children.insert(0, child)
-                child.parent = right
-        # a < 211 < b < 476 < c < 757 < d < 849 < e < 872 < f < 923 < g
-        # R----(757 : 849)
-        #      L----(211 : 476) => (a, b, c)
-        #      M---- 'hole' => (d)
-        #      R----(872 : 923) => (e, f, g)
-
-        # R----(757 : 872)
-        #      L---- (211 : 476) => (a, b, c)
-        #      M---- (849) => (d, e)
-        #      R---- (923) => (f, g)
+            self._maybe_move_child(middle, right, at_start=True, first_child=False)
 
         elif hole is parent.middle:
             middle.data.append(parent.data.pop())
             parent.data.append(right.data.pop(0))
-            if isinstance(middle.children, list) and isinstance(right.children, list):
-                child = right.children.pop(0)
-                middle.children.append(child)
-                child.parent = middle
-        # a < 172 < b < 275 < c < 409 < d < 678 < e < 684 < f < 926 < g
-        # R----(172 : 678)
-        #      L---- 'hole' => (a)
-        #      M----(275 : 409) => (b, c, d)
-        #      R----(684 : 926) => (e, f, g)
-
-        # R----(275 : 678)
-        #      L----(172) => (a, b)
-        #      M----(409) => (c, d)
-        #      R----(684 : 926) => (e, f, g)
+            self._maybe_move_child(right, middle, at_start=False, first_child=True)
         else:
             assert hole is parent.left
             left.data.append(parent.data.pop(0))
             parent.data.insert(0, middle.data.pop(0))
-            if isinstance(left.children, list) and isinstance(middle.children, list):
-                child = middle.children.pop(0)
-                left.children.append(child)
-                child.parent = left
+            self._maybe_move_child(middle, left, at_start=False, first_child=True)
+
+        # seal the hole if it does not have any children
         if not hole.children:
             hole.children = self.sentinel()
 
@@ -963,4 +882,13 @@ def draw_tree_23(
 
 
 if __name__ == "__main__":
-    pass
+    keys = [0, 1, -1, -3, -4, -2, -5]
+    tree = Tree23[int, None]()
+    for key in keys:
+        tree.insert(key, None)
+        assert key in tree
+    print(tree.pretty_str())
+    for key in keys:
+        tree.delete(key)
+        print(tree.pretty_str())
+        assert key not in tree
