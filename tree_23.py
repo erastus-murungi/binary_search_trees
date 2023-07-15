@@ -20,50 +20,47 @@ def all_equal(iterator: Iterator[Any]) -> bool:
     return all(first == x for x in iterator)
 
 
-use_key = itemgetter(0)
-
-
-def insort_lists(A, B, key=None):
+def insort_lists(A, B, key):
     A.extend(B)
-    if key is None:
-        A.sort()
-    else:
-        A.sort(key=key)
+    A.sort(key=key)
 
 
 @dataclass(slots=True, eq=True)
 class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
-    content: list[tuple[Key, Value]]
+    data: list[tuple[Key, Value]]
     children: list[Node23[Key, Value]] | Sentinel = field(default_factory=Sentinel)
     parent: Node23[Key, Value] | Sentinel = field(default_factory=Sentinel)
 
+    @property
     def is_2node(self):
-        return len(self.content) == 1
+        return len(self.data) == 1
 
+    @property
     def is_3node(self):
-        return len(self.content) == 2
+        return len(self.data) == 2
 
+    @property
     def is_hole(self):
-        return self.content == [] and len(self.children) <= 1
+        return self.data == [] and len(self.children) <= 1
 
     def to_hole(self, node: Optional[Node23[Key, Value]] = None) -> Node23:
-        self.content = []
+        self.data = []
         if node is not None:
             self.children = [node]
         else:
             self.children = []
         return self
 
-    def remove_key(self, key: Key) -> Optional[Value]:
-        new_content = []
-        to_ret = None
-        for k, v in self.content:
-            if k != key:
-                new_content.append((k, v))
+    def remove_item(self, key: Key) -> Optional[Value]:
+        updated_data = []
+        removed_value = None
+        for _key, value in self.data:
+            if _key != key:
+                updated_data.append((_key, value))
             else:
-                to_ret = v
-        self.content = new_content
-        return to_ret
+                removed_value = value
+        self.data = updated_data
+        return removed_value
 
     def remove_child(self, child: Node23[Key, Value]):
         self.nonnull_children.remove(child)
@@ -75,7 +72,7 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
         lower_limit: Key,
         upper_limit: Key,
     ):
-        match self.content:
+        match self.data:
             case [(key, _)]:
                 if not (lower_limit < key < upper_limit):
                     raise NodeValidationError(f"2-node {self} violates BST property")
@@ -116,16 +113,16 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
                         )
 
     def __repr__(self):
-        if self.is_hole():
+        if self.is_hole:
             return "hole"
-        if self.is_2node():
-            return f"({self.content[0][0]})"
+        if self.is_2node:
+            return f"({self.data[0][0]})"
         else:
-            assert self.is_3node()
-            return f"({self.content[0][0]} : {self.content[1][0]})"
+            assert self.is_3node
+            return f"({self.data[0][0]} : {self.data[1][0]})"
 
     def contains_key(self, key: Key) -> bool:
-        for k, _ in self.content:
+        for k, _ in self.data:
             if k == key:
                 return True
         return False
@@ -138,7 +135,7 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
         if isinstance(self.parent, Sentinel):
             raise ValueError("root has no sibling")
         assert isinstance(self.parent, Node23)
-        if self.parent.is_3node():
+        if self.parent.is_3node:
             raise ValueError("siblings in a 3-node are not well defined sibling")
         if self.parent.left == self:
             return self.parent.right
@@ -151,15 +148,15 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
 
     @property
     def right(self) -> Node23[Key, Value]:
-        if self.is_2node():
+        if self.is_2node:
             return self.nonnull_children[1]
-        elif self.is_3node():
+        elif self.is_3node:
             return self.nonnull_children[2]
         raise ValueError("left only defined for 2- and 3-nodes")
 
     @property
     def middle(self) -> Node23[Key, Value]:
-        if self.is_2node():
+        if self.is_2node:
             raise ValueError("middle only defined for 3-nodes")
         return self.nonnull_children[1]
 
@@ -179,10 +176,10 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
         raise SentinelReferenceError("this is a leaf node with no children")
 
     def max_key(self) -> Key:
-        return self.content[-1][0]
+        return self.data[-1][0]
 
     def min_key(self) -> Key:
-        return self.content[0][0]
+        return self.data[0][0]
 
     def minimum_node(
         self, _: Optional[Node23[Key, Value]] = None
@@ -208,7 +205,7 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
     def drop_level(self, key: Key) -> Node23[Key, Value]:
         assert not self.contains_key(key)
 
-        for (my_key, _), child in zip(self.content, self.nonnull_children):
+        for (my_key, _), child in zip(self.data, self.nonnull_children):
             if key < my_key:
                 return child
         assert key > self.max_key()
@@ -275,10 +272,10 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
         raise NotImplementedError()
 
     def minimum(self) -> tuple[Key, Value]:
-        return self.minimum_node().content[0]
+        return self.minimum_node().data[0]
 
     def maximum(self) -> tuple[Key, Value]:
-        return self.maximum_node().content[-1]
+        return self.maximum_node().data[-1]
 
     def yield_edges(self) -> Iterator[tuple[Node23[Key, Value], Node23[Key, Value]]]:
         if isinstance(self.children, list):
@@ -299,7 +296,7 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
         yield f"{indent}{prefix}----{self}\n"
         indent += "     " if prefix == "R" else "|    "
         if not self.is_leaf:
-            prefixes = ("L", "R") if self.is_2node() else ("L", "M", "R")
+            prefixes = ("L", "R") if self.is_2node else ("L", "M", "R")
             for prefix, child in zip(prefixes, self.nonnull_children):
                 yield from child.yield_line(indent, prefix)
 
@@ -307,11 +304,11 @@ class Node23(Node[Key, Value, "Node23[Key, Value]", Sentinel]):
         raise NotImplementedError()
 
     def is_unsupported_4node(self):
-        return len(self.content) == 3
+        return len(self.data) == 3
 
     def access_value(self, key: Key) -> Value:
         try:
-            for k, v in self.content:
+            for k, v in self.data:
                 if k == key:
                     return v
             raise KeyError(f"Key {key} not found locally")
@@ -328,9 +325,9 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
             assert node.contains_key(key)
             if allow_overwrite:
                 new_content = [
-                    (k, new_value if k == key else val) for k, val in node.content
+                    (k, new_value if k == key else val) for k, val in node.data
                 ]
-                node.content = new_content
+                node.data = new_content
                 return node
             else:
                 raise RuntimeError("Key already exists")
@@ -347,7 +344,7 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
             return found
 
         leaf = self.nonnull_root.trickle_down(key)
-        insort(leaf.content, (key, value))
+        insort(leaf.data, (key, value))
         if leaf.is_unsupported_4node():
             self._balance_4node(leaf)
         self.size += 1
@@ -355,7 +352,7 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
     def _balance_4node(self, node: Node23[Key, Value]):
         assert node.is_unsupported_4node()
-        (min_key, min_value), (mid_key, mid_value), (max_key, max_value) = node.content
+        (min_key, min_value), (mid_key, mid_value), (max_key, max_value) = node.data
 
         assert min_key < mid_key < max_key
 
@@ -369,7 +366,7 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
             assert self.is_node(node.parent)
 
             # potential 4 node created
-            insort(node.parent.content, (mid_key, mid_value))
+            insort(node.parent.data, (mid_key, mid_value))
 
             # the acceptor is just the parent
             acceptor = node.parent
@@ -414,23 +411,23 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         )
 
     def _fixup_case2(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
-        assert hole.is_hole()
+        assert hole.is_hole
         parent = hole.parent
-        assert self.is_node(parent) and parent.is_2node()
+        assert self.is_node(parent) and parent.is_2node
         if hole is parent.left:
             sibling = parent.right
-            hole.content = parent.content
-            parent.content = sibling.content[:1]
-            sibling.content = sibling.content[1:]
+            hole.data = parent.data
+            parent.data = sibling.data[:1]
+            sibling.data = sibling.data[1:]
             if isinstance(sibling.children, list):
                 insort_lists(hole.children, sibling.children[:1], key=Node23.min_key)
                 sibling.children[0].parent = hole
                 sibling.children = sibling.children[1:]
         else:
             sibling = parent.left
-            hole.content = parent.content
-            parent.content = sibling.content[-1:]
-            sibling.content = sibling.content[:-1]
+            hole.data = parent.data
+            parent.data = sibling.data[-1:]
+            sibling.data = sibling.data[:-1]
             if isinstance(sibling.children, list):
                 insort_lists(hole.children, sibling.children[-1:], key=Node23.min_key)
                 sibling.children[-1].parent = hole
@@ -442,10 +439,10 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
     def _fixup_case1(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
         parent = hole.parent
-        assert self.is_node(parent) and parent.is_2node()
+        assert self.is_node(parent) and parent.is_2node
 
         sibling = hole.sibling()
-        insort_lists(sibling.content, parent.content, key=use_key)
+        insort_lists(sibling.data, parent.data, key=itemgetter(0))
         if sibling.children:
             insort_lists(sibling.children, hole.children, key=Node23.min_key)
         for child in hole.nonnull_children:
@@ -455,7 +452,7 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
     def _maybe_transfer_child_from_hole(
         self, hole: Node23[Key, Value], dest: Node23[Key, Value], *, at_start: bool
     ) -> None:
-        assert hole.is_hole()
+        assert hole.is_hole
         if not self.is_sentinel(dest.children):
             child = hole.nonnull_children.pop()
             if at_start:
@@ -466,12 +463,12 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
     def _fixup_case3(self, hole: Node23[Key, Value]) -> Optional[Node23[Key, Value]]:
         parent = hole.parent
-        assert self.is_node(parent) and parent.is_3node()
+        assert self.is_node(parent) and parent.is_3node
         left, middle, right = parent.left, parent.middle, parent.right
 
         # we have about 6 cases
         if hole is left:
-            if middle.is_2node():
+            if middle.is_2node:
                 # R----(287 : 830)
                 #      L----hole -> (a)
                 #      M----(466) -> (b, c)
@@ -479,10 +476,10 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                 # R----(830)
                 #      M----(287: 466) -> (a, b, c)
                 #      R----X
-                middle.content.insert(0, parent.content.pop(0))
+                middle.data.insert(0, parent.data.pop(0))
                 self._maybe_transfer_child_from_hole(hole, middle, at_start=True)
             else:
-                assert right.is_2node()
+                assert right.is_2node
                 # R----(303 : 785)
                 #      L----hole -> a
                 #      M----(374 : 700) -> (b, c, d)
@@ -492,9 +489,9 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                 #      L----(303 : 374) -> (a, b, c)
                 #      R----(785 : 980) -> (d, e, f)
 
-                right.content.insert(0, parent.content.pop())
-                middle.content.insert(0, parent.content.pop())
-                parent.content.append(middle.content.pop())
+                right.data.insert(0, parent.data.pop())
+                middle.data.insert(0, parent.data.pop())
+                parent.data.append(middle.data.pop())
                 if hole.children:
                     child_mid = hole.nonnull_children.pop()
                     child_mid.parent = middle
@@ -504,25 +501,25 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                     child_right.parent = right
                     right.nonnull_children.insert(0, child_right)
         elif hole is middle:
-            if left.is_2node():
+            if left.is_2node:
                 # R----(317 : 754)
                 #      L----(194) -> (a, b)
                 #      M----hole -> (c)
                 #      R----X
                 # R----
-                left.content.append(parent.content.pop(0))
+                left.data.append(parent.data.pop(0))
                 self._maybe_transfer_child_from_hole(hole, left, at_start=False)
             else:
-                assert right.is_2node()
+                assert right.is_2node
                 # R----(269 : 376)
                 #      L----X
                 #      M----hole -> (a)
                 #      R----(535) -> (b, c)
-                right.content.insert(0, parent.content.pop())
+                right.data.insert(0, parent.data.pop())
                 self._maybe_transfer_child_from_hole(hole, right, at_start=True)
         else:
             assert hole is right
-            if middle.is_2node():
+            if middle.is_2node:
                 # R----(306 : 721)
                 #      L---- X
                 #      M----(504) -> (a, b)
@@ -531,10 +528,10 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                 # R----(306 : 721)
                 #      L---- X
                 #      R ----(504: 721) -> (a, b, c)
-                middle.content.append(parent.content.pop())
+                middle.data.append(parent.data.pop())
                 self._maybe_transfer_child_from_hole(hole, middle, at_start=False)
             else:
-                assert left.is_2node()
+                assert left.is_2node
                 # R----(317 : 754)
                 #      L----(200) -> (a, b)
                 #      M----(350 : 541) -> (c, d, e)
@@ -544,9 +541,9 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                 #      L----(200: 317) -> (a, b, c)
                 #      M----(541: 754) -> (d, e, f)
 
-                middle.content.append(parent.content.pop())
-                left.content.append(parent.content.pop())
-                parent.content.append(middle.content.pop(0))
+                middle.data.append(parent.data.pop())
+                left.data.append(parent.data.pop())
+                parent.data.append(middle.data.pop(0))
                 if hole.children:
                     child_mid = middle.nonnull_children.pop(0)
                     child_mid.parent = left
@@ -574,8 +571,8 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         left, middle, right = parent.left, parent.middle, parent.right
 
         if hole is parent.right:
-            right.content.append(parent.content.pop())
-            parent.content.append(middle.content.pop())
+            right.data.append(parent.data.pop())
+            parent.data.append(middle.data.pop())
             if isinstance(middle.children, list) and isinstance(right.children, list):
                 child = middle.children.pop()
                 right.children.insert(0, child)
@@ -592,8 +589,8 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         #      R---- (923) => (f, g)
 
         elif hole is parent.middle:
-            middle.content.append(parent.content.pop())
-            parent.content.append(right.content.pop(0))
+            middle.data.append(parent.data.pop())
+            parent.data.append(right.data.pop(0))
             if isinstance(middle.children, list) and isinstance(right.children, list):
                 child = right.children.pop(0)
                 middle.children.append(child)
@@ -610,8 +607,8 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         #      R----(684 : 926) => (e, f, g)
         else:
             assert hole is parent.left
-            left.content.append(parent.content.pop(0))
-            parent.content.insert(0, middle.content.pop(0))
+            left.data.append(parent.data.pop(0))
+            parent.data.insert(0, middle.data.pop(0))
             if isinstance(left.children, list) and isinstance(middle.children, list):
                 child = middle.children.pop(0)
                 left.children.append(child)
@@ -627,31 +624,30 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
         if not target_node.is_leaf:
             # replace node with successor
-            if target_node.is_3node():
-                if key == target_node.min_key():
-                    root_successor = target_node.middle.minimum_node()
-                else:
-                    root_successor = target_node.right.minimum_node()
+            if target_node.is_3node and key == target_node.min_key():
+                root_successor = target_node.middle.minimum_node()
             else:
                 root_successor = target_node.right.minimum_node()
-            # assert root.successor.is_leaf and is_sorted(root.successor.content, key=use_key)
-            successor_key, successor_value = root_successor.content.pop(0)
-            target_node.remove_key(key)
-            insort(target_node.content, (successor_key, successor_value), key=use_key)
+            # assert root.successor.is_leaf and is_sorted(root.successor.content, key=itemgetter(0))
+            successor_key, successor_value = root_successor.data.pop(0)
+            target_node.remove_item(key)
+            insort(
+                target_node.data, (successor_key, successor_value), key=itemgetter(0)
+            )
             target_node = root_successor
 
-            if target_node.is_2node():
+            if target_node.is_2node:
                 self.size -= 1
                 return value
 
         assert target_node.is_leaf
 
-        if target_node.is_3node():
+        if target_node.is_3node:
             # Easy case. Replace 3-node by 2-node
-            target_node.remove_key(key)
+            target_node.remove_item(key)
             self.size -= 1
         else:
-            assert target_node.is_2node() or target_node.is_hole()
+            assert target_node.is_2node or target_node.is_hole
             self._remove_hole(target_node.to_hole())
         return value
 
@@ -674,16 +670,16 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                     assert self.is_node(parent)
 
                     # case 1: The hole has a 2-node as a parent and a 2-node as a sibling
-                    if parent.is_2node() and hole.sibling().is_2node():
+                    if parent.is_2node and hole.sibling().is_2node:
                         hole = self._fixup_case1(hole)
 
                     # case 2: The hole has a 2-node as a parent and a 3-node as a sibling
-                    elif parent.is_2node() and hole.sibling().is_3node():
+                    elif parent.is_2node and hole.sibling().is_3node:
                         hole = self._fixup_case2(hole)
 
                     # case 3: The hole has a 3-node as a parent with a 2-node as a sibling
-                    elif parent.is_3node() and any(
-                        node.is_2node() for node in parent.nonnull_children
+                    elif parent.is_3node and any(
+                        node.is_2node for node in parent.nonnull_children
                     ):
                         hole = self._fixup_case3(hole)
                     # case 4: The hole has a 3-node as a parent with only 3-node siblings
@@ -695,8 +691,8 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         min_node = self.minimum_node()
         assert min_node.is_leaf
 
-        keyval = min_node.content.pop(0)
-        if not min_node.content:
+        keyval = min_node.data.pop(0)
+        if not min_node.data:
             self._remove_hole(min_node.to_hole())
         else:
             self.size -= 1
@@ -707,8 +703,8 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         max_node = self.maximum_node()
         assert max_node.is_leaf
 
-        keyval = max_node.content.pop()
-        if not max_node.content:
+        keyval = max_node.data.pop()
+        if not max_node.data:
             self._remove_hole(max_node.to_hole())
         else:
             self.size -= 1
@@ -730,9 +726,7 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         *args,
         **kwargs,
     ) -> Node23[Key, Value]:
-        return Node23[Key, Value](
-            content=[(key, value)], children=children, parent=parent
-        )
+        return Node23[Key, Value](data=[(key, value)], children=children, parent=parent)
 
     @staticmethod
     def is_node(node: Any) -> TypeGuard[Node23[Key, Value]]:
@@ -746,7 +740,7 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
     def __getitem__(self, key: Key) -> Value:
         try:
-            for k, v in self.access(key).content:
+            for k, v in self.access(key).data:
                 if k == key:
                     return v
             raise RuntimeError("Implementation error")
@@ -755,7 +749,7 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
     def __iter__(self) -> Iterator[Key]:
         def traverse(node: Node23[Key, Value]) -> Iterator[Key]:
-            match node.content:
+            match node.data:
                 case ((key, _),):
                     match node.children:
                         case (left, right):
@@ -798,10 +792,10 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         return current
 
     def minimum(self) -> tuple[Key, Value]:
-        return self.minimum_node().content[0]
+        return self.minimum_node().data[0]
 
     def maximum(self) -> tuple[Key, Value]:
-        return self.maximum_node().content[-1]
+        return self.maximum_node().data[-1]
 
     def successor_node(self, key: Key) -> Node23[Key, Value]:
         raise NotImplementedError()
@@ -813,23 +807,23 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         try:
             node = self.access(key)
             if node.is_leaf:
-                if node.is_3node() and key == node.min_key():
-                    return node.content[1]
+                if node.is_3node and key == node.min_key():
+                    return node.data[1]
                 p = node.parent
                 while self.is_node(p) and p.right is node:
                     node = p
                     p = p.parent
                 if self.is_node(p):
                     if p.left is node:
-                        return p.content[0]
-                    elif p.is_3node() and p.middle is node:
-                        return p.content[1]
+                        return p.data[0]
+                    elif p.is_3node and p.middle is node:
+                        return p.data[1]
                 else:
-                    if node.is_3node() and key == node.min_key():
-                        return node.content[1]
+                    if node.is_3node and key == node.min_key():
+                        return node.data[1]
                 raise KeyError(f"{key=} has no successor")
             else:
-                if node.is_3node() and key == node.min_key():
+                if node.is_3node and key == node.min_key():
                     return node.middle.minimum()
                 else:
                     return node.right.minimum()
@@ -840,23 +834,23 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         try:
             node = self.access(key)
             if node.is_leaf:
-                if node.is_3node() and key == node.max_key():
-                    return node.content[0]
+                if node.is_3node and key == node.max_key():
+                    return node.data[0]
                 p = node.parent
                 while self.is_node(p) and p.left is node:
                     node = p
                     p = p.parent
                 if self.is_node(p):
                     if p.right is node:
-                        return p.content[-1]
-                    elif p.is_3node() and p.middle is node:
-                        return p.content[0]
+                        return p.data[-1]
+                    elif p.is_3node and p.middle is node:
+                        return p.data[0]
                 else:
-                    if node.is_3node() and key == node.max_key():
-                        return node.content[0]
+                    if node.is_3node and key == node.max_key():
+                        return node.data[0]
                 raise KeyError(f"{key=} has no successor")
             else:
-                if node.is_3node() and key == node.max_key():
+                if node.is_3node and key == node.max_key():
                     return node.middle.maximum()
                 else:
                     return node.left.maximum()

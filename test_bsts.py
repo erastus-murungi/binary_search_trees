@@ -1,11 +1,10 @@
-from math import inf
-from operator import itemgetter
+from math import inf, nan
 from random import randint
 from typing import Iterator, cast
 
 import pytest
 from hypothesis import given
-from hypothesis.strategies import integers, lists, text, tuples
+from hypothesis.strategies import floats, integers, lists, text
 from more_itertools import unique_everseen
 
 from avl import AVLTreeIterative
@@ -39,21 +38,61 @@ ALL_CLASSES = [
 ]
 
 
-@given(lists(tuples(integers(), text())))
-def test_insertion_and_deletion(key_value_pairs):
+@given(lists(integers()))
+def test_insertion_and_deletion_integers(keys):
     for bst_class in ALL_CLASSES:
         bst = bst_class()
-        for key, value in key_value_pairs:
-            bst.insert(key, value)
+        for key in keys:
+            bst.insert(key, None)
             assert key in bst
             bst.validate(-inf, inf)
 
-        key_value_pairs = list(unique_everseen(key_value_pairs, key=itemgetter(0)))
-        for key, value in key_value_pairs:
+        keys = list(unique_everseen(keys))
+        for key in keys:
             _ = bst.delete(key)
             # assert deleted_value == value
             assert key not in bst
             bst.validate(-inf, inf)
+
+        assert not bst
+        assert len(bst) == 0
+
+
+@given(lists(floats(0, 1e100)))  # ignore nan and inf for now
+def test_insertion_and_deletion_randoms(keys):
+    for bst_class in ALL_CLASSES:
+        bst = bst_class()
+        for key in keys:
+            bst.insert(key, None)
+            assert key in bst
+            bst.validate(-inf, inf)
+
+        keys = list(unique_everseen(keys))
+        for key in keys:
+            _ = bst.delete(key)
+            # assert deleted_value == value
+            assert key not in bst
+            bst.validate(-inf, inf)
+
+        assert not bst
+        assert len(bst) == 0
+
+
+@given(lists(text()))
+def test_insertion_and_deletion_text(keys):
+    for bst_class in ALL_CLASSES:
+        bst = bst_class()
+        for key in keys:
+            bst.insert(key, None)
+            assert key in bst
+            # bst.validate('', max(keys))
+
+        keys = list(unique_everseen(keys))
+        for key in keys:
+            _ = bst.delete(key)
+            # assert deleted_value == value
+            assert key not in bst
+            # bst.validate('', max(keys))
 
         assert not bst
         assert len(bst) == 0
@@ -159,30 +198,29 @@ def test_extract_max(keys):
         assert not bst
 
 
-def test_treap_split_merge():
-    for _ in range(10):
-        values = list({randint(-10000, 10000) for _ in range(100)})
-        sorted_values = list(sorted(values))
-        for expected_key in sorted_values[:-1]:
-            bst = TreapSplitMerge()
-            for value in values:
-                bst.insert(value, None)
-                assert value in bst
-
-            bst.validate(-inf, inf)
-            left, right = bst.split(expected_key, bst.root)
-            assert expected_key in left
-            assert expected_key not in right
-            assert all(key <= expected_key for key in cast(TreapNode, left))
-            assert all(key > expected_key for key in cast(TreapNode, right))
-
-            assert sorted_values == list(bst.merge(left, right))
-
+@given(lists(integers(), min_size=1, unique=True))
+def test_treap_split_merge(keys):
+    sorted_keys = list(sorted(keys))
+    for expected_key in sorted_keys[:-1]:
         bst = TreapSplitMerge()
-        for value in values:
-            bst.insert(value, None)
-            assert value in bst
-        left, _ = bst.split(max(values), bst.root)
-        assert list(left) == list(bst)
-        _, right = bst.split(min(values) - 1, bst.root)
-        assert list(right) == list(bst)
+        for key in keys:
+            bst.insert(key, None)
+            assert key in bst
+
+        bst.validate(-inf, inf)
+        left, right = bst.split(expected_key, bst.root)
+        assert expected_key in left
+        assert expected_key not in right
+        assert all(key <= expected_key for key in cast(TreapNode, left))
+        assert all(key > expected_key for key in cast(TreapNode, right))
+
+        assert sorted_keys == list(bst.merge(left, right))
+
+    bst = TreapSplitMerge()
+    for key in keys:
+        bst.insert(key, None)
+        assert key in bst
+    left, _ = bst.split(max(keys), bst.root)
+    assert list(left) == list(bst)
+    _, right = bst.split(min(keys) - 1, bst.root)
+    assert list(right) == list(bst)
