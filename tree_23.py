@@ -582,32 +582,32 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
             self._clear_root()
         else:
             while hole is not None:
+                parent = hole.parent
+                assert self.is_node(parent)
+
+                # case 1: The hole has a 2-node as a parent and a 2-node as a sibling
+                if parent.is_2node and hole.sibling().is_2node:
+                    hole = self._fixup_case1(hole)
+
+                # case 2: The hole has a 2-node as a parent and a 3-node as a sibling
+                elif parent.is_2node and hole.sibling().is_3node:
+                    hole = self._fixup_case2(hole)
+
+                # case 3: The hole has a 3-node as a parent with a 2-node as a sibling
+                elif parent.is_3node and any(
+                    node.is_2node for node in parent.nonnull_children
+                ):
+                    hole = self._fixup_case3(hole)
+                # case 4: The hole has a 3-node as a parent with only 3-node siblings
+                else:
+                    hole = self._fixup_case4(hole)
+
                 if hole is self.root:
                     # case 0: The hole is the root
                     new_root = one(hole.nonnull_children)
                     new_root.parent = self.sentinel()
                     self._replace_root(new_root, 0)
                     break
-                else:
-                    parent = hole.parent
-                    assert self.is_node(parent)
-
-                    # case 1: The hole has a 2-node as a parent and a 2-node as a sibling
-                    if parent.is_2node and hole.sibling().is_2node:
-                        hole = self._fixup_case1(hole)
-
-                    # case 2: The hole has a 2-node as a parent and a 3-node as a sibling
-                    elif parent.is_2node and hole.sibling().is_3node:
-                        hole = self._fixup_case2(hole)
-
-                    # case 3: The hole has a 3-node as a parent with a 2-node as a sibling
-                    elif parent.is_3node and any(
-                        node.is_2node for node in parent.nonnull_children
-                    ):
-                        hole = self._fixup_case3(hole)
-                    # case 4: The hole has a 3-node as a parent with only 3-node siblings
-                    else:
-                        hole = self._fixup_case4(hole)
 
     def extract_min(self) -> tuple[Key, Value]:
         min_node = self.minimum_node()
