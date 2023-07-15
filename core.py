@@ -530,4 +530,3 @@ class Tree(
         assert self.is_node(self.root)
         assert len(self) == 1
         self.root = self.sentinel()
-        self.size = 0

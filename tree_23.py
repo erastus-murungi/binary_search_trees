@@ -537,23 +537,27 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
 
         return None
 
+    def _replace_internal_node_with_successor(
+        self, internal_node: Node23[Key, Value], key: Key
+    ) -> Node23[Key, Value]:
+        # replace node with successor
+        assert not internal_node.is_leaf
+        if internal_node.is_3node and key == internal_node.min_key():
+            root_successor = self.minimum_node(internal_node.middle)
+        else:
+            root_successor = self.minimum_node(internal_node.right)
+        # assert root.successor.is_leaf and is_sorted(root.successor.content, key=itemgetter(0))
+        successor_key, successor_value = root_successor.data.pop(0)
+        internal_node.remove_item(key)
+        internal_node.insort_data([(successor_key, successor_value)])
+        return root_successor
+
     def delete(self, key: Key) -> Value:
         target_node = self.access(key)
         value = target_node.access_value(key)
 
         if not target_node.is_leaf:
-            # replace node with successor
-            if target_node.is_3node and key == target_node.min_key():
-                root_successor = target_node.middle.minimum_node()
-            else:
-                root_successor = target_node.right.minimum_node()
-            # assert root.successor.is_leaf and is_sorted(root.successor.content, key=itemgetter(0))
-            successor_key, successor_value = root_successor.data.pop(0)
-            target_node.remove_item(key)
-            insort(
-                target_node.data, (successor_key, successor_value), key=itemgetter(0)
-            )
-            target_node = root_successor
+            target_node = self._replace_internal_node_with_successor(target_node, key)
 
             if target_node.is_2node:
                 self.size -= 1
@@ -564,10 +568,11 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         if target_node.is_3node:
             # Easy case. Replace 3-node by 2-node
             target_node.remove_item(key)
-            self.size -= 1
         else:
             assert target_node.is_2node or target_node.is_hole
             self._remove_hole(target_node.to_hole())
+
+        self.size -= 1
         return value
 
     def _remove_hole(self, hole: Optional[Node23[Key, Value]]) -> None:
@@ -575,7 +580,6 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         if hole is self.root:
             # case 0: The hole is the root
             self._clear_root()
-            return
         else:
             while hole is not None:
                 if hole is self.root:
@@ -604,7 +608,6 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
                     # case 4: The hole has a 3-node as a parent with only 3-node siblings
                     else:
                         hole = self._fixup_case4(hole)
-        self.size -= 1
 
     def extract_min(self) -> tuple[Key, Value]:
         min_node = self.minimum_node()
@@ -613,8 +616,8 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         keyval = min_node.data.pop(0)
         if not min_node.data:
             self._remove_hole(min_node.to_hole())
-        else:
-            self.size -= 1
+
+        self.size -= 1
 
         return keyval
 
@@ -625,8 +628,8 @@ class Tree23(Tree[Key, Value, Node23[Key, Value], Sentinel]):
         keyval = max_node.data.pop()
         if not max_node.data:
             self._remove_hole(max_node.to_hole())
-        else:
-            self.size -= 1
+
+        self.size -= 1
 
         return keyval
 
@@ -879,16 +882,3 @@ def draw_tree_23(
     graph.append(graph_epilogue())
 
     create_graph_pdf(graph, output_filename=output_filename)
-
-
-if __name__ == "__main__":
-    keys = [0, 1, -1, -3, -4, -2, -5]
-    tree = Tree23[int, None]()
-    for key in keys:
-        tree.insert(key, None)
-        assert key in tree
-    print(tree.pretty_str())
-    for key in keys:
-        tree.delete(key)
-        print(tree.pretty_str())
-        assert key not in tree
